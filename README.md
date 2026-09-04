@@ -12,7 +12,7 @@ Application de gestion de quarts pour équipes de sauveteurs : horaires, remplac
 
 Un sauveteur ne peut plus assurer son quart. Un collègue accepte de le remplacer dans une conversation de groupe, mais le coordonnateur apprend le changement après coup. L’horaire officiel ne reflète plus la réalité et les qualifications du remplaçant n’ont pas forcément été vérifiées.
 
-Vigie vise à centraliser l’horaire, valider les assignations et soumettre les remplacements à une approbation explicite. Les règles métier seront testables sans interface ni base de données.
+Vigie centralise l’horaire, valide les assignations et soumet les remplacements à une approbation explicite. Les règles métier sont codifiées dans le domaine et testées sans interface ni base de données.
 
 ## Les cinq règles métier
 
@@ -24,9 +24,9 @@ Vigie vise à centraliser l’horaire, valider les assignations et soumettre les
 | Quota | Respecter le maximum d’heures hebdomadaires configuré pour chaque employé. |
 | Saison | Autoriser les quarts uniquement pendant la période d’ouverture du site. |
 
-Les limites exactes (jour d’expiration, début de semaine, quarts de nuit et changement d’heure) seront documentées avec des exemples avant leur implémentation. Ces règles décrivent le produit envisagé et ne constituent pas une interprétation réglementaire.
+Les limites calendaires (jour d’expiration, début de semaine, quarts de nuit et changement d’heure) sont documentées dans la spécification et doivent rester couvertes par des tests dédiés. Ces règles décrivent le produit et ne constituent pas une interprétation réglementaire.
 
-## Première version prévue
+## Périmètre du MVP livré
 
 - Connexion avec les rôles sauveteur et coordonnateur.
 - Gestion des sites, quarts, assignations et disponibilités.
@@ -36,7 +36,7 @@ Les limites exactes (jour d’expiration, début de semaine, quarts de nuit et c
 
 La génération automatique d’horaires, les courriels/SMS, les exports et l’application mobile sont hors du périmètre initial.
 
-## Architecture prévue
+## Architecture livrée
 
 ```text
 frontend/                 React + TypeScript + Vite
@@ -47,12 +47,12 @@ src/
   Vigie.Api/              ASP.NET Core, endpoints et autorisation
 tests/
   Vigie.Domain.Tests/     Tests unitaires xUnit des invariants
-  Vigie.IntegrationTests/ Tests API, autorisation et persistance
+  Vigie.Api.IntegrationTests/ Tests API et autorisation
 ```
 
-Cette arborescence est une cible : les projets ne sont pas encore générés. Le domaine reste indépendant de l’infrastructure. L’API compose les dépendances ; la couche Application orchestre les règles et la persistance.
+Le domaine reste indépendant de l’infrastructure. L’API compose les dépendances ; la couche Application orchestre les règles et la persistance. Le store mémoire rend la démo immédiate, tandis que le modèle EF Core prépare le branchement PostgreSQL durable.
 
-| Technologie prévue | Raison |
+| Technologie livrée | Raison |
 | --- | --- |
 | ASP.NET Core / C# | Approfondir la stack backend maîtrisée par l’auteur. |
 | Entity Framework Core / PostgreSQL | Modèle relationnel et migrations versionnées. |
@@ -61,19 +61,19 @@ Cette arborescence est une cible : les projets ne sont pas encore générés. Le
 | Docker Compose | Rendre l’environnement local reproductible. |
 | GitHub Actions | Vérifier le build et les tests sur les Pull Requests. |
 
-Les versions supportées et le mode d’authentification seront confirmés au démarrage technique et consignés dans des décisions d’architecture.
+Le backend cible .NET 9 et le frontend utilise Node.js 22 dans la CI. L’authentification de l’API repose sur des jetons JWT et des rôles sauveteur/coordonnateur.
 
 ## Feuille de route
 
-| Jalon | Résultat attendu |
+| Jalon | État |
 | --- | --- |
-| 1 — Domaine | Entités, règles documentées et tests unitaires des cas limites. |
-| 2 — Persistance et API | Migrations, endpoints OpenAPI et données fictives reproductibles. |
-| 3 — Authentification | Autorisations par rôle et tests d’intégration des refus. |
-| 4 — Interface | Parcours complets sauveteur et coordonnateur. |
-| 5 — Démonstration | URL publique, comptes de démo, captures et guide de lancement vérifié. |
+| 1 — Domaine | ✅ Entités, règles documentées et tests unitaires des cas limites. |
+| 2 — API et authentification | ✅ Endpoints OpenAPI, JWT, rôles et données fictives reproductibles. |
+| 3 — Interface | ✅ Parcours sauveteur et coordonnateur, interface responsive en français. |
+| 4 — Démonstration | ✅ Démo UI publique, guide de parcours et workflow GitHub Pages. |
+| 5 — Persistance durable | ⏳ Repositories EF, migration initiale et déploiement de l’API. |
 
-Objectif indicatif : six semaines. Le périmètre sera ajusté pour livrer une démonstration utilisable.
+Le périmètre restant est isolé derrière les mêmes ports d’application afin de ne pas fragiliser la démo.
 
 ## Démarrer en local
 
@@ -112,4 +112,4 @@ Commencer par les règles métier ci-dessus, puis ouvrir la [démo publique](htt
 
 ## Données et configuration
 
-Aucune donnée réelle de collègues, aucun secret et aucun identifiant personnel de démonstration dans le dépôt. Les instants seront stockés en UTC ; les règles calendaires utiliseront explicitement le fuseau du site. Un exemple de configuration sans secrets sera ajouté avec les services concernés.
+Aucune donnée réelle de collègues, aucun secret et aucun identifiant personnel de démonstration dans le dépôt. Les instants sont stockés en UTC ; les règles calendaires utilisent explicitement le fuseau du site. Les fichiers `.env.example` documentent la configuration sans secrets.

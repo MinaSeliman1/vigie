@@ -3,6 +3,9 @@ name: Déployer la démo UI
 on:
   push:
     branches: [main]
+    paths:
+      - frontend/**
+      - .github/workflows/pages.yml
   workflow_dispatch:
 
 permissions:
@@ -48,4 +51,3 @@ jobs:
       - name: Publier la démo
         id: deployment
         uses: actions/deploy-pages@v4
-
