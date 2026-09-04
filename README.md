@@ -6,7 +6,7 @@
 
 Application de gestion de quarts pour équipes de sauveteurs : horaires, remplacements et suivi des certifications dans un même outil.
 
-> **État : MVP local fonctionnel.** L’API, les règles métier testées et l’interface React sont disponibles en local. Le déploiement public et la persistance PostgreSQL branchée à l’API restent les prochaines étapes. Projet personnel indépendant, sans affiliation officielle avec un employeur. Toutes les données de démonstration sont fictives.
+> **État : MVP fonctionnel.** La démo UI est publiée sur [GitHub Pages](https://minaseliman1.github.io/vigie/), tandis que l’API, les règles métier testées et le modèle PostgreSQL sont disponibles en local. Le branchement de la persistance durable et le déploiement de l’API restent les prochaines étapes. Projet personnel indépendant, sans affiliation officielle avec un employeur. Toutes les données de démonstration sont fictives.
 
 ## Le problème
 
@@ -102,12 +102,13 @@ L’interface est en français et permet de basculer entre les profils sauveteur
 
 - Les cinq règles métier sont testées dans `tests/Vigie.Domain.Tests` sans serveur ni base de données.
 - L’API JWT expose les routes de calendrier, d’assignation, d’échange et de certification ; deux tests d’intégration couvrent l’authentification et le refus sans jeton.
+- La démo UI publique est construite automatiquement par GitHub Actions et publiée sur GitHub Pages à chaque mise à jour de `main`.
 - Le frontend React affiche un calendrier responsive et exécute le parcours demande d’échange → approbation avec les profils de démonstration.
 - EF Core et PostgreSQL sont préparés dans `Vigie.Infrastructure`; le mode mémoire reste le défaut local pour garder le démarrage reproductible.
 
 ## Examiner le projet
 
-Commencer par les règles métier ci-dessus, puis lire [`docs/architecture.md`](docs/architecture.md) et les [conventions de contribution](CONTRIBUTING.md). Les commandes listées ici ont été vérifiées localement ; le lien de démonstration sera ajouté après déploiement.
+Commencer par les règles métier ci-dessus, puis ouvrir la [démo publique](https://minaseliman1.github.io/vigie/), lire [`docs/architecture.md`](docs/architecture.md) et les [conventions de contribution](CONTRIBUTING.md). Les commandes listées ici ont été vérifiées localement.
 
 ## Données et configuration
 
