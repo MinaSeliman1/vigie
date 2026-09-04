@@ -6,6 +6,10 @@ Livrer une application web démontrable qui permet à une équipe de sauveteurs 
 
 Le MVP couvre les rôles `Lifeguard` et `Coordinator`, les sites et leurs saisons, les quarts, les assignations, les certifications, les disponibilités et les demandes d’échange. La génération automatique d’horaires, les notifications externes, les exports et l’application mobile restent hors périmètre.
 
+## Langue et présentation
+
+Tous les textes visibles par l’utilisateur, les messages d’erreur, le README, les guides et les exemples sont en français. Les identifiants de code, noms de routes, types de données et termes normalisés de l’écosystème (`Employee`, `Shift`, `JWT`, `PostgreSQL`, etc.) restent en anglais afin de conserver des interfaces techniques idiomatiques.
+
 ## Utilisateurs et autorisations
 
 - Un `Lifeguard` se connecte, consulte ses quarts et les quarts de l’équipe, déclare ses disponibilités, crée une demande d’échange et accepte une demande qui lui est adressée.
