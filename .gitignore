@@ -1,0 +1,31 @@
+# .NET
+**/bin/
+**/obj/
+.vs/
+TestResults/
+coverage/
+*.user
+*.suo
+
+# Frontend
+node_modules/
+dist/
+.vite/
+
+# Secrets and local configuration
+.env
+.env.*
+!.env.example
+**/appsettings.Local.json
+**/appsettings.*.Local.json
+*.pfx
+*.p12
+*.pem
+*.key
+
+# Local artifacts
+.DS_Store
+Thumbs.db
+*.log
+tmp/
+.codex/
