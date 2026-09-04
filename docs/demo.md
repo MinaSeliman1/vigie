@@ -1,5 +1,9 @@
 # Démonstration locale
 
+## Démo publique
+
+La démo UI est accessible directement sur [minaseliman1.github.io/vigie](https://minaseliman1.github.io/vigie/). Elle démarre avec le profil d’Amélie et permet de basculer vers le profil coordonnateur pour parcourir une demande d’échange et son approbation.
+
 ## API
 
 ```powershell
