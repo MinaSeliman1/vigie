@@ -2,9 +2,11 @@
 
 **Des quarts couverts, des échanges approuvés, des certifications à jour.**
 
+[![CI](https://github.com/MinaSeliman1/vigie/actions/workflows/ci.yml/badge.svg)](https://github.com/MinaSeliman1/vigie/actions/workflows/ci.yml)
+
 Application de gestion de quarts pour équipes de sauveteurs : horaires, remplacements et suivi des certifications dans un même outil.
 
-> **État : cadrage initial.** Ce dépôt contient la documentation de départ. L’application, les tests et la démo en ligne sont à construire. Projet personnel indépendant, sans affiliation officielle avec un employeur. Toutes les données de démonstration seront fictives.
+> **État : MVP local fonctionnel.** L’API, les règles métier testées et l’interface React sont disponibles en local. Le déploiement public et la persistance PostgreSQL branchée à l’API restent les prochaines étapes. Projet personnel indépendant, sans affiliation officielle avec un employeur. Toutes les données de démonstration sont fictives.
 
 ## Le problème
 
@@ -73,9 +75,39 @@ Les versions supportées et le mode d’authentification seront confirmés au d�
 
 Objectif indicatif : six semaines. Le périmètre sera ajusté pour livrer une démonstration utilisable.
 
+## Démarrer en local
+
+### API
+
+```powershell
+dotnet test Vigie.sln
+dotnet run --project src/Vigie.Api --urls http://localhost:5187
+```
+
+L’API utilise un jeu de données mémoire pour démarrer sans dépendance externe. Les détails des comptes et le parcours à montrer sont dans [`docs/demo.md`](docs/demo.md). OpenAPI est disponible sur `http://localhost:5187/openapi/v1.json`.
+
+### Interface
+
+```powershell
+cd frontend
+npm install
+npm run lint
+npm run build
+npm run dev
+```
+
+L’interface est en français et permet de basculer entre les profils sauveteur et coordonnateur pour parcourir le flux d’échange.
+
+## Ce qui est déjà vérifiable
+
+- Les cinq règles métier sont testées dans `tests/Vigie.Domain.Tests` sans serveur ni base de données.
+- L’API JWT expose les routes de calendrier, d’assignation, d’échange et de certification ; deux tests d’intégration couvrent l’authentification et le refus sans jeton.
+- Le frontend React affiche un calendrier responsive et exécute le parcours demande d’échange → approbation avec les profils de démonstration.
+- EF Core et PostgreSQL sont préparés dans `Vigie.Infrastructure`; le mode mémoire reste le défaut local pour garder le démarrage reproductible.
+
 ## Examiner le projet
 
-À ce stade, commencer par les règles métier ci-dessus et les [conventions de contribution](CONTRIBUTING.md). Au fil des livraisons, ce README présentera les commandes réellement vérifiées, les résultats des tests, les décisions techniques et le lien de démonstration.
+Commencer par les règles métier ci-dessus, puis lire [`docs/architecture.md`](docs/architecture.md) et les [conventions de contribution](CONTRIBUTING.md). Les commandes listées ici ont été vérifiées localement ; le lien de démonstration sera ajouté après déploiement.
 
 ## Données et configuration
 

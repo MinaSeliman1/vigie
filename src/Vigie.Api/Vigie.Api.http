@@ -1,0 +1,14 @@
+@Vigie.Api_HostAddress = http://localhost:5187
+
+GET {{Vigie.Api_HostAddress}}/health
+Accept: application/json
+
+###
+
+POST {{Vigie.Api_HostAddress}}/api/v1/auth/login
+Content-Type: application/json
+
+{
+  "email": "coordonnateur@vigie.demo",
+  "password": "vigie-demo"
+}

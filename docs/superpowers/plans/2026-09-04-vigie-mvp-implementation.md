@@ -21,6 +21,10 @@
 
 ---
 
+## État de cette itération
+
+Le domaine, les services d’application, l’API JWT, le store mémoire de démonstration, le modèle EF Core, l’interface React, Docker, la CI et les tests d’intégration sont livrés. Le branchement des repositories EF et la migration PostgreSQL initiale restent volontairement séparés pour une prochaine Issue afin de conserver une démo locale immédiate et vérifiable.
+
 ### Task 1: Scaffolding solution and quality baseline
 
 **Files:**
