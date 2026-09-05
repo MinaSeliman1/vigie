@@ -103,6 +103,7 @@ L’interface est en français et permet de basculer entre les profils sauveteur
 - Les cinq règles métier sont testées dans `tests/Vigie.Domain.Tests` sans serveur ni base de données.
 - L’API JWT expose les routes de calendrier, d’assignation, d’échange et de certification ; deux tests d’intégration couvrent l’authentification et le refus sans jeton.
 - La démo UI publique est construite automatiquement par GitHub Actions et publiée sur GitHub Pages à chaque mise à jour de `main`.
+- Le conteneur de l’API est construit dans la CI pour détecter les erreurs de packaging avant un déploiement.
 - Le frontend React affiche un calendrier responsive et exécute le parcours demande d’échange → approbation avec les profils de démonstration.
 - EF Core et PostgreSQL sont préparés dans `Vigie.Infrastructure`; le mode mémoire reste le défaut local pour garder le démarrage reproductible.
 
