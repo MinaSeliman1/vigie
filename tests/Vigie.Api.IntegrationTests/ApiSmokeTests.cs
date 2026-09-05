@@ -103,6 +103,31 @@ public sealed class ApiSmokeTests : IClassFixture<WebApplicationFactory<Program>
     }
 
     [Fact]
+    public async Task Coordinator_cannot_decide_the_same_swap_twice()
+    {
+        var lifeguardLogin = await client.PostAsJsonAsync("/api/v1/auth/login", new { email = "amelie@vigie.demo", password = "vigie-demo" });
+        var lifeguard = await lifeguardLogin.Content.ReadFromJsonAsync<LoginPayload>();
+        client.DefaultRequestHeaders.Authorization = new System.Net.Http.Headers.AuthenticationHeaderValue("Bearer", lifeguard!.Token);
+        var create = await client.PostAsJsonAsync("/api/v1/swap-requests", new
+        {
+            assignmentId = Guid.Parse("50000000-0000-0000-0000-000000000001"),
+            receiverId = Guid.Parse("10000000-0000-0000-0000-000000000004")
+        });
+        var swap = await create.Content.ReadFromJsonAsync<SwapPayload>();
+
+        var coordinatorLogin = await client.PostAsJsonAsync("/api/v1/auth/login", new { email = "coordonnateur@vigie.demo", password = "vigie-demo" });
+        var coordinator = await coordinatorLogin.Content.ReadFromJsonAsync<LoginPayload>();
+        client.DefaultRequestHeaders.Authorization = new System.Net.Http.Headers.AuthenticationHeaderValue("Bearer", coordinator!.Token);
+        var firstDecision = await client.PostAsync($"/api/v1/swap-requests/{swap!.Id}/approve", content: null);
+        var secondDecision = await client.PostAsync($"/api/v1/swap-requests/{swap.Id}/approve", content: null);
+        var body = await secondDecision.Content.ReadAsStringAsync();
+
+        Assert.Equal(HttpStatusCode.OK, firstDecision.StatusCode);
+        Assert.Equal(HttpStatusCode.Conflict, secondDecision.StatusCode);
+        Assert.Contains("CONFLICT", body, StringComparison.Ordinal);
+    }
+
+    [Fact]
     public async Task Invalid_credentials_return_a_problem_details_code()
     {
         var response = await client.PostAsJsonAsync("/api/v1/auth/login", new { email = "intrus@example.test", password = "incorrect" });
@@ -131,4 +156,5 @@ public sealed class ApiSmokeTests : IClassFixture<WebApplicationFactory<Program>
     private sealed record UserPayload(Guid Id, string Name, string Email, string Role);
     private sealed record ShiftPayload(Guid Id);
     private sealed record AssignmentPayload(Guid Id, Guid ShiftId, Guid EmployeeId, string EmployeeName);
+    private sealed record SwapPayload(Guid Id);
 }

@@ -35,6 +35,7 @@ public sealed class ApproveSwapService(
         if (coordinator?.Role != EmployeeRole.Coordinator) return OperationResult<SwapRequest>.Failure("FORBIDDEN", "Seul un coordonnateur peut approuver un échange.");
         var request = await swaps.GetAsync(requestId, cancellationToken);
         if (request is null) return OperationResult<SwapRequest>.Failure("NOT_FOUND", "La demande d'échange est introuvable.");
+        if (request.Status != SwapStatus.Pending) return OperationResult<SwapRequest>.Failure("CONFLICT", "Cette demande d'échange a déjà été traitée.");
         var original = await assignments.GetAsync(request.AssignmentId, cancellationToken);
         if (original is null) return OperationResult<SwapRequest>.Failure("NOT_FOUND", "L'assignation d'origine est introuvable.");
         var receiver = await employees.GetAsync(request.ReceiverId, cancellationToken);
@@ -64,6 +65,7 @@ public sealed class RejectSwapService(IEmployeeRepository employees, ISwapReques
         if (coordinator?.Role != EmployeeRole.Coordinator) return OperationResult<SwapRequest>.Failure("FORBIDDEN", "Seul un coordonnateur peut refuser un échange.");
         var request = await swaps.GetAsync(requestId, cancellationToken);
         if (request is null) return OperationResult<SwapRequest>.Failure("NOT_FOUND", "La demande d'échange est introuvable.");
+        if (request.Status != SwapStatus.Pending) return OperationResult<SwapRequest>.Failure("CONFLICT", "Cette demande d'échange a déjà été traitée.");
         request.Reject(coordinator.Id, clock.UtcNow);
         await swaps.SaveAsync(request, cancellationToken);
         await unitOfWork.SaveChangesAsync(cancellationToken);

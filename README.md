@@ -103,7 +103,7 @@ L’interface est en français et permet de basculer entre les profils sauveteur
 ## Ce qui est déjà vérifiable
 
 - Les cinq règles métier sont testées dans `tests/Vigie.Domain.Tests` sans serveur ni base de données.
-- L’API JWT expose les routes de calendrier, d’assignation, d’échange et de certification ; huit tests d’intégration couvrent l’authentification, les autorisations, les règles de saison et le modèle EF.
+- L’API JWT expose les routes de calendrier, d’assignation, d’échange et de certification ; neuf tests d’intégration couvrent l’authentification, les autorisations, les règles de saison, les décisions répétées et le modèle EF.
 - La démo UI publique est construite automatiquement par GitHub Actions et publiée sur GitHub Pages à chaque mise à jour de `main`.
 - Le conteneur de l’API est construit dans la CI pour détecter les erreurs de packaging avant un déploiement.
 - `render.yaml` décrit le déploiement gratuit de l’API, son health check et les secrets attendus sans jamais les stocker dans Git.
