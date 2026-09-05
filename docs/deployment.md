@@ -6,10 +6,10 @@ Cette procédure publie l’API ASP.NET sur Render Free et utilise PostgreSQL Fr
 
 1. Créer un projet sur [Supabase](https://supabase.com/dashboard).
 2. Choisir le plan Free et conserver le mot de passe PostgreSQL dans un gestionnaire de mots de passe.
-3. Ouvrir **Connect**, puis copier la chaîne **Session pooler** (port `5432`). Elle est adaptée à un conteneur persistant sur un réseau IPv4; la chaîne directe est réservée aux environnements qui disposent d’IPv6. Voir la [documentation Supabase sur les connexions PostgreSQL](https://supabase.com/docs/guides/database/connecting-to-postgres).
+3. Ouvrir **Connect**, puis copier la chaîne **Session pooler** (port `5432`). Elle est adaptée à un conteneur persistant sur un réseau IPv4; la chaîne directe est réservée aux environnements qui disposent d’IPv6. Vigie accepte directement l’URI `postgresql://...` fournie par Supabase. Voir la [documentation Supabase sur les connexions PostgreSQL](https://supabase.com/docs/guides/database/connecting-to-postgres).
 4. Ne jamais mettre cette chaîne dans Git. Elle sera ajoutée comme secret Render.
 
-Vigie applique automatiquement les migrations EF Core et charge les données fictives au premier démarrage lorsque `ConnectionStrings__Vigie` est définie. La chaîne doit contenir `SSL Mode=Require` (ou `sslmode=require`) et la base `postgres` fournie par Supabase.
+Vigie applique automatiquement les migrations EF Core et charge les données fictives au premier démarrage lorsque `ConnectionStrings__Vigie` est définie. La chaîne doit utiliser la base `postgres` fournie par Supabase. L’API convertit l’URI Supabase en paramètres Npgsql et impose TLS.
 
 ## 2. Créer le service Render
 
