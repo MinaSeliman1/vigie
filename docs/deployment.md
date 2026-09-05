@@ -1,5 +1,7 @@
 # Déployer Vigie gratuitement
 
+> **État vérifié le 5 septembre 2026 :** l’API Render, PostgreSQL Supabase et la démo GitHub Pages sont en ligne. Cette page décrit la procédure complète pour reproduire ou réparer le déploiement.
+
 Cette procédure publie l’API ASP.NET sur Render Free et utilise PostgreSQL Free de Supabase. Le frontend reste publié par GitHub Pages.
 
 ## 1. Créer la base Supabase
@@ -31,7 +33,7 @@ Une fois l’URL Render connue :
 2. Créer une variable de dépôt nommée `VITE_API_URL` avec l’URL Render, sans `/` final.
 3. Relancer le workflow **Déployer la démo UI** depuis l’onglet Actions.
 
-Le workflow injecte cette variable dans Vite. Si elle est absente ou si l’API ne répond pas, la démo conserve automatiquement son mode local afin de rester présentable.
+Le workflow injecte cette variable dans Vite. Une fois la variable configurée, la barre latérale de la démo doit afficher **API connectée**. Si elle est absente ou si l’API ne répond pas, la démo conserve automatiquement son mode local afin de rester présentable.
 
 ## Vérification avant de partager le lien
 

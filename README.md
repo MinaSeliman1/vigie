@@ -6,7 +6,7 @@
 
 Application de gestion de quarts pour équipes de sauveteurs : horaires, remplacements et suivi des certifications dans un même outil.
 
-> **État : MVP fonctionnel.** La démo UI est publiée sur [GitHub Pages](https://minaseliman1.github.io/vigie/). L’API est prête à être publiée gratuitement sur Render avec PostgreSQL Free de Supabase; le guide reproductible est dans [`docs/deployment.md`](docs/deployment.md). Projet personnel indépendant, sans affiliation officielle avec un employeur. Toutes les données de démonstration sont fictives.
+> **État : MVP public et vérifié.** La démo UI est publiée sur [GitHub Pages](https://minaseliman1.github.io/vigie/) et l’API est déployée sur Render avec PostgreSQL Free de Supabase. Le parcours public affiche `API connectée` et couvre la connexion, le calendrier, les échanges et les certifications. Projet personnel indépendant, sans affiliation officielle avec un employeur. Toutes les données de démonstration sont fictives.
 
 ## Le problème
 
@@ -71,11 +71,11 @@ Le backend cible .NET 9 et le frontend utilise Node.js 22 dans la CI. L’authen
 | 2 — API et authentification | ✅ Endpoints OpenAPI, JWT, rôles et données fictives reproductibles. |
 | 3 — Interface | ✅ Parcours sauveteur et coordonnateur, interface responsive en français. |
 | 4 — Démonstration | ✅ Démo UI publique, guide de parcours et workflow GitHub Pages. |
-| 5 — Déploiement API | 🧭 Configuration Render + Supabase prête; il reste à créer les comptes gratuits et renseigner les deux secrets. |
+| 5 — Déploiement API | ✅ API Render, PostgreSQL Supabase et démo GitHub Pages publiés et vérifiés. |
 
 Le périmètre restant est isolé derrière les mêmes ports d’application afin de ne pas fragiliser la démo.
 
-Les prochaines étapes sont détaillées dans les [Issues du dépôt](https://github.com/MinaSeliman1/vigie/issues) : déploiement de l’API, connexion de la démo React, concurrence optimiste et historique métier. Pour publier l’API gratuitement, suivre [`docs/deployment.md`](docs/deployment.md).
+Les prochaines étapes sont détaillées dans les [Issues du dépôt](https://github.com/MinaSeliman1/vigie/issues) : création de quarts par le coordonnateur, vue équipe, filtres et détail des échanges, concurrence optimiste et historique métier. La procédure reproductible de déploiement reste disponible dans [`docs/deployment.md`](docs/deployment.md).
 
 ## Démarrer en local
 
