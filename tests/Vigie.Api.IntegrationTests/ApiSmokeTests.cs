@@ -34,6 +34,28 @@ public sealed class ApiSmokeTests : IClassFixture<WebApplicationFactory<Program>
         Assert.NotEmpty(shifts!);
     }
 
+    [Fact]
+    public async Task Lifeguard_cannot_approve_a_swap()
+    {
+        var login = await client.PostAsJsonAsync("/api/v1/auth/login", new { email = "amelie@vigie.demo", password = "vigie-demo" });
+        var payload = await login.Content.ReadFromJsonAsync<LoginPayload>();
+
+        client.DefaultRequestHeaders.Authorization = new System.Net.Http.Headers.AuthenticationHeaderValue("Bearer", payload!.Token);
+        var response = await client.PostAsync("/api/v1/swap-requests/60000000-0000-0000-0000-000000000001/approve", content: null);
+
+        Assert.Equal(HttpStatusCode.Forbidden, response.StatusCode);
+    }
+
+    [Fact]
+    public async Task Invalid_credentials_return_a_problem_details_code()
+    {
+        var response = await client.PostAsJsonAsync("/api/v1/auth/login", new { email = "intrus@example.test", password = "incorrect" });
+        var body = await response.Content.ReadAsStringAsync();
+
+        Assert.Equal(HttpStatusCode.Unauthorized, response.StatusCode);
+        Assert.Contains("INVALID_CREDENTIALS", body, StringComparison.Ordinal);
+    }
+
     private sealed record LoginPayload(string Token, UserPayload User);
     private sealed record UserPayload(Guid Id, string Name, string Email, string Role);
     private sealed record ShiftPayload(Guid Id);
