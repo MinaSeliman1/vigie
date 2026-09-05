@@ -1,0 +1,22 @@
+services:
+  - type: web
+    name: vigie-api
+    runtime: docker
+    plan: free
+    dockerfilePath: ./src/Vigie.Api/Dockerfile
+    dockerContext: .
+    healthCheckPath: /health
+    port: 10000
+    envVars:
+      - key: ASPNETCORE_ENVIRONMENT
+        value: Production
+      - key: ASPNETCORE_URLS
+        value: http://+:10000
+      - key: PORT
+        value: "10000"
+      - key: AllowedOrigins
+        value: https://minaseliman1.github.io
+      - key: Jwt__Key
+        sync: false
+      - key: ConnectionStrings__Vigie
+        sync: false

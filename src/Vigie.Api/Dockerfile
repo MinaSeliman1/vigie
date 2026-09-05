@@ -7,6 +7,6 @@ RUN dotnet publish src/Vigie.Api/Vigie.Api.csproj -c Release -o /out --no-restor
 FROM mcr.microsoft.com/dotnet/aspnet:9.0 AS final
 WORKDIR /app
 COPY --from=build /out .
-ENV ASPNETCORE_URLS=http://+:8080
-EXPOSE 8080
+ENV ASPNETCORE_URLS=http://+:10000
+EXPOSE 10000
 ENTRYPOINT ["dotnet", "Vigie.Api.dll"]

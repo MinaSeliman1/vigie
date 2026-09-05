@@ -6,7 +6,7 @@
 
 Application de gestion de quarts pour équipes de sauveteurs : horaires, remplacements et suivi des certifications dans un même outil.
 
-> **État : MVP fonctionnel.** La démo UI est publiée sur [GitHub Pages](https://minaseliman1.github.io/vigie/), tandis que l’API, les règles métier testées et le store EF Core/PostgreSQL sont disponibles en local. Le déploiement de l’API reste la prochaine étape. Projet personnel indépendant, sans affiliation officielle avec un employeur. Toutes les données de démonstration sont fictives.
+> **État : MVP fonctionnel.** La démo UI est publiée sur [GitHub Pages](https://minaseliman1.github.io/vigie/). L’API est prête à être publiée gratuitement sur Render avec PostgreSQL Free de Supabase; le guide reproductible est dans [`docs/deployment.md`](docs/deployment.md). Projet personnel indépendant, sans affiliation officielle avec un employeur. Toutes les données de démonstration sont fictives.
 
 ## Le problème
 
@@ -71,11 +71,11 @@ Le backend cible .NET 9 et le frontend utilise Node.js 22 dans la CI. L’authen
 | 2 — API et authentification | ✅ Endpoints OpenAPI, JWT, rôles et données fictives reproductibles. |
 | 3 — Interface | ✅ Parcours sauveteur et coordonnateur, interface responsive en français. |
 | 4 — Démonstration | ✅ Démo UI publique, guide de parcours et workflow GitHub Pages. |
-| 5 — Déploiement API | ⏳ Hébergement du conteneur, PostgreSQL managé, secrets et URL publique. |
+| 5 — Déploiement API | 🧭 Configuration Render + Supabase prête; il reste à créer les comptes gratuits et renseigner les deux secrets. |
 
 Le périmètre restant est isolé derrière les mêmes ports d’application afin de ne pas fragiliser la démo.
 
-Les prochaines étapes sont détaillées dans les [Issues du dépôt](https://github.com/MinaSeliman1/vigie/issues) : déploiement de l’API, connexion de la démo React, concurrence optimiste et historique métier.
+Les prochaines étapes sont détaillées dans les [Issues du dépôt](https://github.com/MinaSeliman1/vigie/issues) : déploiement de l’API, connexion de la démo React, concurrence optimiste et historique métier. Pour publier l’API gratuitement, suivre [`docs/deployment.md`](docs/deployment.md).
 
 ## Démarrer en local
 
@@ -106,6 +106,7 @@ L’interface est en français et permet de basculer entre les profils sauveteur
 - L’API JWT expose les routes de calendrier, d’assignation, d’échange et de certification ; cinq tests d’intégration couvrent l’authentification, les autorisations et le modèle EF.
 - La démo UI publique est construite automatiquement par GitHub Actions et publiée sur GitHub Pages à chaque mise à jour de `main`.
 - Le conteneur de l’API est construit dans la CI pour détecter les erreurs de packaging avant un déploiement.
+- `render.yaml` décrit le déploiement gratuit de l’API, son health check et les secrets attendus sans jamais les stocker dans Git.
 - Le frontend React affiche un calendrier responsive et exécute le parcours demande d’échange → approbation avec les profils de démonstration.
 - EF Core et PostgreSQL sont branchés derrière `IVigieStore`; le mode mémoire reste le défaut local pour garder le démarrage reproductible.
 - Une migration `InitialCreate` et un seed idempotent s’exécutent automatiquement lorsqu’une chaîne `ConnectionStrings__Vigie` est configurée.

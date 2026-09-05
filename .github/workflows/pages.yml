@@ -42,6 +42,7 @@ jobs:
         run: npm run build
         env:
           VITE_BASE_PATH: /vigie/
+          VITE_API_URL: ${{ vars.VITE_API_URL }}
       - name: Préparer GitHub Pages
         uses: actions/configure-pages@v5
       - name: Préparer l’artefact Pages

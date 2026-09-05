@@ -42,7 +42,33 @@ builder.Services.AddAuthentication(JwtBearerDefaults.AuthenticationScheme).AddJw
     };
 });
 builder.Services.AddAuthorization();
-builder.Services.AddCors(options => options.AddDefaultPolicy(policy => policy.AllowAnyOrigin().AllowAnyHeader().AllowAnyMethod()));
+var allowedOrigins = builder.Configuration.GetSection("AllowedOrigins").GetChildren()
+    .Select(section => section.Value)
+    .Where(value => !string.IsNullOrWhiteSpace(value))
+    .Select(value => value!.Trim())
+    .ToArray();
+var allowedOriginsCsv = builder.Configuration["AllowedOrigins"];
+if (!string.IsNullOrWhiteSpace(allowedOriginsCsv))
+{
+    allowedOrigins = allowedOriginsCsv.Split(',', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries);
+}
+
+builder.Services.AddCors(options => options.AddDefaultPolicy(policy =>
+{
+    if (allowedOrigins.Length > 0)
+    {
+        policy.WithOrigins(allowedOrigins).AllowAnyHeader().AllowAnyMethod();
+        return;
+    }
+
+    if (builder.Environment.IsDevelopment())
+    {
+        policy.AllowAnyOrigin().AllowAnyHeader().AllowAnyMethod();
+        return;
+    }
+
+    throw new InvalidOperationException("La configuration AllowedOrigins est obligatoire hors de l'environnement Development.");
+}));
 builder.Services.AddOpenApi();
 
 var app = builder.Build();
