@@ -25,6 +25,7 @@ public sealed class VigieDbContext(DbContextOptions<VigieDbContext> options) : D
             entity.HasIndex(x => x.Email).IsUnique();
             entity.Property(x => x.Role).HasConversion<string>().HasMaxLength(24);
             entity.Property(x => x.WeeklyQuotaHours).HasPrecision(5, 2);
+            entity.Property(x => x.PasswordHash).HasMaxLength(256).IsRequired();
         });
         modelBuilder.Entity<Site>(entity =>
         {

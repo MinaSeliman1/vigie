@@ -1,5 +1,6 @@
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.DependencyInjection;
+using Vigie.Application.Auth;
 
 namespace Vigie.Infrastructure.Persistence;
 
@@ -14,7 +15,15 @@ public static class VigieDatabaseInitializer
         var context = services.GetRequiredService<VigieDbContext>();
         await context.Database.MigrateAsync(cancellationToken);
 
-        if (await context.Employees.AnyAsync(cancellationToken)) return;
+        if (await context.Employees.AnyAsync(cancellationToken))
+        {
+            var legacyDemoAccounts = await context.Employees
+                .Where(employee => employee.PasswordHash == string.Empty && employee.Email.EndsWith("@vigie.demo"))
+                .ToArrayAsync(cancellationToken);
+            foreach (var employee in legacyDemoAccounts) employee.SetPasswordHash(PasswordHasher.Hash("vigie-demo"));
+            if (legacyDemoAccounts.Length > 0) await context.SaveChangesAsync(cancellationToken);
+            return;
+        }
 
         var source = new InMemoryVigieStore();
         context.Employees.AddRange(source.Employees);

@@ -2,7 +2,7 @@ namespace Vigie.Domain;
 
 public sealed class Employee
 {
-    private Employee() { Name = string.Empty; Email = string.Empty; }
+    private Employee() { Name = string.Empty; Email = string.Empty; PasswordHash = string.Empty; }
 
     private Employee(Guid id, string name, string email, EmployeeRole role, decimal weeklyQuotaHours)
     {
@@ -11,6 +11,7 @@ public sealed class Employee
         Email = email;
         Role = role;
         WeeklyQuotaHours = weeklyQuotaHours;
+        PasswordHash = string.Empty;
     }
 
     public Guid Id { get; private set; }
@@ -18,6 +19,7 @@ public sealed class Employee
     public string Email { get; private set; }
     public EmployeeRole Role { get; private set; }
     public decimal WeeklyQuotaHours { get; private set; }
+    public string PasswordHash { get; private set; }
 
     public static Employee Create(Guid id, string name, string email, EmployeeRole role, decimal weeklyQuotaHours)
     {
@@ -26,5 +28,11 @@ public sealed class Employee
         if (string.IsNullOrWhiteSpace(email) || !email.Contains('@')) throw new DomainException("Le courriel de l'employé est invalide.");
         if (weeklyQuotaHours <= 0 || weeklyQuotaHours > 168) throw new DomainException("Le quota hebdomadaire doit être compris entre 0 et 168 heures.");
         return new Employee(id, name.Trim(), email.Trim().ToLowerInvariant(), role, weeklyQuotaHours);
+    }
+
+    public void SetPasswordHash(string passwordHash)
+    {
+        if (string.IsNullOrWhiteSpace(passwordHash)) throw new DomainException("Le mot de passe haché est obligatoire.");
+        PasswordHash = passwordHash.Trim();
     }
 }

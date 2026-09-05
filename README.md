@@ -6,7 +6,7 @@
 
 Application de gestion de quarts pour équipes de sauveteurs : horaires, remplacements et suivi des certifications dans un même outil.
 
-> **État : MVP public et vérifié.** La démo UI est publiée sur [GitHub Pages](https://minaseliman1.github.io/vigie/) et l’API est déployée sur Render avec PostgreSQL Free de Supabase. Le parcours public affiche `API connectée` et couvre le calendrier, la création et l’assignation de quarts, les échanges avec approbation, l’équipe et les certifications. Projet personnel indépendant, sans affiliation officielle avec un employeur. Toutes les données de démonstration sont fictives.
+> **État : MVP public, fondation commerciale en cours.** La démo UI est publiée sur [GitHub Pages](https://minaseliman1.github.io/vigie/) et l’API est déployée sur Render avec PostgreSQL Free de Supabase. Le parcours public affiche `API connectée` et couvre le calendrier, la création et l’assignation de quarts, les échanges avec approbation, l’équipe et les certifications. La feuille de route pour passer à un produit commercial est dans [`docs/roadmaps/2026-09-05-commercial-product.md`](docs/roadmaps/2026-09-05-commercial-product.md). Projet personnel indépendant, sans affiliation officielle avec un employeur. Toutes les données de démonstration sont fictives.
 
 ## Le problème
 
@@ -75,7 +75,7 @@ Le backend cible .NET 9 et le frontend utilise Node.js 22 dans la CI. L’authen
 
 Le périmètre restant est isolé derrière les mêmes ports d’application afin de ne pas fragiliser la démo.
 
-Les prochaines étapes sont détaillées dans les [Issues du dépôt](https://github.com/MinaSeliman1/vigie/issues) : concurrence optimiste, historique métier et authentification de production. La procédure reproductible de déploiement reste disponible dans [`docs/deployment.md`](docs/deployment.md).
+Les prochaines étapes sont détaillées dans la [feuille de route commerciale](docs/roadmaps/2026-09-05-commercial-product.md) et les [Issues du dépôt](https://github.com/MinaSeliman1/vigie/issues) : comptes réels, isolation multi-organisation, concurrence optimiste, historique métier, notifications et exploitation de production. La procédure reproductible de déploiement reste disponible dans [`docs/deployment.md`](docs/deployment.md).
 
 ## Démarrer en local
 
@@ -110,7 +110,7 @@ L’interface est en français et permet de basculer entre les profils sauveteur
 - Le frontend React affiche un calendrier responsive et exécute les parcours création → assignation de quart et demande d’échange → approbation avec les profils de démonstration.
 - La vue `Disponibilités` permet à un sauveteur de déclarer ses jours ouverts ou indisponibles et persiste ce choix via l’API.
 - EF Core et PostgreSQL sont branchés derrière `IVigieStore`; le mode mémoire reste le défaut local pour garder le démarrage reproductible.
-- Une migration `InitialCreate` et un seed idempotent s’exécutent automatiquement lorsqu’une chaîne `ConnectionStrings__Vigie` est configurée.
+- Une migration `InitialCreate` et un seed idempotent s’exécutent automatiquement lorsqu’une chaîne `ConnectionStrings__Vigie` est configurée ; les mots de passe sont stockés sous forme de hachages PBKDF2 et jamais en clair.
 
 ## Examiner le projet
 

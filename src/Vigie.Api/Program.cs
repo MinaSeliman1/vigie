@@ -8,6 +8,7 @@ using Microsoft.IdentityModel.Tokens;
 using Vigie.Api.Auth;
 using Vigie.Api.Contracts;
 using Vigie.Application;
+using Vigie.Application.Auth;
 using Vigie.Domain;
 using Vigie.Infrastructure;
 using Vigie.Infrastructure.Persistence;
@@ -90,7 +91,7 @@ app.MapGet("/health", () => Results.Ok(new { status = "ok", service = "vigie-api
 app.MapPost("/api/v1/auth/login", (LoginRequest request, IVigieStore store, JwtTokenService tokens) =>
 {
     var employee = store.Employees.SingleOrDefault(e => string.Equals(e.Email, request.Email.Trim(), StringComparison.OrdinalIgnoreCase));
-    if (employee is null || request.Password != "vigie-demo") return Problem("INVALID_CREDENTIALS", "Le courriel ou le mot de passe est invalide.", StatusCodes.Status401Unauthorized);
+    if (employee is null || !PasswordHasher.Verify(request.Password, employee.PasswordHash)) return Problem("INVALID_CREDENTIALS", "Le courriel ou le mot de passe est invalide.", StatusCodes.Status401Unauthorized);
     var (token, expires) = tokens.Create(employee);
     return Results.Ok(new LoginResponse(token, expires, User(employee)));
 }).AllowAnonymous().WithTags("Authentification");

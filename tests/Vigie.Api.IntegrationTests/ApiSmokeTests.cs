@@ -149,6 +149,7 @@ public sealed class ApiSmokeTests : IClassFixture<WebApplicationFactory<Program>
 
         Assert.NotNull(site);
         Assert.NotNull(site!.FindProperty(nameof(Site.OpeningSeason)));
+        Assert.NotNull(context.Model.FindEntityType(typeof(Employee))!.FindProperty(nameof(Employee.PasswordHash)));
         Assert.NotNull(context.Model.FindEntityType(typeof(SiteCertificationRequirement)));
     }
 

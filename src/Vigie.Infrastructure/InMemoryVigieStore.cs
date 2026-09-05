@@ -1,4 +1,5 @@
 using Vigie.Application;
+using Vigie.Application.Auth;
 using Vigie.Domain;
 
 namespace Vigie.Infrastructure;
@@ -108,6 +109,7 @@ public sealed class InMemoryVigieStore :
         var amelie = Employee.Create(Guid.Parse("10000000-0000-0000-0000-000000000002"), "Amélie Roy", "amelie@vigie.demo", EmployeeRole.Lifeguard, 24);
         var noah = Employee.Create(Guid.Parse("10000000-0000-0000-0000-000000000003"), "Noah Tremblay", "noah@vigie.demo", EmployeeRole.Lifeguard, 32);
         var sofia = Employee.Create(Guid.Parse("10000000-0000-0000-0000-000000000004"), "Sofia Nguyen", "sofia@vigie.demo", EmployeeRole.Lifeguard, 20);
+        foreach (var demoEmployee in new[] { coord, amelie, noah, sofia }) demoEmployee.SetPasswordHash(PasswordHasher.Hash("vigie-demo"));
         foreach (var employee in new[] { coord, amelie, noah, sofia }) employees[employee.Id] = employee;
 
         var nord = Site.Create(Guid.Parse("20000000-0000-0000-0000-000000000001"), "Piscine du Nord", "Eastern Standard Time", OpeningSeason.AllYear, SiteType.Indoor);
