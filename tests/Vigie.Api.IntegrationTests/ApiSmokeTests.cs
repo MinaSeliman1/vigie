@@ -70,6 +70,39 @@ public sealed class ApiSmokeTests : IClassFixture<WebApplicationFactory<Program>
     }
 
     [Fact]
+    public async Task Coordinator_can_assign_a_qualified_lifeguard()
+    {
+        var login = await client.PostAsJsonAsync("/api/v1/auth/login", new { email = "coordonnateur@vigie.demo", password = "vigie-demo" });
+        var payload = await login.Content.ReadFromJsonAsync<LoginPayload>();
+
+        client.DefaultRequestHeaders.Authorization = new System.Net.Http.Headers.AuthenticationHeaderValue("Bearer", payload!.Token);
+        var response = await client.PostAsJsonAsync("/api/v1/shifts/40000000-0000-0000-0000-000000000002/assignments", new
+        {
+            employeeId = Guid.Parse("10000000-0000-0000-0000-000000000004")
+        });
+        var assignment = await response.Content.ReadFromJsonAsync<AssignmentPayload>();
+
+        Assert.Equal(HttpStatusCode.OK, response.StatusCode);
+        Assert.Equal(Guid.Parse("40000000-0000-0000-0000-000000000002"), assignment?.ShiftId);
+        Assert.Equal(Guid.Parse("10000000-0000-0000-0000-000000000004"), assignment?.EmployeeId);
+    }
+
+    [Fact]
+    public async Task Lifeguard_cannot_assign_a_shift()
+    {
+        var login = await client.PostAsJsonAsync("/api/v1/auth/login", new { email = "amelie@vigie.demo", password = "vigie-demo" });
+        var payload = await login.Content.ReadFromJsonAsync<LoginPayload>();
+
+        client.DefaultRequestHeaders.Authorization = new System.Net.Http.Headers.AuthenticationHeaderValue("Bearer", payload!.Token);
+        var response = await client.PostAsJsonAsync("/api/v1/shifts/40000000-0000-0000-0000-000000000002/assignments", new
+        {
+            employeeId = Guid.Parse("10000000-0000-0000-0000-000000000004")
+        });
+
+        Assert.Equal(HttpStatusCode.Forbidden, response.StatusCode);
+    }
+
+    [Fact]
     public async Task Invalid_credentials_return_a_problem_details_code()
     {
         var response = await client.PostAsJsonAsync("/api/v1/auth/login", new { email = "intrus@example.test", password = "incorrect" });
@@ -97,4 +130,5 @@ public sealed class ApiSmokeTests : IClassFixture<WebApplicationFactory<Program>
     private sealed record LoginPayload(string Token, UserPayload User);
     private sealed record UserPayload(Guid Id, string Name, string Email, string Role);
     private sealed record ShiftPayload(Guid Id);
+    private sealed record AssignmentPayload(Guid Id, Guid ShiftId, Guid EmployeeId, string EmployeeName);
 }

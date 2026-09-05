@@ -8,7 +8,7 @@ import './App.css'
 type Role = 'Lifeguard' | 'Coordinator'
 type View = 'calendar' | 'swaps' | 'certifications' | 'team'
 type DemoUser = { id: string; apiId?: string; name: string; email: string; role: Role; initials: string }
-type Shift = { id: string; assignmentId?: string; day: string; date: number; start: string; end: string; site: string; siteKind: string; status: 'assigné' | 'disponible'; colleagues: string[] }
+type Shift = { id: string; assignmentId?: string; day: string; date: number; start: string; end: string; site: string; siteKind: string; status: 'assigné' | 'disponible'; colleagues: string[]; assignments?: Array<{ id: string; employeeId: string; employeeName: string }> }
 type Swap = { id: string; shiftId: string; requester: string; receiver: string; shiftLabel: string; status: 'En attente' | 'Approuvé' | 'Refusé'; requestedAt?: string }
 type CertificationRow = { id: string; initials: string; name: string; email: string; type: string; expiry: string; detail: string; warning: boolean }
 
@@ -70,6 +70,7 @@ function toUiShift(response: ShiftResponse, employeeId: string): Shift {
     siteKind: response.siteType === 'Outdoor' ? 'Extérieur' : 'Intérieur',
     status: assignment ? 'assigné' : 'disponible',
     colleagues: response.assignments.map((item) => initials(item.employeeName)),
+    assignments: response.assignments,
   }
 }
 
@@ -122,6 +123,10 @@ function App() {
   const [swapFilter, setSwapFilter] = useState<SwapFilter>('all')
   const [selectedSwap, setSelectedSwap] = useState<Swap | null>(null)
   const [decidingSwapId, setDecidingSwapId] = useState<string | null>(null)
+  const [assignmentModalOpen, setAssignmentModalOpen] = useState(false)
+  const [assignmentEmployeeId, setAssignmentEmployeeId] = useState('')
+  const [assignmentSubmitting, setAssignmentSubmitting] = useState(false)
+  const [assignmentError, setAssignmentError] = useState('')
   const isCoordinator = currentUser.role === 'Coordinator'
   const pendingSwaps = swaps.filter((swap) => swap.status === 'En attente')
   const assigned = shifts.filter((shift) => shift.status === 'assigné')
@@ -170,6 +175,46 @@ function App() {
     if (createShiftSubmitting) return
     setCreateShiftOpen(false)
     setCreateShiftErrors({})
+  }
+  function openAssignmentModal(shift: Shift) {
+    if (!isCoordinator) { flash('La gestion des assignations est réservée au coordonnateur.'); return }
+    const assignedIds = new Set(shift.assignments?.map((assignment) => assignment.employeeId) ?? [])
+    const firstAvailable = teamMembers.find((member) => member.role === 'Lifeguard' && !assignedIds.has(member.id))
+    setAssignmentEmployeeId(firstAvailable?.id ?? '')
+    setAssignmentError('')
+    setAssignmentModalOpen(true)
+  }
+  function closeAssignmentModal() {
+    if (assignmentSubmitting) return
+    setAssignmentModalOpen(false)
+    setAssignmentError('')
+  }
+  async function submitAssignment() {
+    if (!selectedShift || !assignmentEmployeeId || assignmentSubmitting) return
+    const employee = teamMembers.find((member) => member.id === assignmentEmployeeId)
+    if (!employee) return
+    setAssignmentSubmitting(true)
+    setAssignmentError('')
+    try {
+      if (apiConfigured && apiState === 'ready') {
+        await vigieApi.assignShift(selectedShift.id, assignmentEmployeeId)
+        const refreshed = await vigieApi.shifts()
+        const updatedShifts = refreshed.map((shift) => toUiShift(shift, currentUser.apiId ?? ''))
+        setShifts(updatedShifts)
+        setSelectedShift(updatedShifts.find((shift) => shift.id === selectedShift.id) ?? selectedShift)
+      } else {
+        const assignment = { id: `local-assignment-${Date.now()}`, shiftId: selectedShift.id, employeeId: employee.id, employeeName: employee.name }
+        const updated = { ...selectedShift, colleagues: [...selectedShift.colleagues, initials(employee.name)], assignments: [...(selectedShift.assignments ?? []), assignment] }
+        setShifts((current) => current.map((shift) => shift.id === selectedShift.id ? updated : shift))
+        setSelectedShift(updated)
+      }
+      setAssignmentModalOpen(false)
+      flash(`${employee.name} a été assigné au quart`)
+    } catch (error) {
+      setAssignmentError(error instanceof Error ? error.message : 'L’assignation ne peut pas être enregistrée. Vérifiez les certifications, le chevauchement et le quota.')
+    } finally {
+      setAssignmentSubmitting(false)
+    }
   }
   async function submitCreateShift(event: FormEvent<HTMLFormElement>) {
     event.preventDefault()
@@ -300,7 +345,8 @@ function App() {
       {createShiftErrors.form && <p className="form-error" role="alert">{createShiftErrors.form}</p>}
       <div className="modal-actions"><button className="secondary-button" type="button" onClick={closeCreateShift}>Annuler</button><button className="primary-button" type="submit" disabled={createShiftSubmitting}>{createShiftSubmitting ? 'Création…' : 'Créer le quart'}</button></div>
     </form></div>}
-    {selectedShift && <div className="drawer-backdrop" onClick={() => setSelectedShift(null)}><aside className="shift-drawer" onClick={(event) => event.stopPropagation()}><button className="drawer-close" onClick={() => setSelectedShift(null)} aria-label="Fermer"><Icon name="close" /></button><span className="drawer-kicker">DÉTAIL DU QUART</span><h2>{selectedShift.site}</h2><p className="drawer-site">{selectedShift.siteKind} · Période d’ouverture valide</p><div className="drawer-time"><strong>{selectedShift.day} {selectedShift.date} septembre</strong><span>{selectedShift.start} – {selectedShift.end}</span></div><div className="drawer-rule" /><div className="drawer-detail"><span>Équipe assignée</span><div className="avatar-stack">{selectedShift.colleagues.map((person) => <i key={person}>{person}</i>)}</div></div><div className="drawer-detail"><span>Statut</span><b className={selectedShift.status === 'assigné' ? 'status-tag approved' : 'status-tag pending'}>{selectedShift.status === 'assigné' ? 'Assigné' : 'Disponible'}</b></div>{selectedShift.status === 'assigné' && !isCoordinator && <button className="primary-button full" onClick={() => setSwapModalOpen(true)}><Icon name="swap" />Demander un échange</button>}{selectedShift.status === 'disponible' && !isCoordinator && <button className="primary-button full" onClick={() => flash('Votre intérêt a été communiqué au coordonnateur')}><Icon name="check" />Me proposer sur ce quart</button>}</aside></div>}
+    {selectedShift && <div className="drawer-backdrop" onClick={() => setSelectedShift(null)}><aside className="shift-drawer" onClick={(event) => event.stopPropagation()}><button className="drawer-close" onClick={() => setSelectedShift(null)} aria-label="Fermer"><Icon name="close" /></button><span className="drawer-kicker">DÉTAIL DU QUART</span><h2>{selectedShift.site}</h2><p className="drawer-site">{selectedShift.siteKind} · Période d’ouverture valide</p><div className="drawer-time"><strong>{selectedShift.day} {selectedShift.date} septembre</strong><span>{selectedShift.start} – {selectedShift.end}</span></div><div className="drawer-rule" /><div className="drawer-detail"><span>Équipe assignée</span><div className="avatar-stack">{selectedShift.colleagues.length === 0 ? <em className="empty-assignment">Aucune</em> : selectedShift.colleagues.map((person) => <i key={person}>{person}</i>)}</div></div><div className="drawer-detail"><span>Statut</span><b className={selectedShift.status === 'assigné' ? 'status-tag approved' : 'status-tag pending'}>{selectedShift.status === 'assigné' ? 'Assigné' : 'Disponible'}</b></div>{isCoordinator && <button className="primary-button full" onClick={() => openAssignmentModal(selectedShift)}><Icon name="users" />Gérer les assignations</button>}{selectedShift.status === 'assigné' && !isCoordinator && <button className="primary-button full" onClick={() => setSwapModalOpen(true)}><Icon name="swap" />Demander un échange</button>}{selectedShift.status === 'disponible' && !isCoordinator && <button className="primary-button full" onClick={() => flash('Votre intérêt a été communiqué au coordonnateur')}><Icon name="check" />Me proposer sur ce quart</button>}</aside></div>}
+    {assignmentModalOpen && selectedShift && <div className="modal-backdrop" onClick={closeAssignmentModal}><div className="swap-modal assignment-modal" onClick={(event) => event.stopPropagation()}><button className="drawer-close" onClick={closeAssignmentModal} aria-label="Fermer"><Icon name="close" /></button><span className="drawer-kicker">ASSIGNATION</span><h2>Ajouter un sauveteur</h2><p>Vigie rejouera les règles de certification, de chevauchement et de quota avant l’enregistrement.</p><div className="modal-shift"><strong>{selectedShift.site}</strong><span>{selectedShift.day} {selectedShift.date} septembre · {selectedShift.start} – {selectedShift.end}</span></div><label className="assignment-select-label">Sauveteur<select value={assignmentEmployeeId} onChange={(event) => setAssignmentEmployeeId(event.target.value)}><option value="">Choisir un sauveteur</option>{teamMembers.filter((member) => member.role === 'Lifeguard' && !(selectedShift.assignments ?? []).some((assignment) => assignment.employeeId === member.id)).map((member) => <option key={member.id} value={member.id}>{member.name}</option>)}</select></label>{assignmentError && <p className="form-error" role="alert">{assignmentError}</p>}<div className="modal-actions"><button className="secondary-button" type="button" onClick={closeAssignmentModal}>Annuler</button><button className="primary-button" type="button" disabled={!assignmentEmployeeId || assignmentSubmitting} onClick={() => { void submitAssignment() }}>{assignmentSubmitting ? 'Validation…' : 'Assigner'}</button></div></div></div>}
     {swapModalOpen && <div className="modal-backdrop"><div className="swap-modal"><button className="drawer-close" onClick={() => setSwapModalOpen(false)} aria-label="Fermer"><Icon name="close" /></button><span className="drawer-kicker">NOUVEL ÉCHANGE</span><h2>Choisir un receveur</h2><p>Votre demande restera en attente jusqu’à l’approbation du coordonnateur.</p><div className="modal-shift"><strong>{selectedShift?.site}</strong><span>{selectedShift?.day} {selectedShift?.date} septembre · {selectedShift?.start} – {selectedShift?.end}</span></div><div className="receiver-list">{demoUsers.filter((user) => user.id !== currentUser.id && user.role === 'Lifeguard').map((user) => <button key={user.id} onClick={() => createSwap(user.name)}><span className="mini-avatar">{user.initials}</span><span><strong>{user.name}</strong><small>Disponible · certifications à jour</small></span><Icon name="arrow" /></button>)}</div></div></div>}
     {selectedSwap && <div className="modal-backdrop" onClick={() => setSelectedSwap(null)}><aside className="swap-detail-modal" onClick={(event) => event.stopPropagation()}><button className="drawer-close" onClick={() => setSelectedSwap(null)} aria-label="Fermer"><Icon name="close" /></button><span className="drawer-kicker">DÉTAIL DE L’ÉCHANGE</span><h2>{selectedSwap.requester} <span className="swap-arrow">→</span> {selectedSwap.receiver}</h2><p className="swap-detail-status"><span className={`status-tag ${selectedSwap.status.toLowerCase().replace('é', 'e')}`}>{selectedSwap.status}</span></p><div className="detail-list"><div><span>Quart concerné</span><strong>{selectedSwap.shiftLabel}</strong></div><div><span>Demande reçue</span><strong>{formatSwapDate(selectedSwap.requestedAt)}</strong></div><div><span>Identifiant</span><strong>{selectedSwap.id}</strong></div></div>{isCoordinator && selectedSwap.status === 'En attente' && <div className="modal-actions"><button className="reject-button" disabled={decidingSwapId === selectedSwap.id} onClick={() => { void decideSwap(selectedSwap.id, 'Refusé'); setSelectedSwap(null) }}>Refuser</button><button className="primary-button" disabled={decidingSwapId === selectedSwap.id} onClick={() => { void decideSwap(selectedSwap.id, 'Approuvé'); setSelectedSwap(null) }}>Approuver</button></div>}</aside></div>}
     {toast && <div className="toast"><span className="toast-check"><Icon name="check" /></span>{toast}</div>}
