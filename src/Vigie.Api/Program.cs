@@ -134,7 +134,9 @@ app.MapPost("/api/v1/shifts", async (CreateShiftRequest request, IVigieStore sto
 {
     try
     {
-        if (!store.Sites.Any(s => s.Id == request.SiteId)) return Problem("NOT_FOUND", "Le site du quart est introuvable.", StatusCodes.Status404NotFound);
+        var site = store.Sites.SingleOrDefault(s => s.Id == request.SiteId);
+        if (site is null) return Problem("NOT_FOUND", "Le site du quart est introuvable.", StatusCodes.Status404NotFound);
+        if (!site.IsOpen(request.StartUtc, request.EndUtc)) return Problem("SITE_CLOSED", "Le quart se trouve en dehors de la saison d’ouverture du site.");
         var shift = Shift.Create(Guid.NewGuid(), request.SiteId, request.StartUtc, request.EndUtc, request.RequiredLifeguards);
         store.AddShift(shift);
         await unitOfWork.SaveChangesAsync(ct);

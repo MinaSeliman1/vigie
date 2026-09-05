@@ -50,6 +50,26 @@ public sealed class ApiSmokeTests : IClassFixture<WebApplicationFactory<Program>
     }
 
     [Fact]
+    public async Task Coordinator_cannot_create_a_shift_outside_site_opening_season()
+    {
+        var login = await client.PostAsJsonAsync("/api/v1/auth/login", new { email = "coordonnateur@vigie.demo", password = "vigie-demo" });
+        var payload = await login.Content.ReadFromJsonAsync<LoginPayload>();
+
+        client.DefaultRequestHeaders.Authorization = new System.Net.Http.Headers.AuthenticationHeaderValue("Bearer", payload!.Token);
+        var response = await client.PostAsJsonAsync("/api/v1/shifts", new
+        {
+            siteId = Guid.Parse("20000000-0000-0000-0000-000000000002"),
+            startUtc = "2026-10-01T14:00:00Z",
+            endUtc = "2026-10-01T22:00:00Z",
+            requiredLifeguards = 2
+        });
+        var body = await response.Content.ReadAsStringAsync();
+
+        Assert.Equal(HttpStatusCode.BadRequest, response.StatusCode);
+        Assert.Contains("SITE_CLOSED", body, StringComparison.Ordinal);
+    }
+
+    [Fact]
     public async Task Invalid_credentials_return_a_problem_details_code()
     {
         var response = await client.PostAsJsonAsync("/api/v1/auth/login", new { email = "intrus@example.test", password = "incorrect" });
