@@ -1,4 +1,4 @@
-import type { ApiProblem, AssignmentResponse, CertificationResponse, CreateShiftInput, LoginResponse, ShiftResponse, SiteResponse, SwapRequestResponse, UserSummary } from './types'
+import type { ApiProblem, AssignmentResponse, AvailabilityResponse, CertificationResponse, CreateShiftInput, LoginResponse, ShiftResponse, SiteResponse, SwapRequestResponse, UserSummary } from './types'
 
 export const apiConfigured = Boolean(import.meta.env.VITE_API_URL)
 const baseUrl = (import.meta.env.VITE_API_URL as string | undefined)?.replace(/\/$/, '') ?? 'http://localhost:5187'
@@ -33,6 +33,8 @@ export const vigieApi = {
   assignShift: (shiftId: string, employeeId: string) => request<AssignmentResponse>(`/api/v1/shifts/${shiftId}/assignments`, { method: 'POST', body: JSON.stringify({ employeeId }) }),
   removeAssignment: (assignmentId: string) => request<void>(`/api/v1/assignments/${assignmentId}`, { method: 'DELETE' }),
   employees: () => request<UserSummary[]>('/api/v1/employees'),
+  availability: () => request<AvailabilityResponse[]>('/api/v1/availability'),
+  setAvailability: (date: string, isAvailable: boolean, note?: string) => request<AvailabilityResponse>('/api/v1/availability', { method: 'PUT', body: JSON.stringify({ date, isAvailable, note }) }),
   certifications: () => request<CertificationResponse[]>('/api/v1/certifications'),
   swaps: () => request<SwapRequestResponse[]>('/api/v1/swap-requests'),
   createSwap: (assignmentId: string, receiverId: string) => request<SwapRequestResponse>('/api/v1/swap-requests', { method: 'POST', body: JSON.stringify({ assignmentId, receiverId }) }),

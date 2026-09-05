@@ -75,7 +75,7 @@ Le backend cible .NET 9 et le frontend utilise Node.js 22 dans la CI. L’authen
 
 Le périmètre restant est isolé derrière les mêmes ports d’application afin de ne pas fragiliser la démo.
 
-Les prochaines étapes sont détaillées dans les [Issues du dépôt](https://github.com/MinaSeliman1/vigie/issues) : concurrence optimiste, historique métier, disponibilités dans l’interface et authentification de production. La procédure reproductible de déploiement reste disponible dans [`docs/deployment.md`](docs/deployment.md).
+Les prochaines étapes sont détaillées dans les [Issues du dépôt](https://github.com/MinaSeliman1/vigie/issues) : concurrence optimiste, historique métier et authentification de production. La procédure reproductible de déploiement reste disponible dans [`docs/deployment.md`](docs/deployment.md).
 
 ## Démarrer en local
 
@@ -108,6 +108,7 @@ L’interface est en français et permet de basculer entre les profils sauveteur
 - Le conteneur de l’API est construit dans la CI pour détecter les erreurs de packaging avant un déploiement.
 - `render.yaml` décrit le déploiement gratuit de l’API, son health check et les secrets attendus sans jamais les stocker dans Git.
 - Le frontend React affiche un calendrier responsive et exécute les parcours création → assignation de quart et demande d’échange → approbation avec les profils de démonstration.
+- La vue `Disponibilités` permet à un sauveteur de déclarer ses jours ouverts ou indisponibles et persiste ce choix via l’API.
 - EF Core et PostgreSQL sont branchés derrière `IVigieStore`; le mode mémoire reste le défaut local pour garder le démarrage reproductible.
 - Une migration `InitialCreate` et un seed idempotent s’exécutent automatiquement lorsqu’une chaîne `ConnectionStrings__Vigie` est configurée.
 

@@ -1,12 +1,12 @@
 import { useEffect, useMemo, useState, type FormEvent, type ReactNode } from 'react'
 import { apiConfigured, vigieApi } from './api/client'
-import type { CertificationResponse, SiteResponse, ShiftResponse, SwapRequestResponse, UserSummary } from './api/types'
+import type { AvailabilityResponse, CertificationResponse, SiteResponse, ShiftResponse, SwapRequestResponse, UserSummary } from './api/types'
 import { createShiftRequest, type CreateShiftDraft, validateCreateShiftDraft } from './features/shifts/createShift'
 import { filterSwaps, type SwapFilter } from './features/swaps/swapFilters'
 import './App.css'
 
 type Role = 'Lifeguard' | 'Coordinator'
-type View = 'calendar' | 'swaps' | 'certifications' | 'team'
+type View = 'calendar' | 'swaps' | 'certifications' | 'team' | 'availability'
 type DemoUser = { id: string; apiId?: string; name: string; email: string; role: Role; initials: string }
 type Shift = { id: string; assignmentId?: string; day: string; date: number; start: string; end: string; site: string; siteKind: string; status: 'assigné' | 'disponible'; colleagues: string[]; requiredLifeguards: number; assignments?: Array<{ id: string; employeeId: string; employeeName: string }> }
 type Swap = { id: string; shiftId: string; requester: string; receiver: string; shiftLabel: string; status: 'En attente' | 'Approuvé' | 'Refusé'; requestedAt?: string }
@@ -21,6 +21,15 @@ const demoUsers: DemoUser[] = [
 const demoSites: SiteResponse[] = [
   { id: '20000000-0000-0000-0000-000000000001', name: 'Piscine du Nord', type: 'Indoor', timeZoneId: 'Eastern Standard Time', openingSeason: { startMonth: 1, startDay: 1, endMonth: 12, endDay: 31 } },
   { id: '20000000-0000-0000-0000-000000000002', name: 'Bassin du parc', type: 'Outdoor', timeZoneId: 'Eastern Standard Time', openingSeason: { startMonth: 5, startDay: 15, endMonth: 9, endDay: 15 } },
+]
+const availabilityDays = [
+  { date: '2026-09-07', day: 'LUN', number: '7' },
+  { date: '2026-09-08', day: 'MAR', number: '8' },
+  { date: '2026-09-09', day: 'MER', number: '9' },
+  { date: '2026-09-10', day: 'JEU', number: '10' },
+  { date: '2026-09-11', day: 'VEN', number: '11' },
+  { date: '2026-09-12', day: 'SAM', number: '12' },
+  { date: '2026-09-13', day: 'DIM', number: '13' },
 ]
 const initialShifts: Shift[] = [
   { id: 's1', day: 'MAR', date: 8, start: '09:00', end: '17:00', site: 'Piscine du Nord', siteKind: 'Intérieur', status: 'assigné', colleagues: ['NT', 'CG'], requiredLifeguards: 2 },
@@ -113,6 +122,7 @@ function App() {
   const [swaps, setSwaps] = useState(initialSwaps)
   const [certifications, setCertifications] = useState<CertificationResponse[] | null>(null)
   const [employees, setEmployees] = useState<UserSummary[] | null>(null)
+  const [availabilities, setAvailabilities] = useState<AvailabilityResponse[] | null>(null)
   const [sites, setSites] = useState<SiteResponse[]>([])
   const [toast, setToast] = useState('')
   const [apiState, setApiState] = useState<'inactive' | 'loading' | 'ready' | 'error'>(apiConfigured ? 'loading' : 'inactive')
@@ -128,6 +138,7 @@ function App() {
   const [assignmentEmployeeId, setAssignmentEmployeeId] = useState('')
   const [assignmentSubmitting, setAssignmentSubmitting] = useState(false)
   const [assignmentError, setAssignmentError] = useState('')
+  const [availabilitySavingDate, setAvailabilitySavingDate] = useState<string | null>(null)
   const isCoordinator = currentUser.role === 'Coordinator'
   const pendingSwaps = swaps.filter((swap) => swap.status === 'En attente')
   const assigned = shifts.filter((shift) => shift.status === 'assigné')
@@ -143,7 +154,7 @@ function App() {
       try {
         const login = await vigieApi.login(currentUser.email, 'vigie-demo')
         localStorage.setItem('vigie.token', login.token)
-        const [apiShifts, apiSwaps, employees, apiCertifications, apiSites] = await Promise.all([vigieApi.shifts(), vigieApi.swaps(), vigieApi.employees(), vigieApi.certifications(), vigieApi.sites()])
+        const [apiShifts, apiSwaps, employees, apiCertifications, apiSites, apiAvailabilities] = await Promise.all([vigieApi.shifts(), vigieApi.swaps(), vigieApi.employees(), vigieApi.certifications(), vigieApi.sites(), vigieApi.availability()])
         if (!active) return
         setApiEmployeeIds(Object.fromEntries(employees.map((employee) => [employee.email, employee.id])))
         setEmployees(employees)
@@ -152,6 +163,7 @@ function App() {
         setSwaps(apiSwaps.map(toUiSwap))
         setCertifications(apiCertifications)
         setSites(apiSites)
+        setAvailabilities(apiAvailabilities)
         setApiState('ready')
       } catch (error) {
         if (!active) return
@@ -215,6 +227,23 @@ function App() {
       setAssignmentError(error instanceof Error ? error.message : 'L’assignation ne peut pas être enregistrée. Vérifiez les certifications, le chevauchement et le quota.')
     } finally {
       setAssignmentSubmitting(false)
+    }
+  }
+  async function toggleAvailability(date: string) {
+    if (availabilitySavingDate) return
+    const current = availabilities?.find((availability) => availability.date === date)
+    const isAvailable = !(current?.isAvailable ?? true)
+    setAvailabilitySavingDate(date)
+    try {
+      const updated = apiConfigured && apiState === 'ready'
+        ? await vigieApi.setAvailability(date, isAvailable)
+        : { id: `local-availability-${date}`, employeeId: currentUser.apiId ?? currentUser.id, date, isAvailable, note: null }
+      setAvailabilities((currentRows) => [...(currentRows ?? []).filter((row) => row.date !== date), updated].sort((a, b) => a.date.localeCompare(b.date)))
+      flash(isAvailable ? `Disponible le ${date}` : `Indisponible le ${date}`)
+    } catch (error) {
+      flash(error instanceof Error ? error.message : 'La disponibilité ne peut pas être enregistrée.')
+    } finally {
+      setAvailabilitySavingDate(null)
     }
   }
   async function submitCreateShift(event: FormEvent<HTMLFormElement>) {
@@ -314,13 +343,14 @@ function App() {
         <button className={view === 'swaps' ? 'nav-item active' : 'nav-item'} onClick={() => { setView('swaps'); setMobileNavOpen(false) }}><Icon name="swap" /><span>Échanges</span>{pendingSwaps.length > 0 && <b className="nav-count">{pendingSwaps.length}</b>}</button>
         <button className={view === 'certifications' ? 'nav-item active' : 'nav-item'} onClick={() => { setView('certifications'); setMobileNavOpen(false) }}><Icon name="shield" /><span>Certifications</span><span className="nav-dot" /></button>
         <button className={view === 'team' ? 'nav-item active' : 'nav-item'} onClick={() => { setView('team'); setMobileNavOpen(false) }}><Icon name="users" /><span>Équipe</span></button>
+        <button className={view === 'availability' ? 'nav-item active' : 'nav-item'} onClick={() => { setView('availability'); setMobileNavOpen(false) }}><Icon name="calendar" /><span>Disponibilités</span></button>
       </nav>
       <div className="sidebar-bottom"><div className="status-line"><span className="status-pulse" />{apiState === 'ready' ? 'API connectée' : apiState === 'loading' ? 'Connexion à l’API…' : apiState === 'error' ? 'Mode démo local' : 'Système opérationnel'}</div><div className="version">Vigie MVP · v0.1.0</div></div>
     </aside>
     <main className="main-content">
-      <header className="topbar"><button className="mobile-menu" onClick={() => setMobileNavOpen((open) => !open)} aria-label="Ouvrir le menu"><Icon name="menu" /></button><div className="breadcrumbs"><span>Vigie</span><span className="crumb-separator">/</span><strong>{view === 'calendar' ? 'Mon calendrier' : view === 'swaps' ? 'Échanges' : view === 'certifications' ? 'Certifications' : 'Équipe'}</strong></div><div className="topbar-actions"><button className="icon-button" aria-label="Notifications"><Icon name="bell" /><span className="notification-dot" /></button><div className="profile-switcher"><span className="avatar">{currentUser.initials}</span><select aria-label="Profil de démonstration" value={currentUser.id} onChange={(event) => selectUser(event.target.value)}>{demoUsers.map((user) => <option key={user.id} value={user.id}>{user.name} · {user.role === 'Coordinator' ? 'coord.' : 'sauv.'}</option>)}</select></div></div></header>
+      <header className="topbar"><button className="mobile-menu" onClick={() => setMobileNavOpen((open) => !open)} aria-label="Ouvrir le menu"><Icon name="menu" /></button><div className="breadcrumbs"><span>Vigie</span><span className="crumb-separator">/</span><strong>{view === 'calendar' ? 'Mon calendrier' : view === 'swaps' ? 'Échanges' : view === 'certifications' ? 'Certifications' : view === 'team' ? 'Équipe' : 'Disponibilités'}</strong></div><div className="topbar-actions"><button className="icon-button" aria-label="Notifications"><Icon name="bell" /><span className="notification-dot" /></button><div className="profile-switcher"><span className="avatar">{currentUser.initials}</span><select aria-label="Profil de démonstration" value={currentUser.id} onChange={(event) => selectUser(event.target.value)}>{demoUsers.map((user) => <option key={user.id} value={user.id}>{user.name} · {user.role === 'Coordinator' ? 'coord.' : 'sauv.'}</option>)}</select></div></div></header>
       <div className="content-wrap">
-        <div className="page-heading"><div><p className="eyebrow">SEMAINE DU 7 AU 13 SEPTEMBRE 2026</p><h1>{view === 'calendar' ? (isCoordinator ? 'Vue équipe' : 'Bonjour, Amélie') : view === 'swaps' ? 'Demandes d’échange' : view === 'certifications' ? 'Certifications' : 'Équipe'}</h1><p className="page-subtitle">{view === 'calendar' ? (isCoordinator ? 'Gardez une vue claire sur les quarts et les remplacements.' : 'Voici vos quarts et les disponibilités de votre équipe.') : view === 'swaps' ? 'Chaque remplacement reste sous contrôle jusqu’à votre approbation.' : view === 'certifications' ? 'La bonne certification, au bon moment, pour chaque quart.' : 'Les personnes autorisées et leur état de préparation pour les quarts.'}</p></div>{view === 'calendar' && isCoordinator && <button className="primary-button" onClick={openCreateShift}><Icon name="plus" />Créer un quart</button>}</div>
+        <div className="page-heading"><div><p className="eyebrow">SEMAINE DU 7 AU 13 SEPTEMBRE 2026</p><h1>{view === 'calendar' ? (isCoordinator ? 'Vue équipe' : 'Bonjour, Amélie') : view === 'swaps' ? 'Demandes d’échange' : view === 'certifications' ? 'Certifications' : view === 'team' ? 'Équipe' : 'Disponibilités'}</h1><p className="page-subtitle">{view === 'calendar' ? (isCoordinator ? 'Gardez une vue claire sur les quarts et les remplacements.' : 'Voici vos quarts et les disponibilités de votre équipe.') : view === 'swaps' ? 'Chaque remplacement reste sous contrôle jusqu’à votre approbation.' : view === 'certifications' ? 'La bonne certification, au bon moment, pour chaque quart.' : view === 'team' ? 'Les personnes autorisées et leur état de préparation pour les quarts.' : 'Indiquez les jours où vous pouvez prendre un quart.'}</p></div>{view === 'calendar' && isCoordinator && <button className="primary-button" onClick={openCreateShift}><Icon name="plus" />Créer un quart</button>}</div>
         {view === 'calendar' && <><section className="alert-banner"><div className="alert-icon"><Icon name="shield" /></div><div><strong>Certification à surveiller</strong><span>La certification Premiers soins de {currentUser.id === 'sofia' ? 'Sofia Nguyen' : 'votre dossier'} expire dans {currentUser.id === 'sofia' ? 20 : 75} jours.</span></div><button onClick={() => setView('certifications')}>Voir les détails <Icon name="arrow" /></button></section><div className="metric-row"><div className="metric"><span className="metric-label">QUARTS CETTE SEMAINE</span><strong>{assigned.length + 1}</strong><span className="metric-meta positive">↑ 1 vs. semaine dernière</span></div><div className="metric"><span className="metric-label">HEURES PLANIFIÉES</span><strong>24<span className="metric-unit">h</span></strong><span className="metric-meta">Quota : {isCoordinator ? '40' : '24'} h</span></div><div className="metric"><span className="metric-label">ÉCHANGES EN ATTENTE</span><strong>{pendingSwaps.length}</strong><span className="metric-meta">Dernière mise à jour il y a 8 min</span></div></div><section className="calendar-section"><div className="section-header"><div><h2>Cette semaine</h2><p>Votre planning du lundi 7 au dimanche 13 septembre</p></div><div className="week-controls"><button aria-label="Semaine précédente">←</button><button className="today-button">Aujourd’hui</button><button aria-label="Semaine suivante">→</button></div></div><div className="calendar-grid"><div className="time-column"><span /><span>08:00</span><span>12:00</span><span>16:00</span><span>20:00</span></div>{['LUN','MAR','MER','JEU','VEN','SAM','DIM'].map((day) => <div className={`day-column ${day === 'MAR' ? 'today' : ''}`} key={day}><div className="day-header"><span>{day}</span><strong>{day === 'MAR' ? '8' : day === 'MER' ? '9' : day === 'VEN' ? '11' : day === 'SAM' ? '12' : '•'}</strong></div><div className="day-body">{shifts.filter((shift) => shift.day === day).map((shift) => <button className={`shift-block ${shift.status}`} key={shift.id} onClick={() => setSelectedShift(shift)}><span className="shift-time">{shift.start} – {shift.end}</span><strong>{shift.site}</strong><small>{shift.siteKind}</small><span className="shift-people">{shift.colleagues.map((colleague) => <i key={colleague}>{colleague}</i>)}</span></button>)}</div></div>)}</div></section><div className="lower-grid"><section className="list-section"><div className="section-header compact"><div><h2>Échanges en attente</h2><p>Les demandes à traiter</p></div><button className="text-button" onClick={() => setView('swaps')}>Tout voir <Icon name="arrow" /></button></div>{pendingSwaps.length === 0 ? <div className="empty-state">Aucune demande en attente.</div> : pendingSwaps.map((swap) => <div className="swap-row" key={swap.id}><div className="mini-avatar">{swap.requester.split(' ').map((part) => part[0]).join('')}</div><div className="swap-copy"><strong>{swap.requester} <span>→</span> {swap.receiver}</strong><span>{swap.shiftLabel}</span></div><span className="pending-label">En attente</span></div>)}</section><section className="list-section"><div className="section-header compact"><div><h2>À venir</h2><p>Prochains quarts assignés</p></div></div>{shifts.slice(0, 2).map((shift) => <div className="upcoming-row" key={shift.id}><div className="date-block"><strong>{shift.date}</strong><span>{shift.day}</span></div><div><strong>{shift.site}</strong><span>{shift.start} – {shift.end}</span></div><span className="assigned-mark"><Icon name="check" /></span></div>)}</section></div></>}
         {view === 'swaps' && <section className="full-section"><div className="filter-bar"><button className={`filter ${swapFilter === 'all' ? 'active' : ''}`} onClick={() => setSwapFilter('all')}>Toutes <span>{allVisibleSwaps.length}</span></button><button className={`filter ${swapFilter === 'pending' ? 'active' : ''}`} onClick={() => setSwapFilter('pending')}>En attente <span>{allVisibleSwaps.filter((swap) => swap.status === 'En attente').length}</span></button><button className={`filter ${swapFilter === 'processed' ? 'active' : ''}`} onClick={() => setSwapFilter('processed')}>Traitées <span>{allVisibleSwaps.filter((swap) => swap.status !== 'En attente').length}</span></button></div><div className="swaps-table"><div className="table-head"><span>DEMANDE</span><span>QUART</span><span>STATUT</span><span>ACTION</span></div>{visibleSwaps.length === 0 ? <div className="empty-state">Aucune demande dans ce filtre.</div> : visibleSwaps.map((swap) => <div className="table-row" key={swap.id}><div className="person-cell"><span className="mini-avatar">{swap.requester.split(' ').map((part) => part[0]).join('')}</span><div><strong>{swap.requester} <span>→</span> {swap.receiver}</strong><small>{formatSwapDate(swap.requestedAt)}</small></div></div><span>{swap.shiftLabel}</span><span className={`status-tag ${swap.status.toLowerCase().replace('é', 'e')}`}>{swap.status}</span><div className="row-actions">{isCoordinator && swap.status === 'En attente' && <><button className="approve-button" disabled={decidingSwapId === swap.id} onClick={() => decideSwap(swap.id, 'Approuvé')}>{decidingSwapId === swap.id ? '…' : 'Approuver'}</button><button className="reject-button" disabled={decidingSwapId === swap.id} onClick={() => decideSwap(swap.id, 'Refusé')}>Refuser</button></>}<button className="detail-button" onClick={() => setSelectedSwap(swap)}>Détails <Icon name="arrow" /></button></div></div>)}</div></section>}
         {view === 'certifications' && <section className="full-section certification-page">
@@ -328,6 +358,8 @@ function App() {
           <div className="cert-list">{certificationRows.map((certification) => <div className="cert-row" key={certification.id}><span className="mini-avatar">{certification.initials}</span><div className="cert-person"><strong>{certification.name}</strong><span>{certification.email}</span></div><div className="cert-name"><strong>{certification.type}</strong><span>Certification requise</span></div><div className={`cert-expiry ${certification.warning ? 'warning' : ''}`}><strong>{certification.expiry}</strong><span>{certification.detail}</span></div><span className={`cert-status ${certification.warning ? 'warning' : 'valid'}`}>{certification.warning ? 'À surveiller' : 'À jour'}</span></div>)}</div>
         </section>}
         {view === 'team' && <section className="full-section team-page"><div className="team-summary"><div><span className="metric-label">MEMBRES ACTIFS</span><strong>{teamMembers.length}</strong><p>Profils chargés depuis l’équipe Vigie.</p></div><div><span className="metric-label">COORDONNATEURS</span><strong>{teamMembers.filter((member) => member.role === 'Coordinator').length}</strong><p>Accès à la planification et aux décisions.</p></div><div><span className="metric-label">CERTIFICATIONS À SURVEILLER</span><strong>{certificationRows.filter((certification) => certification.warning).length}</strong><p>Échéances dans les 90 prochains jours.</p></div></div><div className="team-list"><div className="team-list-head"><span>MEMBRE</span><span>RÔLE</span><span>CERTIFICATION</span><span>CONTACT</span></div>{teamMembers.map((member) => { const memberCertifications = certificationRows.filter((certification) => certification.name === member.name); const hasWarning = memberCertifications.some((certification) => certification.warning); const certificationClass = memberCertifications.length === 0 || hasWarning ? 'warning' : 'valid'; return <div className="team-row" key={member.id}><div className="person-cell"><span className="mini-avatar">{initials(member.name)}</span><div><strong>{member.name}</strong><small>{member.email}</small></div></div><span className="role-pill">{member.role === 'Coordinator' ? 'Coordonnateur' : 'Sauveteur'}</span><span className={`cert-status ${certificationClass}`}>{memberCertifications.length === 0 ? 'À vérifier' : hasWarning ? 'À surveiller' : 'À jour'}</span><a className="team-email" href={`mailto:${member.email}`}>{member.email}</a></div> })}</div></section>}
+        {view === 'team' && <section className="full-section team-page"><div className="team-summary"><div><span className="metric-label">MEMBRES ACTIFS</span><strong>{teamMembers.length}</strong><p>Profils chargés depuis l’équipe Vigie.</p></div><div><span className="metric-label">COORDONNATEURS</span><strong>{teamMembers.filter((member) => member.role === 'Coordinator').length}</strong><p>Accès à la planification et aux décisions.</p></div><div><span className="metric-label">CERTIFICATIONS À SURVEILLER</span><strong>{certificationRows.filter((certification) => certification.warning).length}</strong><p>Échéances dans les 90 prochains jours.</p></div></div><div className="team-list"><div className="team-list-head"><span>MEMBRE</span><span>RÔLE</span><span>CERTIFICATION</span><span>CONTACT</span></div>{teamMembers.map((member) => { const memberCertifications = certificationRows.filter((certification) => certification.name === member.name); const hasWarning = memberCertifications.some((certification) => certification.warning); const certificationClass = memberCertifications.length === 0 || hasWarning ? 'warning' : 'valid'; return <div className="team-row" key={member.id}><div className="person-cell"><span className="mini-avatar">{initials(member.name)}</span><div><strong>{member.name}</strong><small>{member.email}</small></div></div><span className="role-pill">{member.role === 'Coordinator' ? 'Coordonnateur' : 'Sauveteur'}</span><span className={`cert-status ${certificationClass}`}>{memberCertifications.length === 0 ? 'À vérifier' : hasWarning ? 'À surveiller' : 'À jour'}</span><a className="team-email" href={`mailto:${member.email}`}>{member.email}</a></div> })}</div></section>}
+        {view === 'availability' && <section className="full-section availability-page"><div className="availability-intro"><div><span className="drawer-kicker">MES DISPONIBILITÉS</span><h2>Une vue claire pour mieux planifier</h2><p>Les changements sont enregistrés dans l’API et servent de signal au coordonnateur lors des prochains quarts.</p></div><span className="availability-legend"><i className="available-dot" />Disponible</span></div><div className="availability-grid">{availabilityDays.map((day) => { const saved = availabilities?.find((availability) => availability.date === day.date); const isAvailable = saved?.isAvailable ?? true; return <article className={`availability-card ${isAvailable ? 'is-available' : 'is-unavailable'}`} key={day.date}><div className="availability-date"><span>{day.day}</span><strong>{day.number}</strong></div><div><strong>{isAvailable ? 'Disponible' : 'Indisponible'}</strong><p>{saved?.note ?? (isAvailable ? 'Vous pouvez prendre un quart.' : 'Aucun quart à proposer ce jour.')}</p></div><button className="availability-toggle" disabled={availabilitySavingDate === day.date} onClick={() => { void toggleAvailability(day.date) }}>{availabilitySavingDate === day.date ? 'Enregistrement…' : isAvailable ? 'Déclarer indisponible' : 'Déclarer disponible'}</button></article> })}</div></section>}
       </div>
     </main>
     {createShiftOpen && <div className="modal-backdrop" onClick={closeCreateShift}><form className="create-shift-modal" onClick={(event) => event.stopPropagation()} onSubmit={submitCreateShift} noValidate>

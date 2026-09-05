@@ -6,6 +6,7 @@ export type ApiProblem = { code?: string; message?: string; detail?: string; err
 export type SiteResponse = { id: string; name: string; type: string; timeZoneId: string; openingSeason: { startMonth: number; startDay: number; endMonth: number; endDay: number } }
 export type CreateShiftInput = { siteId: string; startUtc: string; endUtc: string; requiredLifeguards: number }
 export type AssignmentResponse = { id: string; shiftId: string; employeeId: string; employeeName: string }
+export type AvailabilityResponse = { id: string; employeeId: string; date: string; isAvailable: boolean; note?: string | null }
 
 export type ShiftResponse = {
   id: string

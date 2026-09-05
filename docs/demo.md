@@ -43,4 +43,5 @@ L’interface inclut un sélecteur de profils de démonstration pour parcourir l
 4. Cliquer sur `Demander un échange` et choisir Noah Tremblay.
 5. Basculer sur le profil coordonnateur et ouvrir `Échanges`.
 6. Ouvrir `Détails`, puis approuver la demande et montrer la confirmation ainsi que le statut `Approuvé`.
-7. Ouvrir `Équipe` et `Certifications` pour expliquer le roster et le signal `À surveiller`.
+7. Ouvrir `Disponibilités` avec le profil sauveteur et basculer un jour pour montrer une écriture persistée par l’API.
+8. Ouvrir `Équipe` et `Certifications` pour expliquer le roster et le signal `À surveiller`.
