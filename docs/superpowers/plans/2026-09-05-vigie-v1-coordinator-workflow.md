@@ -29,19 +29,19 @@
 **Interfaces:**
 - Produces: une documentation qui décrit l’API Render et la démo GitHub Pages comme déployées et vérifiées.
 
-- [ ] **Step 1: Remplacer l’état MVP ambigu**
+- [x] **Step 1: Remplacer l’état MVP ambigu**
 
   Indiquer que le MVP est public, que l’API répond sur Render et que la démo affiche `API connectée` lorsque les variables sont configurées.
 
-- [ ] **Step 2: Marquer le jalon de déploiement comme livré**
+- [x] **Step 2: Marquer le jalon de déploiement comme livré**
 
   Conserver explicitement les limites gratuites Render/Supabase et les fonctionnalités hors périmètre.
 
-- [ ] **Step 3: Vérifier les liens et le texte**
+- [x] **Step 3: Vérifier les liens et le texte**
 
   Run: `rg -n "reste à|prête à être publiée|🧭|déployée|API connectée" README.md docs/deployment.md`
 
-- [ ] **Step 4: Commit**
+- [x] **Step 4: Commit**
 
   `git add README.md docs/deployment.md && git commit -m "docs: refléter le déploiement public du MVP"`
 
@@ -60,7 +60,7 @@
 - Consumes: `GET /api/v1/sites`, `POST /api/v1/shifts`, `ShiftResponse`, `SiteResponse`.
 - Produces: `vigieApi.sites()`, `vigieApi.createShift(input)`, une modale de création réservée au coordonnateur et le nouveau quart affiché après succès.
 
-- [ ] **Step 1: Écrire les tests d’autorisation et de validation**
+- [x] **Step 1: Écrire les tests d’autorisation et de validation**
 
   Ajouter à `ApiSmokeTests`:
 
@@ -100,29 +100,29 @@
   }
   ```
 
-- [ ] **Step 2: Run the focused tests and confirm the expected failure**
+- [x] **Step 2: Run the focused tests and confirm the expected failure**
 
   Run: `dotnet test tests/Vigie.Api.IntegrationTests/Vigie.Api.IntegrationTests.csproj --configuration Release --filter FullyQualifiedName~Coordinator_can_create_a_shift`
 
   Expected: the new test fails to compile until the small `SitePayload`/`LoginAsync` helpers are added, then the endpoint test exposes any missing contract behavior.
 
-- [ ] **Step 3: Add typed frontend API contracts and calls**
+- [x] **Step 3: Add typed frontend API contracts and calls**
 
   Add `SiteResponse`, `CreateShiftInput`, `vigieApi.sites()` and `vigieApi.createShift()` without leaking `fetch` details into `App.tsx`.
 
-- [ ] **Step 4: Add the coordinator modal**
+- [x] **Step 4: Add the coordinator modal**
 
   Add controlled fields for site, date, start time, end time and required lifeguards. Reject an end time that is not after the start time before sending the request. Show the API problem message in the existing toast and close the modal only after a `201 Created` response.
 
-- [ ] **Step 5: Refresh the calendar after creation**
+- [x] **Step 5: Refresh the calendar after creation**
 
   Keep the new `ShiftResponse` in the same state shape used by `toUiShift`; the coordinator must see it immediately without a full page reload.
 
-- [ ] **Step 6: Run verification**
+- [x] **Step 6: Run verification**
 
   Run: `dotnet test Vigie.sln --configuration Release`, `npm run lint`, and `npm run build` from `frontend`.
 
-- [ ] **Step 7: Commit**
+- [x] **Step 7: Commit**
 
   `git add src tests frontend && git commit -m "feat: permettre au coordonnateur de créer un quart"`
 
@@ -136,12 +136,12 @@
 - Consumes: `SwapRequestResponse` and existing approve/reject calls.
 - Produces: filters `Toutes`, `En attente`, `Traitées`, détail lisible d’une demande et états chargement/erreur pour les décisions.
 
-- [ ] **Step 1: Add a filter state and test the pure filter behavior**
-- [ ] **Step 2: Wire filter buttons to visible rows**
-- [ ] **Step 3: Add a detail drawer with requester, receiver, shift and current status**
-- [ ] **Step 4: Disable duplicate approve/reject submissions while awaiting the API**
-- [ ] **Step 5: Run `npm run lint` and `npm run build`**
-- [ ] **Step 6: Commit `feat: rendre le suivi des échanges interactif`**
+- [x] **Step 1: Add a filter state and test the pure filter behavior**
+- [x] **Step 2: Wire filter buttons to visible rows**
+- [x] **Step 3: Add a detail drawer with requester, receiver, shift and current status**
+- [x] **Step 4: Disable duplicate approve/reject submissions while awaiting the API**
+- [x] **Step 5: Run `npm run lint` and `npm run build`**
+- [x] **Step 6: Commit `feat: rendre le suivi des échanges interactif`**
 
 ### Task 4: Ajouter une vue équipe en lecture seule
 
@@ -155,11 +155,11 @@
 - Consumes: `GET /api/v1/employees` and certifications already loaded during API sync.
 - Produces: roster des sauveteurs, rôle, certifications à surveiller et état vide explicite.
 
-- [ ] **Step 1: Store the employee list returned by the API**
-- [ ] **Step 2: Add the `team` view and navigation route**
-- [ ] **Step 3: Render responsive roster cards with certification status**
-- [ ] **Step 4: Preserve the local demo fallback**
-- [ ] **Step 5: Run frontend checks and commit `feat: ajouter la vue équipe`**
+- [x] **Step 1: Store the employee list returned by the API**
+- [x] **Step 2: Add the `team` view and navigation route**
+- [x] **Step 3: Render responsive roster cards with certification status**
+- [x] **Step 4: Preserve the local demo fallback**
+- [x] **Step 5: Run frontend checks and commit `feat: ajouter la vue équipe`**
 
 ### Task 5: Vérifier la livraison publique et actualiser le parcours recruteur
 
@@ -167,8 +167,8 @@
 - Modify: `docs/demo.md`
 - Modify: `README.md`
 
-- [ ] **Step 1: Run the complete backend, frontend and container checks**
-- [ ] **Step 2: Verify `/health`, demo login, protected dashboard and CORS from GitHub Pages origin**
-- [ ] **Step 3: Verify the public workflow: create shift → request swap → coordinator approval**
-- [ ] **Step 4: Update the recruiter demo script with exact clicks and demo accounts**
-- [ ] **Step 5: Commit and push the V1 slice only after all checks pass**
+- [x] **Step 1: Run the complete backend, frontend and container checks**
+- [x] **Step 2: Verify `/health`, demo login, protected dashboard and CORS from GitHub Pages origin**
+- [x] **Step 3: Verify the public workflow: create shift → request swap → coordinator approval**
+- [x] **Step 4: Update the recruiter demo script with exact clicks and demo accounts**
+- [x] **Step 5: Commit and push the V1 slice only after all checks pass**

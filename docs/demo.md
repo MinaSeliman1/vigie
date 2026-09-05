@@ -2,7 +2,7 @@
 
 ## Démo publique
 
-La démo UI est accessible directement sur [minaseliman1.github.io/vigie](https://minaseliman1.github.io/vigie/). Elle démarre avec le profil d’Amélie et permet de basculer vers le profil coordonnateur pour parcourir une demande d’échange et son approbation.
+La démo UI est accessible directement sur [minaseliman1.github.io/vigie](https://minaseliman1.github.io/vigie/). Elle démarre avec le profil d’Amélie et permet de basculer vers le profil coordonnateur pour parcourir la planification, l’assignation d’un quart, une demande d’échange et son approbation.
 
 ## API
 
@@ -37,8 +37,10 @@ L’interface inclut un sélecteur de profils de démonstration pour parcourir l
 
 ## Parcours à montrer
 
-1. Ouvrir le calendrier et sélectionner un quart assigné.
-2. Cliquer sur `Demander un échange` et choisir Noah Tremblay.
-3. Basculer sur le profil coordonnateur et ouvrir `Échanges`.
-4. Approuver la demande et montrer la confirmation ainsi que le statut `Approuvé`.
-5. Ouvrir `Certifications` et expliquer le signal `À surveiller`.
+1. Basculer vers `Camille Gagnon · coord.` et ouvrir un quart dans `Mon calendrier`.
+2. Cliquer sur `Gérer les assignations`, choisir un sauveteur puis montrer que l’API valide les règles métier avant l’écriture.
+3. Revenir au profil `Amélie Roy · sauv.` et sélectionner un quart assigné.
+4. Cliquer sur `Demander un échange` et choisir Noah Tremblay.
+5. Basculer sur le profil coordonnateur et ouvrir `Échanges`.
+6. Ouvrir `Détails`, puis approuver la demande et montrer la confirmation ainsi que le statut `Approuvé`.
+7. Ouvrir `Équipe` et `Certifications` pour expliquer le roster et le signal `À surveiller`.
