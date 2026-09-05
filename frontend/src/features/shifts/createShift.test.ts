@@ -21,10 +21,13 @@ describe('création de quart', () => {
   })
 
   it('convertit le brouillon en requête API avec des instants ISO', () => {
+    const expectedStart = new Date('2026-09-15T09:00:00').toISOString()
+    const expectedEnd = new Date('2026-09-15T17:00:00').toISOString()
+
     expect(createShiftRequest(validDraft)).toEqual({
       siteId: validDraft.siteId,
-      startUtc: '2026-09-15T13:00:00.000Z',
-      endUtc: '2026-09-15T21:00:00.000Z',
+      startUtc: expectedStart,
+      endUtc: expectedEnd,
       requiredLifeguards: 2,
     })
   })
