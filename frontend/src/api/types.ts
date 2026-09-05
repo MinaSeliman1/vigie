@@ -8,8 +8,30 @@ export type ShiftResponse = {
   id: string
   siteId: string
   siteName: string
+  siteType: 'Indoor' | 'Outdoor' | string
   startUtc: string
   endUtc: string
   requiredLifeguards: number
   assignments: Array<{ id: string; employeeId: string; employeeName: string }>
+}
+
+export type SwapRequestResponse = {
+  id: string
+  assignmentId: string
+  requesterId: string
+  requesterName: string
+  receiverId: string
+  receiverName: string
+  shiftLabel: string
+  status: 'Pending' | 'Approved' | 'Rejected' | 'Cancelled' | string
+  requestedAtUtc: string
+}
+
+export type CertificationResponse = {
+  id: string
+  employeeId: string
+  employeeName: string
+  type: string
+  expiresOn: string
+  daysRemaining: number
 }

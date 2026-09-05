@@ -167,11 +167,15 @@ app.Run();
 static Guid UserId(ClaimsPrincipal principal) => Guid.Parse(principal.FindFirstValue(JwtRegisteredClaimNames.Sub) ?? principal.FindFirstValue(ClaimTypes.NameIdentifier) ?? throw new InvalidOperationException("Identité absente."));
 static UserSummary User(Employee employee) => new(employee.Id, employee.Name, employee.Email, employee.Role.ToString());
 static SiteResponse ToSite(Site site) => new(site.Id, site.Name, site.Type.ToString(), site.TimeZoneId, site.OpeningSeason);
-static ShiftResponse ToShift(Shift shift, IVigieStore store) => new(shift.Id, shift.SiteId, store.Sites.Single(s => s.Id == shift.SiteId).Name, shift.StartUtc, shift.EndUtc, shift.RequiredLifeguards, store.Assignments.Where(a => a.ShiftId == shift.Id).Select(a => new AssignmentResponse(a.Id, a.ShiftId, a.EmployeeId, store.Employees.Single(e => e.Id == a.EmployeeId).Name)).ToArray());
+static ShiftResponse ToShift(Shift shift, IVigieStore store)
+{
+    var site = store.Sites.Single(s => s.Id == shift.SiteId);
+    return new ShiftResponse(shift.Id, shift.SiteId, site.Name, site.Type.ToString(), shift.StartUtc, shift.EndUtc, shift.RequiredLifeguards, store.Assignments.Where(a => a.ShiftId == shift.Id).Select(a => new AssignmentResponse(a.Id, a.ShiftId, a.EmployeeId, store.Employees.Single(e => e.Id == a.EmployeeId).Name)).ToArray());
+}
 static SwapRequestResponse ToSwap(SwapRequest request, IVigieStore store)
 {
-    var assignment = store.Assignments.Single(a => a.Id == request.AssignmentId); var shift = store.Shifts.Single(s => s.Id == assignment.ShiftId); var receiver = store.Employees.Single(e => e.Id == request.ReceiverId);
-    return new SwapRequestResponse(request.Id, request.AssignmentId, request.ReceiverId, receiver.Name, $"{shift.StartUtc:ddd d MMM HH:mm} · {store.Sites.Single(s => s.Id == shift.SiteId).Name}", request.Status.ToString(), request.RequestedAtUtc);
+    var assignment = store.Assignments.Single(a => a.Id == request.AssignmentId); var shift = store.Shifts.Single(s => s.Id == assignment.ShiftId); var requester = store.Employees.Single(e => e.Id == assignment.EmployeeId); var receiver = store.Employees.Single(e => e.Id == request.ReceiverId);
+    return new SwapRequestResponse(request.Id, request.AssignmentId, requester.Id, requester.Name, request.ReceiverId, receiver.Name, $"{shift.StartUtc:ddd d MMM HH:mm} · {store.Sites.Single(s => s.Id == shift.SiteId).Name}", request.Status.ToString(), request.RequestedAtUtc);
 }
 static IResult Problem(string code, string message, int status = StatusCodes.Status400BadRequest) => Results.Problem(statusCode: status, title: "La demande ne peut pas être traitée", detail: message, extensions: new Dictionary<string, object?> { ["code"] = code, ["message"] = message });
 

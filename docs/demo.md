@@ -33,7 +33,7 @@ npm install
 npm run dev
 ```
 
-L’interface inclut un sélecteur de profils de démonstration pour parcourir les deux rôles sans configuration supplémentaire. Elle conserve les états d’échange dans la session du navigateur ; l’API reste disponible pour tester les mêmes routes avec un client HTTP.
+L’interface inclut un sélecteur de profils de démonstration pour parcourir les deux rôles sans configuration supplémentaire. Elle utilise les données locales par défaut. Pour activer l’API réelle, copier `frontend/.env.example` vers `frontend/.env.local`, conserver `VITE_API_URL=http://localhost:5187`, puis relancer Vite : la connexion, les quarts, les échanges et les certifications seront chargés depuis l’API. Si l’API devient indisponible, l’interface revient au mode de démonstration et affiche son état dans la barre latérale.
 
 ## Parcours à montrer
 

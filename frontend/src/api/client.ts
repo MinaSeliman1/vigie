@@ -1,5 +1,6 @@
-import type { ApiProblem, LoginResponse, ShiftResponse } from './types'
+import type { ApiProblem, CertificationResponse, LoginResponse, ShiftResponse, SwapRequestResponse, UserSummary } from './types'
 
+export const apiConfigured = Boolean(import.meta.env.VITE_API_URL)
 const baseUrl = (import.meta.env.VITE_API_URL as string | undefined)?.replace(/\/$/, '') ?? 'http://localhost:5187'
 
 async function request<T>(path: string, init: RequestInit = {}): Promise<T> {
@@ -8,14 +9,29 @@ async function request<T>(path: string, init: RequestInit = {}): Promise<T> {
     ...init,
     headers: { 'Content-Type': 'application/json', ...(token ? { Authorization: `Bearer ${token}` } : {}), ...init.headers },
   })
+  const payload = await response.text()
   if (!response.ok) {
-    const problem = await response.json() as ApiProblem
-    throw new Error(problem.message ?? problem.detail ?? 'La demande ne peut pas être traitée.')
+    let problem: ApiProblem = {}
+    try { problem = JSON.parse(payload) as ApiProblem } catch { /* Réponse non JSON : le statut reste exploitable. */ }
+    const error = new Error(problem.message ?? problem.detail ?? 'La demande ne peut pas être traitée.')
+    Object.assign(error, { code: problem.code })
+    throw error
   }
-  return response.json() as Promise<T>
+  return (payload ? JSON.parse(payload) : undefined) as T
 }
 
 export const vigieApi = {
   login: (email: string, password: string) => request<LoginResponse>('/api/v1/auth/login', { method: 'POST', body: JSON.stringify({ email, password }) }),
-  shifts: (from?: string, to?: string) => request<ShiftResponse[]>(`/api/v1/shifts?from=${encodeURIComponent(from ?? '')}&to=${encodeURIComponent(to ?? '')}`),
+  shifts: (from?: string, to?: string) => {
+    const query = new URLSearchParams()
+    if (from) query.set('from', from)
+    if (to) query.set('to', to)
+    return request<ShiftResponse[]>(`/api/v1/shifts${query.size ? `?${query.toString()}` : ''}`)
+  },
+  employees: () => request<UserSummary[]>('/api/v1/employees'),
+  certifications: () => request<CertificationResponse[]>('/api/v1/certifications'),
+  swaps: () => request<SwapRequestResponse[]>('/api/v1/swap-requests'),
+  createSwap: (assignmentId: string, receiverId: string) => request<SwapRequestResponse>('/api/v1/swap-requests', { method: 'POST', body: JSON.stringify({ assignmentId, receiverId }) }),
+  approveSwap: (requestId: string) => request<SwapRequestResponse>(`/api/v1/swap-requests/${requestId}/approve`, { method: 'POST' }),
+  rejectSwap: (requestId: string) => request<SwapRequestResponse>(`/api/v1/swap-requests/${requestId}/reject`, { method: 'POST' }),
 }
