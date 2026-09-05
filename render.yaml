@@ -6,7 +6,6 @@ services:
     dockerfilePath: ./src/Vigie.Api/Dockerfile
     dockerContext: .
     healthCheckPath: /health
-    port: 10000
     envVars:
       - key: ASPNETCORE_ENVIRONMENT
         value: Production
