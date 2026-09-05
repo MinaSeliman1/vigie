@@ -23,7 +23,7 @@
 
 ## État de cette itération
 
-Le domaine, les services d’application, l’API JWT, le store mémoire de démonstration, le modèle EF Core, l’interface React, Docker, la CI et les tests d’intégration sont livrés. Le branchement des repositories EF et la migration PostgreSQL initiale restent volontairement séparés pour une prochaine Issue afin de conserver une démo locale immédiate et vérifiable.
+Le domaine, les services d’application, l’API JWT, les stores mémoire et EF Core, l’interface React, Docker, la CI et les tests d’intégration sont livrés. Le store EF est sélectionné automatiquement quand `ConnectionStrings__Vigie` est configurée; `InitialCreate` et le seed idempotent sont appliqués au démarrage. Le déploiement public de l’API reste la prochaine étape afin de conserver une démo locale immédiate et vérifiable.
 
 ### Task 1: Scaffolding solution and quality baseline
 
@@ -117,7 +117,7 @@ Le domaine, les services d’application, l’API JWT, le store mémoire de dém
 - Create: `src/Vigie.Infrastructure/Persistence/VigieDbContext.cs`
 - Create: `src/Vigie.Infrastructure/Persistence/Configurations/*.cs`
 - Create: `src/Vigie.Infrastructure/Persistence/Migrations/*`
-- Create: `src/Vigie.Infrastructure/Seeding/DemoDataSeeder.cs`
+- Create: `src/Vigie.Infrastructure/Persistence/VigieDatabaseInitializer.cs`
 - Create: `docker-compose.yml`, `.env.example`
 - Modify: `src/Vigie.Infrastructure/Vigie.Infrastructure.csproj`
 
@@ -127,11 +127,11 @@ Le domaine, les services d’application, l’API JWT, le store mémoire de dém
 
 **Steps:**
 - [ ] Add EF Core PostgreSQL packages only to Infrastructure and configure UTC conversion.
-- [ ] Map relationships, indexes, uniqueness and optimistic concurrency token.
-- [ ] Generate an initial migration and verify database recreation from an empty volume.
-- [ ] Add Compose healthcheck and local configuration without committing secrets.
-- [ ] Run migration and seeding against a local PostgreSQL container when available; otherwise validate model build and document the blocker.
-- [ ] Commit persistence and local runtime files.
+- [ ] Map optimistic concurrency token; relationships, indexes and uniqueness are covered by `VigieDbContext`.
+- [x] Generate an initial migration and verify the EF model has no pending changes.
+- [x] Add Compose healthcheck and local configuration without committing secrets.
+- [ ] Run migration and seeding against a local PostgreSQL container when available; the local Docker daemon was unavailable, while the initializer and model are covered by build/tests.
+- [x] Commit persistence and local runtime files.
 
 ### Task 6: ASP.NET Core API, JWT and ProblemDetails
 

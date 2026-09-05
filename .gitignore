@@ -25,6 +25,7 @@ dist/
 
 # Local artifacts
 .DS_Store
+.dotnet-tools/
 Thumbs.db
 *.log
 tmp/

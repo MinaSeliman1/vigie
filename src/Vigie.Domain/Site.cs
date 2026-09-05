@@ -8,6 +8,8 @@ public enum SiteType
 
 public sealed class Site
 {
+    private Site() { Name = string.Empty; TimeZoneId = TimeZoneInfo.Utc.Id; OpeningSeason = OpeningSeason.AllYear; }
+
     private Site(Guid id, string name, string timeZoneId, OpeningSeason openingSeason, SiteType type)
     {
         Id = id;
@@ -17,7 +19,7 @@ public sealed class Site
         Type = type;
     }
 
-    public Guid Id { get; }
+    public Guid Id { get; private set; }
     public string Name { get; private set; }
     public string TimeZoneId { get; private set; }
     public OpeningSeason OpeningSeason { get; private set; }

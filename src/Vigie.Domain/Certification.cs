@@ -2,6 +2,8 @@ namespace Vigie.Domain;
 
 public sealed class Certification
 {
+    private Certification() { }
+
     private Certification(Guid id, Guid employeeId, Guid certificationTypeId, DateOnly expiresOn)
     {
         Id = id;
@@ -10,9 +12,9 @@ public sealed class Certification
         ExpiresOn = expiresOn;
     }
 
-    public Guid Id { get; }
-    public Guid EmployeeId { get; }
-    public Guid CertificationTypeId { get; }
+    public Guid Id { get; private set; }
+    public Guid EmployeeId { get; private set; }
+    public Guid CertificationTypeId { get; private set; }
     public DateOnly ExpiresOn { get; private set; }
 
     public static Certification Create(Guid employeeId, Guid certificationTypeId, DateOnly expiresOn)

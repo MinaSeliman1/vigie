@@ -9,14 +9,7 @@ public sealed class SystemClock : IClock
 }
 
 public sealed class InMemoryVigieStore :
-    IEmployeeRepository,
-    ISiteRepository,
-    IShiftRepository,
-    ICertificationRepository,
-    ICertificationTypeRepository,
-    IAssignmentRepository,
-    ISwapRequestRepository,
-    IUnitOfWork
+    IVigieStore
 {
     private readonly object sync = new();
     private readonly Dictionary<Guid, Employee> employees = [];
@@ -42,6 +35,8 @@ public sealed class InMemoryVigieStore :
     public IReadOnlyCollection<Assignment> Assignments => assignments.Values.ToArray();
     public IReadOnlyCollection<SwapRequest> SwapRequests => swapRequests.Values.ToArray();
     public IReadOnlyCollection<Availability> Availabilities => availabilities.Values.ToArray();
+    public IReadOnlyCollection<(Guid SiteId, Guid CertificationTypeId)> SiteCertificationLinks
+        => siteCertificationTypes.SelectMany(pair => pair.Value.Select(typeId => (pair.Key, typeId))).ToArray();
 
     public Task<Employee?> GetAsync(Guid id, CancellationToken cancellationToken) => Task.FromResult(employees.GetValueOrDefault(id));
     Task<Site?> ISiteRepository.GetAsync(Guid id, CancellationToken cancellationToken) => Task.FromResult(sites.GetValueOrDefault(id));
@@ -98,11 +93,11 @@ public sealed class InMemoryVigieStore :
     public void AddCertification(Certification certification) => certifications[certification.Id] = certification;
     public void AddCertificationTypeForSite(Guid siteId, Guid certificationTypeId) => siteCertificationTypes.GetOrAdd(siteId).Add(certificationTypeId);
 
-    public Availability UpsertAvailability(Guid employeeId, DateOnly date, bool isAvailable, string? note)
+    public Availability UpsertAvailability(Guid employeeId, DateOnly onDate, bool isAvailable, string? note)
     {
-        var existing = availabilities.Values.SingleOrDefault(a => a.EmployeeId == employeeId && a.Date == date);
+        var existing = availabilities.Values.SingleOrDefault(a => a.EmployeeId == employeeId && a.Date == onDate);
         if (existing is not null) { existing.Update(isAvailable, note); return existing; }
-        var availability = Availability.Create(employeeId, date, isAvailable, note);
+        var availability = Availability.Create(employeeId, onDate, isAvailable, note);
         availabilities[availability.Id] = availability;
         return availability;
     }

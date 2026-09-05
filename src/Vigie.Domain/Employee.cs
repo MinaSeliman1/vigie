@@ -2,6 +2,8 @@ namespace Vigie.Domain;
 
 public sealed class Employee
 {
+    private Employee() { Name = string.Empty; Email = string.Empty; }
+
     private Employee(Guid id, string name, string email, EmployeeRole role, decimal weeklyQuotaHours)
     {
         Id = id;
@@ -11,7 +13,7 @@ public sealed class Employee
         WeeklyQuotaHours = weeklyQuotaHours;
     }
 
-    public Guid Id { get; }
+    public Guid Id { get; private set; }
     public string Name { get; private set; }
     public string Email { get; private set; }
     public EmployeeRole Role { get; private set; }

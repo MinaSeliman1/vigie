@@ -2,6 +2,8 @@ namespace Vigie.Domain;
 
 public sealed class CertificationType
 {
+    private CertificationType() { Name = string.Empty; }
+
     private CertificationType(Guid id, string name, bool isRequired)
     {
         Id = id;
@@ -9,7 +11,7 @@ public sealed class CertificationType
         IsRequired = isRequired;
     }
 
-    public Guid Id { get; }
+    public Guid Id { get; private set; }
     public string Name { get; private set; }
     public bool IsRequired { get; private set; }
 

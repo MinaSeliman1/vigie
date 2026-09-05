@@ -1,6 +1,9 @@
 using System.Net;
 using System.Net.Http.Json;
+using Microsoft.EntityFrameworkCore;
 using Microsoft.AspNetCore.Mvc.Testing;
+using Vigie.Domain;
+using Vigie.Infrastructure.Persistence;
 
 namespace Vigie.Api.IntegrationTests;
 
@@ -54,6 +57,21 @@ public sealed class ApiSmokeTests : IClassFixture<WebApplicationFactory<Program>
 
         Assert.Equal(HttpStatusCode.Unauthorized, response.StatusCode);
         Assert.Contains("INVALID_CREDENTIALS", body, StringComparison.Ordinal);
+    }
+
+    [Fact]
+    public void Ef_model_maps_the_opening_season_without_a_database()
+    {
+        var options = new DbContextOptionsBuilder<VigieDbContext>()
+            .UseNpgsql("Host=localhost;Database=vigie;Username=vigie")
+            .Options;
+
+        using var context = new VigieDbContext(options);
+        var site = context.Model.FindEntityType(typeof(Site));
+
+        Assert.NotNull(site);
+        Assert.NotNull(site!.FindProperty(nameof(Site.OpeningSeason)));
+        Assert.NotNull(context.Model.FindEntityType(typeof(SiteCertificationRequirement)));
     }
 
     private sealed record LoginPayload(string Token, UserPayload User);

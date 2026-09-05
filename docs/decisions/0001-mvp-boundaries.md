@@ -10,4 +10,4 @@ Les cinq invariants métier constituent la valeur démontrable de Vigie. Les liv
 
 ## Conséquences
 
-La démo inclut un store mémoire pour réduire le temps de démarrage, tandis que le modèle EF Core et PostgreSQL restent disponibles pour le déploiement durable. Tout nouveau périmètre doit être proposé dans une Issue séparée et conserver le parcours principal utilisable.
+La démo inclut un store mémoire pour réduire le temps de démarrage. `IVigieStore` sélectionne le store EF Core/PostgreSQL lorsque `ConnectionStrings__Vigie` est configurée; la migration `InitialCreate` et le seed idempotent sont appliqués au démarrage. Tout nouveau périmètre doit être proposé dans une Issue séparée et conserver le parcours principal utilisable.

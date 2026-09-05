@@ -10,6 +10,8 @@ public enum SwapStatus
 
 public sealed class SwapRequest
 {
+    private SwapRequest() { }
+
     private SwapRequest(Guid id, Guid assignmentId, Guid receiverId)
     {
         Id = id;
@@ -19,11 +21,11 @@ public sealed class SwapRequest
         RequestedAtUtc = DateTimeOffset.UtcNow;
     }
 
-    public Guid Id { get; }
-    public Guid AssignmentId { get; }
-    public Guid ReceiverId { get; }
+    public Guid Id { get; private set; }
+    public Guid AssignmentId { get; private set; }
+    public Guid ReceiverId { get; private set; }
     public SwapStatus Status { get; private set; }
-    public DateTimeOffset RequestedAtUtc { get; }
+    public DateTimeOffset RequestedAtUtc { get; private set; }
     public Guid? DecidedBy { get; private set; }
     public DateTimeOffset? DecidedAtUtc { get; private set; }
 

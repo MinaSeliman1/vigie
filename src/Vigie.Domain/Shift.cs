@@ -9,6 +9,8 @@ public enum ShiftStatus
 
 public sealed class Shift
 {
+    private Shift() { }
+
     private Shift(Guid id, Guid siteId, DateTimeOffset startUtc, DateTimeOffset endUtc, int requiredLifeguards)
     {
         Id = id;
@@ -19,11 +21,11 @@ public sealed class Shift
         Status = ShiftStatus.Open;
     }
 
-    public Guid Id { get; }
-    public Guid SiteId { get; }
-    public DateTimeOffset StartUtc { get; }
-    public DateTimeOffset EndUtc { get; }
-    public int RequiredLifeguards { get; }
+    public Guid Id { get; private set; }
+    public Guid SiteId { get; private set; }
+    public DateTimeOffset StartUtc { get; private set; }
+    public DateTimeOffset EndUtc { get; private set; }
+    public int RequiredLifeguards { get; private set; }
     public ShiftStatus Status { get; private set; }
     public TimeSpan Duration => EndUtc - StartUtc;
 

@@ -2,6 +2,8 @@ namespace Vigie.Domain;
 
 public sealed class Availability
 {
+    private Availability() { }
+
     private Availability(Guid id, Guid employeeId, DateOnly date, bool isAvailable, string? note)
     {
         Id = id;
@@ -11,9 +13,9 @@ public sealed class Availability
         Note = note?.Trim();
     }
 
-    public Guid Id { get; }
-    public Guid EmployeeId { get; }
-    public DateOnly Date { get; }
+    public Guid Id { get; private set; }
+    public Guid EmployeeId { get; private set; }
+    public DateOnly Date { get; private set; }
     public bool IsAvailable { get; private set; }
     public string? Note { get; private set; }
 

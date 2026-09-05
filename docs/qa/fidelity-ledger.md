@@ -19,7 +19,7 @@ Le concept et la version livrée partagent les libellés fonctionnels « Vigie �
 ## Écarts assumés
 
 - Le concept présente surtout la vue coordonnateur; la version livrée démarre sur la vue personnelle d’un sauveteur afin de rendre la démonstration du problème plus immédiate.
-- Les données de la démo UI sont locales pour permettre une présentation instantanée. L’API JWT, le modèle EF Core et les ports de persistance sont présents pour le branchement PostgreSQL de l’itération suivante.
+- Les données de la démo UI sont locales pour permettre une présentation instantanée. L’API JWT et le modèle EF Core peuvent sélectionner `EfVigieStore` quand `ConnectionStrings__Vigie` est configurée; `InitialCreate` et le seed idempotent sont appliqués au démarrage.
 - Le panneau « Priorités du jour » du concept devient une zone « À surveiller » et une liste d’échanges, directement alignées sur les règles métier du MVP.
 
 ## Vérification effectuée
@@ -27,4 +27,3 @@ Le concept et la version livrée partagent les libellés fonctionnels « Vigie �
 - Parcours desktop dans le navigateur intégré : ouverture d’un quart, demande d’échange, changement de profil coordonnateur et approbation.
 - Parcours mobile en 390 × 844 : navigation, empilement des cartes et calendrier défilable.
 - Console navigateur sans erreur et interface inspectée visuellement avec `view_image`.
-

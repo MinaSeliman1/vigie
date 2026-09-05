@@ -14,7 +14,7 @@ React + TypeScript + Vite
 Vigie.Infrastructure ─── PostgreSQL / mode mémoire de démonstration
 ```
 
-Le mode mémoire est activé par défaut pour rendre la démo locale immédiate. Quand `ConnectionStrings__Vigie` est configurée, Infrastructure expose le `VigieDbContext` PostgreSQL et ses migrations. Le branchement des repositories EF à l’API est isolé derrière les mêmes ports que le store de démonstration.
+Le mode mémoire est activé par défaut pour rendre la démo locale immédiate. Quand `ConnectionStrings__Vigie` est configurée, `AddVigiePersistence` enregistre `VigieDbContext` et `EfVigieStore`; l’API utilise alors le même contrat `IVigieStore` et les mêmes ports d’application avec PostgreSQL. Au démarrage, `VigieDatabaseInitializer` applique `InitialCreate` et charge le seed fictif si la base est vide.
 
 Les règles d’assignation sont exécutées dans `AssignmentPolicy`. Une demande d’échange est toujours créée en `Pending` et l’approbation rejoue les règles avec les données courantes avant de réassigner le quart.
 
