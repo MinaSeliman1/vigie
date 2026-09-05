@@ -75,6 +75,8 @@ Le backend cible .NET 9 et le frontend utilise Node.js 22 dans la CI. L’authen
 
 Le périmètre restant est isolé derrière les mêmes ports d’application afin de ne pas fragiliser la démo.
 
+Les prochaines étapes sont détaillées dans les [Issues du dépôt](https://github.com/MinaSeliman1/vigie/issues) : déploiement de l’API, connexion de la démo React, concurrence optimiste et historique métier.
+
 ## Démarrer en local
 
 ### API
@@ -101,7 +103,7 @@ L’interface est en français et permet de basculer entre les profils sauveteur
 ## Ce qui est déjà vérifiable
 
 - Les cinq règles métier sont testées dans `tests/Vigie.Domain.Tests` sans serveur ni base de données.
-- L’API JWT expose les routes de calendrier, d’assignation, d’échange et de certification ; deux tests d’intégration couvrent l’authentification et le refus sans jeton.
+- L’API JWT expose les routes de calendrier, d’assignation, d’échange et de certification ; cinq tests d’intégration couvrent l’authentification, les autorisations et le modèle EF.
 - La démo UI publique est construite automatiquement par GitHub Actions et publiée sur GitHub Pages à chaque mise à jour de `main`.
 - Le conteneur de l’API est construit dans la CI pour détecter les erreurs de packaging avant un déploiement.
 - Le frontend React affiche un calendrier responsive et exécute le parcours demande d’échange → approbation avec les profils de démonstration.
