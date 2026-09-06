@@ -625,6 +625,29 @@ app.MapGet("/api/v1/shifts", (ClaimsPrincipal user, DateTimeOffset? from, DateTi
     return Results.Ok(result);
 }).RequireAuthorization().WithTags("Quarts");
 
+app.MapGet("/api/v1/coverage", (ClaimsPrincipal user, DateTimeOffset? from, DateTimeOffset? to, IVigieStore store) =>
+{
+    var scope = OrganizationScopeResolver.Resolve(user, store);
+    if (scope is null) return Problem("SESSION_INVALID", "La session n'est plus valide.", StatusCodes.Status401Unauthorized);
+    if (scope.Role == EmployeeRole.Lifeguard) return Results.StatusCode(StatusCodes.Status403Forbidden);
+    var start = from ?? DateTimeOffset.UtcNow.AddDays(-1);
+    var end = to ?? DateTimeOffset.UtcNow.AddDays(14);
+    var result = store.Shifts
+        .Where(shift => shift.Status != ShiftStatus.Cancelled && shift.StartUtc < end && shift.EndUtc > start)
+        .Select(shift => new { Shift = shift, Site = store.Sites.SingleOrDefault(site => site.Id == shift.SiteId) })
+        .Where(item => item.Site is not null && IsSiteVisible(item.Site!, scope, store))
+        .OrderBy(item => item.Shift.StartUtc)
+        .Select(item =>
+        {
+            var assigned = store.Assignments.Count(assignment => assignment.ShiftId == item.Shift.Id);
+            return new CoverageResponse(item.Shift.Id, item.Shift.SiteId, item.Site!.Name, item.Shift.StartUtc, item.Shift.EndUtc,
+                item.Shift.RequiredLifeguards, assigned, assigned >= item.Shift.RequiredLifeguards,
+                item.Shift.Status.ToString(), item.Shift.PublicationStatus.ToString());
+        })
+        .ToArray();
+    return Results.Ok(result);
+}).RequireAuthorization().WithTags("Couverture");
+
 app.MapPost("/api/v1/shifts", async (ClaimsPrincipal user, CreateShiftRequest request, IVigieStore store, IUnitOfWork unitOfWork, CancellationToken ct) =>
 {
     try

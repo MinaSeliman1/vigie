@@ -29,6 +29,19 @@ export type ShiftResponse = {
   publicationStatus?: 'Draft' | 'Published' | string
 }
 
+export type CoverageResponse = {
+  shiftId: string
+  siteId: string
+  siteName: string
+  startUtc: string
+  endUtc: string
+  requiredLifeguards: number
+  assignedLifeguards: number
+  isCovered: boolean
+  status: string
+  publicationStatus: string
+}
+
 export type SwapRequestResponse = {
   id: string
   assignmentId: string

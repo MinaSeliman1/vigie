@@ -31,7 +31,7 @@ Les limites calendaires (jour d’expiration, début de semaine, quarts de nuit 
 - Connexion avec les rôles `Sauveteur`, `Chef de piscine`, `Chargé de secteur` et `Régie aquatique`.
 - Portée d’accès contrôlée par organisation, secteur et piscine, avec memberships actifs, désactivation logique et version optimiste.
 - Catalogue de référence Laval : 7 piscines intérieures et 20 piscines extérieures, avec adresse, quartier, type et saison d’ouverture.
-- Gestion des sites, secteurs, quarts (création, modification, publication et annulation), assignations et disponibilités.
+- Gestion des sites, secteurs, quarts (création, modification, publication et annulation), assignations, disponibilités et suivi de couverture.
 - Calendrier hebdomadaire personnel et d’équipe.
 - Demandes de remplacement, approbation et refus.
 - Suivi des certifications et alertes à 90 et 30 jours de l’échéance.
@@ -127,6 +127,7 @@ L’interface est en français et permet de basculer entre six profils de démon
 - EF Core et PostgreSQL sont branchés derrière `IVigieStore`; le mode mémoire reste le défaut local pour garder le démarrage reproductible.
 - Les routes publiques `/api/v1/auth/register` et `/api/v1/auth/login` créent ou ouvrent un espace d’organisation ; les invitations `/api/v1/invitations` ne stockent que le hachage d’un jeton et les mots de passe sont stockés sous forme de hachages PBKDF2.
 - Les quarts suivent un workflow brouillon → publié : un responsable prépare et vérifie un quart, puis sa publication le rend visible aux sauveteurs. Les quarts existants sont migrés comme publiés pour préserver la continuité de service.
+- `GET /api/v1/coverage` expose aux responsables l’effectif requis, l’effectif assigné et les quarts à compléter dans leur périmètre; les sauveteurs ne peuvent pas consulter cette vue de pilotage.
 - `GET /api/v1/auth/me` restaure une session, et `POST /api/v1/auth/change-password` renouvelle le jeton tout en invalidant les sessions précédentes.
 - Les jetons d’accès expirent après 60 minutes et les routes d’authentification sont limitées à 10 tentatives par minute et par adresse en production.
 - `GET /api/v1/audit` et `GET /api/v1/audit/export` sont réservés aux responsables autorisés et restent bornés à leur organisation et à leur périmètre opérationnel.

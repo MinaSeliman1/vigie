@@ -107,6 +107,27 @@ public sealed class ApiSmokeTests : IClassFixture<WebApplicationFactory<Program>
     }
 
     [Fact]
+    public async Task Management_can_read_coverage_and_lifeguards_cannot()
+    {
+        var login = await client.PostAsJsonAsync("/api/v1/auth/login", new { email = "regie@vigie.demo", password = "vigie-demo" });
+        var director = await login.Content.ReadFromJsonAsync<LoginPayload>();
+        client.DefaultRequestHeaders.Authorization = new System.Net.Http.Headers.AuthenticationHeaderValue("Bearer", director!.Token);
+
+        var coverage = await client.GetFromJsonAsync<CoveragePayload[]>("/api/v1/coverage");
+
+        var lifeguardLogin = await client.PostAsJsonAsync("/api/v1/auth/login", new { email = "amelie@vigie.demo", password = "vigie-demo" });
+        var lifeguard = await lifeguardLogin.Content.ReadFromJsonAsync<LoginPayload>();
+        client.DefaultRequestHeaders.Authorization = new System.Net.Http.Headers.AuthenticationHeaderValue("Bearer", lifeguard!.Token);
+        var forbidden = await client.GetAsync("/api/v1/coverage");
+
+        Assert.Equal(HttpStatusCode.OK, login.StatusCode);
+        Assert.NotEmpty(coverage!);
+        Assert.All(coverage!, row => Assert.InRange(row.AssignedLifeguards, 0, row.RequiredLifeguards));
+        Assert.Contains(coverage!, row => !row.IsCovered);
+        Assert.Equal(HttpStatusCode.Forbidden, forbidden.StatusCode);
+    }
+
+    [Fact]
     public async Task Authenticated_user_can_restore_their_session()
     {
         var login = await client.PostAsJsonAsync("/api/v1/auth/login", new { email = "amelie@vigie.demo", password = "vigie-demo" });
@@ -733,6 +754,7 @@ public sealed class ApiSmokeTests : IClassFixture<WebApplicationFactory<Program>
     private sealed record SitePayload(Guid Id, string Name = "", string Type = "", string TimeZoneId = "", OpeningSeasonPayload? OpeningSeason = null, string Address = "", string Neighborhood = "", bool IsMunicipal = false, Guid? SectorId = null, string? SectorName = null);
     private sealed record OpeningSeasonPayload(int StartMonth, int StartDay, int EndMonth, int EndDay);
     private sealed record ShiftPayload(Guid Id, string? Status = null, string? PublicationStatus = null);
+    private sealed record CoveragePayload(Guid ShiftId, Guid SiteId, string SiteName, DateTimeOffset StartUtc, DateTimeOffset EndUtc, int RequiredLifeguards, int AssignedLifeguards, bool IsCovered, string Status, string PublicationStatus);
     private sealed record AssignmentPayload(Guid Id, Guid ShiftId, Guid EmployeeId, string EmployeeName);
     private sealed record SwapPayload(Guid Id, string? Status = null);
     private sealed record NotificationPayload(Guid Id, string Type, string Title, string Body, string? ActionUrl, DateTimeOffset CreatedAtUtc, bool IsRead, DateTimeOffset? ReadAtUtc);

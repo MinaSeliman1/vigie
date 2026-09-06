@@ -1,4 +1,4 @@
-import type { ApiProblem, AssignmentResponse, AuditEntryResponse, AvailabilityResponse, CertificationResponse, CreateShiftInput, InvitationResponse, LoginResponse, MembershipResponse, NotificationResponse, RegistrationResponse, SectorResponse, ShiftResponse, SiteResponse, SwapRequestResponse, UpdateShiftInput, UserSummary } from './types'
+import type { ApiProblem, AssignmentResponse, AuditEntryResponse, AvailabilityResponse, CertificationResponse, CoverageResponse, CreateShiftInput, InvitationResponse, LoginResponse, MembershipResponse, NotificationResponse, RegistrationResponse, SectorResponse, ShiftResponse, SiteResponse, SwapRequestResponse, UpdateShiftInput, UserSummary } from './types'
 
 export const apiConfigured = Boolean(import.meta.env.VITE_API_URL)
 const baseUrl = (import.meta.env.VITE_API_URL as string | undefined)?.replace(/\/$/, '') ?? 'http://localhost:5187'
@@ -45,6 +45,12 @@ export const vigieApi = {
     if (from) query.set('from', from)
     if (to) query.set('to', to)
     return request<ShiftResponse[]>(`/api/v1/shifts${query.size ? `?${query.toString()}` : ''}`)
+  },
+  coverage: (from?: string, to?: string) => {
+    const query = new URLSearchParams()
+    if (from) query.set('from', from)
+    if (to) query.set('to', to)
+    return request<CoverageResponse[]>(`/api/v1/coverage${query.size ? `?${query.toString()}` : ''}`)
   },
   sites: () => request<SiteResponse[]>('/api/v1/sites'),
   createShift: (input: CreateShiftInput) => request<ShiftResponse>('/api/v1/shifts', { method: 'POST', body: JSON.stringify(input) }),
