@@ -24,6 +24,7 @@ export const vigieApi = {
   login: (email: string, password: string) => request<LoginResponse>('/api/v1/auth/login', { method: 'POST', body: JSON.stringify({ email, password }) }),
   me: () => request<UserSummary>('/api/v1/auth/me'),
   register: (organizationName: string, name: string, email: string, password: string) => request<RegistrationResponse>('/api/v1/auth/register', { method: 'POST', body: JSON.stringify({ organizationName, name, email, password }) }),
+  acceptInvitation: (token: string, name: string, password: string) => request<LoginResponse>('/api/v1/invitations/accept', { method: 'POST', body: JSON.stringify({ token, name, password }) }),
   inviteMember: (email: string, name: string, role: string) => request<InvitationResponse>('/api/v1/invitations', { method: 'POST', body: JSON.stringify({ email, name, role }) }),
   shifts: (from?: string, to?: string) => {
     const query = new URLSearchParams()
