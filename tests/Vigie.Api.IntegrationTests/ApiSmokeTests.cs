@@ -147,7 +147,7 @@ public sealed class ApiSmokeTests : IClassFixture<WebApplicationFactory<Program>
             organizationName,
             name = "Coordonnateur du centre",
             email,
-            password = "mot-de-passe-commercial"
+            password = "Mot-de-passe1"
         });
         var payload = await response.Content.ReadFromJsonAsync<RegistrationPayload>();
 
@@ -186,9 +186,9 @@ public sealed class ApiSmokeTests : IClassFixture<WebApplicationFactory<Program>
         Assert.NotNull(invitation?.InviteToken);
 
         client.DefaultRequestHeaders.Authorization = null;
-        var accept = await client.PostAsJsonAsync("/api/v1/invitations/accept", new { token = invitation!.InviteToken, password = "mot-de-passe-invite" });
+        var accept = await client.PostAsJsonAsync("/api/v1/invitations/accept", new { token = invitation!.InviteToken, password = "Mot-de-passe1" });
         var accepted = await accept.Content.ReadFromJsonAsync<LoginPayload>();
-        var secondAccept = await client.PostAsJsonAsync("/api/v1/invitations/accept", new { token = invitation.InviteToken, password = "mot-de-passe-invite" });
+        var secondAccept = await client.PostAsJsonAsync("/api/v1/invitations/accept", new { token = invitation.InviteToken, password = "Mot-de-passe1" });
 
         Assert.Equal(HttpStatusCode.OK, accept.StatusCode);
         Assert.Equal(email, accepted?.User.Email);

@@ -3,8 +3,10 @@ using System.Globalization;
 using System.Security.Claims;
 using System.Security.Cryptography;
 using System.Text;
+using System.Threading.RateLimiting;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.AspNetCore.Authorization;
+using Microsoft.AspNetCore.RateLimiting;
 using Microsoft.IdentityModel.Tokens;
 using Vigie.Api.Auth;
 using Vigie.Api.Contracts;
@@ -23,7 +25,9 @@ if (string.IsNullOrWhiteSpace(jwtKey))
 
 builder.Services.AddVigiePersistence(builder.Configuration);
 builder.Services.AddSingleton<IClock, SystemClock>();
-builder.Services.AddSingleton(new JwtTokenService(jwtKey));
+var accessTokenMinutes = builder.Configuration.GetValue("Jwt:AccessTokenMinutes", 60);
+if (accessTokenMinutes is < 15 or > 240) throw new InvalidOperationException("Jwt:AccessTokenMinutes doit être compris entre 15 et 240.");
+builder.Services.AddSingleton(new JwtTokenService(jwtKey, TimeSpan.FromMinutes(accessTokenMinutes)));
 builder.Services.AddScoped<AssignShiftService>();
 builder.Services.AddScoped<RequestSwapService>();
 builder.Services.AddScoped<ApproveSwapService>();
@@ -44,6 +48,20 @@ builder.Services.AddAuthentication(JwtBearerDefaults.AuthenticationScheme).AddJw
     };
 });
 builder.Services.AddAuthorization();
+builder.Services.AddRateLimiter(options =>
+{
+    var permitLimit = builder.Environment.IsProduction() ? 10 : 100;
+    options.RejectionStatusCode = StatusCodes.Status429TooManyRequests;
+    options.AddPolicy("auth", context => RateLimitPartition.GetFixedWindowLimiter(
+        context.Connection.RemoteIpAddress?.ToString() ?? "unknown",
+        _ => new FixedWindowRateLimiterOptions
+        {
+            PermitLimit = permitLimit,
+            Window = TimeSpan.FromMinutes(1),
+            QueueLimit = 0,
+            AutoReplenishment = true
+        }));
+});
 var allowedOrigins = builder.Configuration.GetSection("AllowedOrigins").GetChildren()
     .Select(section => section.Value)
     .Where(value => !string.IsNullOrWhiteSpace(value))
@@ -83,6 +101,7 @@ if (!string.IsNullOrWhiteSpace(builder.Configuration.GetConnectionString("Vigie"
 }
 
 app.UseCors();
+app.UseRateLimiter();
 app.UseAuthentication();
 app.UseAuthorization();
 app.MapOpenApi();
@@ -95,14 +114,14 @@ app.MapPost("/api/v1/auth/login", (LoginRequest request, IVigieStore store, JwtT
     if (employee is null || !PasswordHasher.Verify(request.Password, employee.PasswordHash)) return Problem("INVALID_CREDENTIALS", "Le courriel ou le mot de passe est invalide.", StatusCodes.Status401Unauthorized);
     var (token, expires) = tokens.Create(employee);
     return Results.Ok(new LoginResponse(token, expires, User(employee)));
-}).AllowAnonymous().WithTags("Authentification");
+}).AllowAnonymous().RequireRateLimiting("auth").WithTags("Authentification");
 
 app.MapPost("/api/v1/auth/register", async (RegisterOrganizationRequest request, IVigieStore store, IUnitOfWork unitOfWork, JwtTokenService tokens, CancellationToken ct) =>
 {
     if (string.IsNullOrWhiteSpace(request.OrganizationName) || string.IsNullOrWhiteSpace(request.Name) || string.IsNullOrWhiteSpace(request.Email))
         return Problem("INVALID_REGISTRATION", "Le nom de l'organisation, votre nom et le courriel sont obligatoires.");
-    if (string.IsNullOrWhiteSpace(request.Password) || request.Password.Length < 12)
-        return Problem("WEAK_PASSWORD", "Le mot de passe doit contenir au moins 12 caractères.");
+    if (!PasswordPolicy.IsStrong(request.Password))
+        return Problem("WEAK_PASSWORD", "Le mot de passe doit contenir au moins 12 caractères, une majuscule, une minuscule et un chiffre.");
 
     var email = request.Email.Trim().ToLowerInvariant();
     if (store.Employees.Any(employee => string.Equals(employee.Email, email, StringComparison.OrdinalIgnoreCase)))
@@ -124,7 +143,7 @@ app.MapPost("/api/v1/auth/register", async (RegisterOrganizationRequest request,
         return Results.Created($"/api/v1/organizations/{organization.Id}", new RegistrationResponse(new LoginResponse(token, expires, User(employee)), ToOrganization(organization)));
     }
     catch (DomainException ex) { return Problem("INVALID_REGISTRATION", ex.Message); }
-}).AllowAnonymous().WithTags("Authentification");
+}).AllowAnonymous().RequireRateLimiting("auth").WithTags("Authentification");
 
 app.MapGet("/api/v1/organization", (ClaimsPrincipal user, IVigieStore store) =>
 {
@@ -162,7 +181,7 @@ app.MapPost("/api/v1/invitations", async (ClaimsPrincipal user, InviteMemberRequ
 app.MapPost("/api/v1/invitations/accept", async (AcceptInvitationRequest request, IVigieStore store, IUnitOfWork unitOfWork, JwtTokenService tokens, CancellationToken ct) =>
 {
     if (string.IsNullOrWhiteSpace(request.Token)) return Problem("INVALID_INVITATION", "Le jeton d'invitation est obligatoire.");
-    if (string.IsNullOrWhiteSpace(request.Password) || request.Password.Length < 12) return Problem("WEAK_PASSWORD", "Le mot de passe doit contenir au moins 12 caractères.");
+    if (!PasswordPolicy.IsStrong(request.Password)) return Problem("WEAK_PASSWORD", "Le mot de passe doit contenir au moins 12 caractères, une majuscule, une minuscule et un chiffre.");
     var invitation = store.Invitations.SingleOrDefault(item => item.TokenHash == InvitationToken.Hash(request.Token));
     if (invitation is null || !invitation.IsPending(DateTimeOffset.UtcNow)) return Problem("INVALID_INVITATION", "Cette invitation est expirée ou déjà utilisée.", StatusCodes.Status400BadRequest);
     if (store.Employees.Any(employee => string.Equals(employee.Email, invitation.Email, StringComparison.OrdinalIgnoreCase))) return Problem("ACCOUNT_EXISTS", "Impossible d'activer cette invitation.", StatusCodes.Status409Conflict);
@@ -179,7 +198,7 @@ app.MapPost("/api/v1/invitations/accept", async (AcceptInvitationRequest request
         return Results.Ok(new LoginResponse(token, expires, User(employee)));
     }
     catch (DomainException ex) { return Problem("INVALID_INVITATION", ex.Message); }
-}).AllowAnonymous().WithTags("Invitations");
+}).AllowAnonymous().RequireRateLimiting("auth").WithTags("Invitations");
 
 app.MapGet("/api/v1/dashboard", (ClaimsPrincipal user, IVigieStore store) =>
 {

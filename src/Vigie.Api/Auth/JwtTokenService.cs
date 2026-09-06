@@ -6,11 +6,11 @@ using Vigie.Domain;
 
 namespace Vigie.Api.Auth;
 
-public sealed class JwtTokenService(string key)
+public sealed class JwtTokenService(string key, TimeSpan lifetime)
 {
     public (string Token, DateTimeOffset ExpiresAtUtc) Create(Employee employee)
     {
-        var expires = DateTimeOffset.UtcNow.AddHours(4);
+        var expires = DateTimeOffset.UtcNow.Add(lifetime);
         var credentials = new SigningCredentials(new SymmetricSecurityKey(Encoding.UTF8.GetBytes(key)), SecurityAlgorithms.HmacSha256);
         var claims = new[]
         {

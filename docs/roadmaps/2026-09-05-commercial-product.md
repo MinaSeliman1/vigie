@@ -20,7 +20,8 @@ Transformer la démonstration Vigie en un logiciel que plusieurs centres aquatiq
 
 - ✅ Remplacer le mot de passe codé en dur par des mots de passe hachés PBKDF2 et des comptes explicitement marqués démonstration.
 - ✅ Créer un espace d’organisation avec un coordonnateur propriétaire et vérifier l’isolation des sites et des équipes côté API.
-- Ajouter rotation de clé JWT, expiration courte, révocation et limitation des tentatives de connexion.
+- ✅ Expiration courte des jetons d’accès et limitation des tentatives sur les routes d’authentification.
+- Ajouter rotation de clé JWT et révocation explicite des sessions.
 - ✅ Ajouter inscription d’organisation et invitation d’équipe à usage unique avec expiration.
 - Ajouter récupération de mot de passe et session persistante côté interface.
 - Couvrir les erreurs d’authentification sans révéler si une adresse existe.
