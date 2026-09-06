@@ -110,11 +110,21 @@ app.MapGet("/health", () => Results.Ok(new { status = "ok", service = "vigie-api
 
 app.MapPost("/api/v1/auth/login", (LoginRequest request, IVigieStore store, JwtTokenService tokens) =>
 {
+    if (request is null || string.IsNullOrWhiteSpace(request.Email) || string.IsNullOrWhiteSpace(request.Password))
+        return Problem("INVALID_CREDENTIALS", "Le courriel ou le mot de passe est invalide.", StatusCodes.Status401Unauthorized);
     var employee = store.Employees.SingleOrDefault(e => string.Equals(e.Email, request.Email.Trim(), StringComparison.OrdinalIgnoreCase));
     if (employee is null || !PasswordHasher.Verify(request.Password, employee.PasswordHash)) return Problem("INVALID_CREDENTIALS", "Le courriel ou le mot de passe est invalide.", StatusCodes.Status401Unauthorized);
     var (token, expires) = tokens.Create(employee);
     return Results.Ok(new LoginResponse(token, expires, User(employee)));
 }).AllowAnonymous().RequireRateLimiting("auth").WithTags("Authentification");
+
+app.MapGet("/api/v1/auth/me", (ClaimsPrincipal user, IVigieStore store) =>
+{
+    var employee = store.Employees.SingleOrDefault(item => item.Id == UserId(user) && item.OrganizationId == OrganizationId(user));
+    return employee is null
+        ? Problem("SESSION_INVALID", "La session n'est plus valide.", StatusCodes.Status401Unauthorized)
+        : Results.Ok(User(employee));
+}).RequireAuthorization().WithTags("Authentification");
 
 app.MapPost("/api/v1/auth/register", async (RegisterOrganizationRequest request, IVigieStore store, IUnitOfWork unitOfWork, JwtTokenService tokens, CancellationToken ct) =>
 {
@@ -159,6 +169,8 @@ app.MapGet("/api/v1/invitations", (ClaimsPrincipal user, IVigieStore store) =>
 
 app.MapPost("/api/v1/invitations", async (ClaimsPrincipal user, InviteMemberRequest request, IVigieStore store, IUnitOfWork unitOfWork, IConfiguration configuration, CancellationToken ct) =>
 {
+    if (request is null || string.IsNullOrWhiteSpace(request.Email) || string.IsNullOrWhiteSpace(request.Name))
+        return Problem("INVALID_INVITATION", "Le nom et le courriel du membre sont obligatoires.");
     if (!Enum.TryParse<EmployeeRole>(request.Role, true, out var role)) return Problem("INVALID_ROLE", "Le rôle de l'invitation est invalide.");
     var organizationId = OrganizationId(user);
     var email = request.Email.Trim().ToLowerInvariant();

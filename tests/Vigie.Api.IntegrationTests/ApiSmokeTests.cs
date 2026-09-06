@@ -38,6 +38,22 @@ public sealed class ApiSmokeTests : IClassFixture<WebApplicationFactory<Program>
     }
 
     [Fact]
+    public async Task Authenticated_user_can_restore_their_session()
+    {
+        var login = await client.PostAsJsonAsync("/api/v1/auth/login", new { email = "amelie@vigie.demo", password = "vigie-demo" });
+        var payload = await login.Content.ReadFromJsonAsync<LoginPayload>();
+
+        client.DefaultRequestHeaders.Authorization = new System.Net.Http.Headers.AuthenticationHeaderValue("Bearer", payload!.Token);
+        var response = await client.GetAsync("/api/v1/auth/me");
+        var user = await response.Content.ReadFromJsonAsync<UserPayload>();
+
+        Assert.Equal(HttpStatusCode.OK, response.StatusCode);
+        Assert.Equal("amelie@vigie.demo", user?.Email);
+        Assert.Equal("Lifeguard", user?.Role);
+        Assert.True(user?.IsDemoAccount);
+    }
+
+    [Fact]
     public async Task Lifeguard_cannot_approve_a_swap()
     {
         var login = await client.PostAsJsonAsync("/api/v1/auth/login", new { email = "amelie@vigie.demo", password = "vigie-demo" });

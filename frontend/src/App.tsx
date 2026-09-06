@@ -18,6 +18,21 @@ const demoUsers: DemoUser[] = [
   { id: 'sofia', name: 'Sofia Nguyen', email: 'sofia@vigie.demo', role: 'Lifeguard', initials: 'SN', isDemoAccount: true },
   { id: 'camille', name: 'Camille Gagnon', email: 'coordonnateur@vigie.demo', role: 'Coordinator', initials: 'CG', isDemoAccount: true },
 ]
+
+function toUiUser(user: UserSummary): DemoUser {
+  const demoUser = demoUsers.find((candidate) => candidate.email.toLowerCase() === user.email.toLowerCase())
+  return {
+    id: demoUser?.id ?? user.id,
+    apiId: user.id,
+    name: user.name,
+    email: user.email,
+    role: user.role,
+    initials: initials(user.name),
+    organizationId: user.organizationId,
+    isDemoAccount: user.isDemoAccount,
+  }
+}
+
 const demoSites: SiteResponse[] = [
   { id: '20000000-0000-0000-0000-000000000001', name: 'Piscine du Nord', type: 'Indoor', timeZoneId: 'Eastern Standard Time', openingSeason: { startMonth: 1, startDay: 1, endMonth: 12, endDay: 31 } },
   { id: '20000000-0000-0000-0000-000000000002', name: 'Bassin du parc', type: 'Outdoor', timeZoneId: 'Eastern Standard Time', openingSeason: { startMonth: 5, startDay: 15, endMonth: 9, endDay: 15 } },
@@ -114,6 +129,7 @@ function Icon({ name }: { name: 'calendar' | 'users' | 'swap' | 'shield' | 'plus
 
 function App() {
   const [currentUser, setCurrentUser] = useState<DemoUser>(demoUsers[0])
+  const [authBootstrapped, setAuthBootstrapped] = useState(() => !apiConfigured || !localStorage.getItem('vigie.token'))
   const [authModal, setAuthModal] = useState<'login' | 'register' | null>(null)
   const [authSubmitting, setAuthSubmitting] = useState(false)
   const [authError, setAuthError] = useState('')
@@ -164,6 +180,26 @@ function App() {
 
   useEffect(() => {
     if (!apiConfigured) return
+    const storedToken = localStorage.getItem('vigie.token')
+    if (!storedToken) return
+    let active = true
+    async function restoreSession() {
+      try {
+        const apiUser = await vigieApi.me()
+        if (active) setCurrentUser(toUiUser(apiUser))
+      } catch {
+        localStorage.removeItem('vigie.token')
+        if (active) setCurrentUser(demoUsers[0])
+      } finally {
+        if (active) setAuthBootstrapped(true)
+      }
+    }
+    void restoreSession()
+    return () => { active = false }
+  }, [])
+
+  useEffect(() => {
+    if (!apiConfigured || !authBootstrapped) return
     let active = true
     async function syncApi() {
       try {
@@ -192,7 +228,7 @@ function App() {
     }
     void syncApi()
     return () => { active = false }
-  }, [currentUserEmail, currentUserId, currentUserIsDemo, currentUserName, currentUserOrganizationId, currentUserRole])
+  }, [authBootstrapped, currentUserEmail, currentUserId, currentUserIsDemo, currentUserName, currentUserOrganizationId, currentUserRole])
 
   function flash(message: string) { setToast(message); window.setTimeout(() => setToast(''), 2800) }
   function selectUser(id: string) { const user = demoUsers.find((candidate) => candidate.id === id); if (user) { localStorage.removeItem('vigie.token'); if (apiConfigured) setApiState('loading'); setCurrentUser(user); setView('calendar'); flash(`Profil de démonstration : ${user.name}`) } }
@@ -207,7 +243,8 @@ function App() {
         ? (await vigieApi.register(authForm.organizationName, authForm.name, authForm.email, authForm.password)).login
         : await vigieApi.login(authForm.email, authForm.password)
       localStorage.setItem('vigie.token', result.token)
-      setCurrentUser({ id: result.user.id, apiId: result.user.id, name: result.user.name, email: result.user.email, role: result.user.role, initials: initials(result.user.name), organizationId: result.user.organizationId, isDemoAccount: result.user.isDemoAccount })
+      setCurrentUser(toUiUser(result.user))
+      setAuthBootstrapped(true)
       setAuthModal(null); setView('calendar'); setApiState('loading'); flash(authModal === 'register' ? 'Votre espace Vigie est prêt.' : 'Connexion réussie.')
     } catch (error) { setAuthError(error instanceof Error ? error.message : 'La connexion ne peut pas être établie.') }
     finally { setAuthSubmitting(false) }
@@ -398,7 +435,7 @@ function App() {
     <main className="main-content">
       <header className="topbar"><button className="mobile-menu" onClick={() => setMobileNavOpen((open) => !open)} aria-label="Ouvrir le menu"><Icon name="menu" /></button><div className="breadcrumbs"><span>Vigie</span><span className="crumb-separator">/</span><strong>{view === 'calendar' ? 'Mon calendrier' : view === 'swaps' ? 'Échanges' : view === 'certifications' ? 'Certifications' : view === 'team' ? 'Équipe' : 'Disponibilités'}</strong></div><div className="topbar-actions"><button className="icon-button" aria-label="Notifications"><Icon name="bell" /><span className="notification-dot" /></button>{currentUser.isDemoAccount ? <div className="profile-switcher"><span className="avatar">{currentUser.initials}</span><select aria-label="Profil de démonstration" value={currentUser.id} onChange={(event) => selectUser(event.target.value)}>{demoUsers.map((user) => <option key={user.id} value={user.id}>{user.name} · {user.role === 'Coordinator' ? 'coord.' : 'sauv.'}</option>)}</select><button className="account-link" onClick={() => openAuth('login')}>Se connecter</button></div> : <div className="profile-switcher"><span className="avatar">{currentUser.initials}</span><span className="account-name">{currentUser.name}</span><button className="account-link" onClick={logout}>Déconnexion</button></div>}</div></header>
       <div className="content-wrap">
-        <div className="page-heading"><div><p className="eyebrow">SEMAINE DU 7 AU 13 SEPTEMBRE 2026</p><h1>{view === 'calendar' ? (isCoordinator ? 'Vue équipe' : 'Bonjour, Amélie') : view === 'swaps' ? 'Demandes d’échange' : view === 'certifications' ? 'Certifications' : view === 'team' ? 'Équipe' : 'Disponibilités'}</h1><p className="page-subtitle">{view === 'calendar' ? (isCoordinator ? 'Gardez une vue claire sur les quarts et les remplacements.' : 'Voici vos quarts et les disponibilités de votre équipe.') : view === 'swaps' ? 'Chaque remplacement reste sous contrôle jusqu’à votre approbation.' : view === 'certifications' ? 'La bonne certification, au bon moment, pour chaque quart.' : view === 'team' ? 'Les personnes autorisées et leur état de préparation pour les quarts.' : 'Indiquez les jours où vous pouvez prendre un quart.'}</p></div>{view === 'calendar' && isCoordinator && <button className="primary-button" onClick={openCreateShift}><Icon name="plus" />Créer un quart</button>}{view === 'team' && isCoordinator && <button className="primary-button" onClick={openInvite}><Icon name="plus" />Inviter un membre</button>}</div>
+        <div className="page-heading"><div><p className="eyebrow">SEMAINE DU 7 AU 13 SEPTEMBRE 2026</p><h1>{view === 'calendar' ? (isCoordinator ? 'Vue équipe' : `Bonjour, ${currentUser.name.split(' ')[0]}`) : view === 'swaps' ? 'Demandes d’échange' : view === 'certifications' ? 'Certifications' : view === 'team' ? 'Équipe' : 'Disponibilités'}</h1><p className="page-subtitle">{view === 'calendar' ? (isCoordinator ? 'Gardez une vue claire sur les quarts et les remplacements.' : 'Voici vos quarts et les disponibilités de votre équipe.') : view === 'swaps' ? 'Chaque remplacement reste sous contrôle jusqu’à votre approbation.' : view === 'certifications' ? 'La bonne certification, au bon moment, pour chaque quart.' : view === 'team' ? 'Les personnes autorisées et leur état de préparation pour les quarts.' : 'Indiquez les jours où vous pouvez prendre un quart.'}</p></div>{view === 'calendar' && isCoordinator && <button className="primary-button" onClick={openCreateShift}><Icon name="plus" />Créer un quart</button>}{view === 'team' && isCoordinator && <button className="primary-button" onClick={openInvite}><Icon name="plus" />Inviter un membre</button>}</div>
         {view === 'calendar' && <><section className="alert-banner"><div className="alert-icon"><Icon name="shield" /></div><div><strong>Certification à surveiller</strong><span>La certification Premiers soins de {currentUser.id === 'sofia' ? 'Sofia Nguyen' : 'votre dossier'} expire dans {currentUser.id === 'sofia' ? 20 : 75} jours.</span></div><button onClick={() => setView('certifications')}>Voir les détails <Icon name="arrow" /></button></section><div className="metric-row"><div className="metric"><span className="metric-label">QUARTS CETTE SEMAINE</span><strong>{assigned.length + 1}</strong><span className="metric-meta positive">↑ 1 vs. semaine dernière</span></div><div className="metric"><span className="metric-label">HEURES PLANIFIÉES</span><strong>24<span className="metric-unit">h</span></strong><span className="metric-meta">Quota : {isCoordinator ? '40' : '24'} h</span></div><div className="metric"><span className="metric-label">ÉCHANGES EN ATTENTE</span><strong>{pendingSwaps.length}</strong><span className="metric-meta">Dernière mise à jour il y a 8 min</span></div></div><section className="calendar-section"><div className="section-header"><div><h2>Cette semaine</h2><p>Votre planning du lundi 7 au dimanche 13 septembre</p></div><div className="week-controls"><button aria-label="Semaine précédente">←</button><button className="today-button">Aujourd’hui</button><button aria-label="Semaine suivante">→</button></div></div><div className="calendar-grid"><div className="time-column"><span /><span>08:00</span><span>12:00</span><span>16:00</span><span>20:00</span></div>{['LUN','MAR','MER','JEU','VEN','SAM','DIM'].map((day) => <div className={`day-column ${day === 'MAR' ? 'today' : ''}`} key={day}><div className="day-header"><span>{day}</span><strong>{day === 'MAR' ? '8' : day === 'MER' ? '9' : day === 'VEN' ? '11' : day === 'SAM' ? '12' : '•'}</strong></div><div className="day-body">{shifts.filter((shift) => shift.day === day).map((shift) => <button className={`shift-block ${shift.status}`} key={shift.id} onClick={() => setSelectedShift(shift)}><span className="shift-time">{shift.start} – {shift.end}</span><strong>{shift.site}</strong><small>{shift.siteKind}</small><span className="shift-people">{shift.colleagues.map((colleague) => <i key={colleague}>{colleague}</i>)}</span></button>)}</div></div>)}</div></section><div className="lower-grid"><section className="list-section"><div className="section-header compact"><div><h2>Échanges en attente</h2><p>Les demandes à traiter</p></div><button className="text-button" onClick={() => setView('swaps')}>Tout voir <Icon name="arrow" /></button></div>{pendingSwaps.length === 0 ? <div className="empty-state">Aucune demande en attente.</div> : pendingSwaps.map((swap) => <div className="swap-row" key={swap.id}><div className="mini-avatar">{swap.requester.split(' ').map((part) => part[0]).join('')}</div><div className="swap-copy"><strong>{swap.requester} <span>→</span> {swap.receiver}</strong><span>{swap.shiftLabel}</span></div><span className="pending-label">En attente</span></div>)}</section><section className="list-section"><div className="section-header compact"><div><h2>À venir</h2><p>Prochains quarts assignés</p></div></div>{shifts.slice(0, 2).map((shift) => <div className="upcoming-row" key={shift.id}><div className="date-block"><strong>{shift.date}</strong><span>{shift.day}</span></div><div><strong>{shift.site}</strong><span>{shift.start} – {shift.end}</span></div><span className="assigned-mark"><Icon name="check" /></span></div>)}</section></div></>}
         {view === 'swaps' && <section className="full-section"><div className="filter-bar"><button className={`filter ${swapFilter === 'all' ? 'active' : ''}`} onClick={() => setSwapFilter('all')}>Toutes <span>{allVisibleSwaps.length}</span></button><button className={`filter ${swapFilter === 'pending' ? 'active' : ''}`} onClick={() => setSwapFilter('pending')}>En attente <span>{allVisibleSwaps.filter((swap) => swap.status === 'En attente').length}</span></button><button className={`filter ${swapFilter === 'processed' ? 'active' : ''}`} onClick={() => setSwapFilter('processed')}>Traitées <span>{allVisibleSwaps.filter((swap) => swap.status !== 'En attente').length}</span></button></div><div className="swaps-table"><div className="table-head"><span>DEMANDE</span><span>QUART</span><span>STATUT</span><span>ACTION</span></div>{visibleSwaps.length === 0 ? <div className="empty-state">Aucune demande dans ce filtre.</div> : visibleSwaps.map((swap) => <div className="table-row" key={swap.id}><div className="person-cell"><span className="mini-avatar">{swap.requester.split(' ').map((part) => part[0]).join('')}</span><div><strong>{swap.requester} <span>→</span> {swap.receiver}</strong><small>{formatSwapDate(swap.requestedAt)}</small></div></div><span>{swap.shiftLabel}</span><span className={`status-tag ${swap.status.toLowerCase().replace('é', 'e')}`}>{swap.status}</span><div className="row-actions">{isCoordinator && swap.status === 'En attente' && <><button className="approve-button" disabled={decidingSwapId === swap.id} onClick={() => decideSwap(swap.id, 'Approuvé')}>{decidingSwapId === swap.id ? '…' : 'Approuver'}</button><button className="reject-button" disabled={decidingSwapId === swap.id} onClick={() => decideSwap(swap.id, 'Refusé')}>Refuser</button></>}<button className="detail-button" onClick={() => setSelectedSwap(swap)}>Détails <Icon name="arrow" /></button></div></div>)}</div></section>}
         {view === 'certifications' && <section className="full-section certification-page">
