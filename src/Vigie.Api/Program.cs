@@ -214,6 +214,7 @@ app.MapGet("/api/v1/sectors", (ClaimsPrincipal user, IVigieStore store) =>
     if (scope is null) return Problem("SESSION_INVALID", "La session n'est plus valide.", StatusCodes.Status401Unauthorized);
     var visible = store.Sectors
         .Where(sector => sector.OrganizationId == scope.OrganizationId)
+        .Where(sector => sector.IsActive)
         .Where(sector => scope.IsDirector || scope.SectorId == sector.Id || scope.SiteId.HasValue && store.Sites.Any(site => site.Id == scope.SiteId && site.SectorId == sector.Id))
         .OrderBy(sector => sector.Name)
         .Select(ToSector)

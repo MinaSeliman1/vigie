@@ -194,13 +194,19 @@ public sealed class InMemoryVigieStore :
 
     private void SeedLavalCatalog(Guid organizationId)
     {
+        var catalogSectors = new Dictionary<string, Sector>(StringComparer.OrdinalIgnoreCase);
         foreach (var pool in LavalPoolCatalog.All)
         {
             var site = Site.Create(pool.SiteId, pool.Name, "Eastern Standard Time", pool.OpeningSeason, pool.Type, organizationId, pool.Address, pool.Neighborhood, isMunicipal: true);
-            var sector = Sector.Create(pool.SectorId, organizationId, $"Secteur {pool.Code}", pool.Code);
+            if (!catalogSectors.TryGetValue(pool.SectorCode, out var sector))
+            {
+                sector = sectors.Values.SingleOrDefault(item => item.Code == pool.SectorCode) ??
+                    Sector.Create(pool.SectorId, organizationId, pool.SectorName, pool.SectorCode);
+                catalogSectors[pool.SectorCode] = sector;
+                sectors[sector.Id] = sector;
+            }
             site.SetSector(sector.Id);
             sites[site.Id] = site;
-            sectors[sector.Id] = sector;
         }
     }
 }

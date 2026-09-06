@@ -10,7 +10,9 @@ public sealed record LavalPoolDefinition(
     SiteType Type,
     string Address,
     string Neighborhood,
-    OpeningSeason OpeningSeason);
+    OpeningSeason OpeningSeason,
+    string SectorCode,
+    string SectorName);
 
 /// <summary>
 /// Catalogue de référence des installations aquatiques municipales de Laval.
@@ -82,9 +84,20 @@ public static class LavalPoolCatalog
     {
         var normalized = code.ToLowerInvariant().Replace("-", string.Empty, StringComparison.Ordinal);
         var siteId = DeterministicGuid($"site:{normalized}");
-        var sectorId = DeterministicGuid($"sector:{normalized}");
-        return new LavalPoolDefinition(siteId, sectorId, code, name, type, address, neighborhood, openingSeason);
+        var (sectorCode, sectorName) = ResolveSector(neighborhood);
+        var sectorId = DeterministicGuid($"sector:{sectorCode.ToLowerInvariant()}");
+        return new LavalPoolDefinition(siteId, sectorId, code, name, type, address, neighborhood, openingSeason, sectorCode, sectorName);
     }
+
+    private static (string Code, string Name) ResolveSector(string neighborhood)
+        => neighborhood switch
+        {
+            "Vimont" or "Fabreville" or "Sainte-Rose" or "Auteuil" => ("NORD", "Secteur Nord"),
+            "Chomedey" or "Laval-des-Rapides" or "Pont-Viau" => ("CENTRE", "Secteur Centre"),
+            "Saint-François" or "Duvernay" or "Saint-Vincent-de-Paul" => ("EST", "Secteur Est"),
+            "Sainte-Dorothée" or "Laval-sur-le-Lac" or "Laval-Ouest" => ("OUEST", "Secteur Ouest"),
+            _ => ("CENTRE", "Secteur Centre")
+        };
 
     private static Guid DeterministicGuid(string value)
     {

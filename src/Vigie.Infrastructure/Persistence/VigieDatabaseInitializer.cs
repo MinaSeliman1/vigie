@@ -62,10 +62,11 @@ public static class VigieDatabaseInitializer
             var isDemoOrganization = employees.Any(employee => employee.Email.EndsWith("@vigie.demo", StringComparison.OrdinalIgnoreCase));
             var sites = await context.Sites.Where(site => site.OrganizationId == organization.Id).AsTracking().ToArrayAsync(cancellationToken);
             var sectors = await context.Sectors.Where(sector => sector.OrganizationId == organization.Id).AsTracking().ToListAsync(cancellationToken);
+            var pools = LavalPoolCatalog.ForOrganization(organization.Id);
 
             // Le catalogue Laval est idempotent : une base existante reçoit les sites
             // manquants sans modifier les quarts ni les affectations déjà en place.
-            foreach (var pool in LavalPoolCatalog.ForOrganization(organization.Id))
+            foreach (var pool in pools)
             {
                 // Les versions précédentes utilisaient des clés globales. Rechercher
                 // aussi par nom permet de rattacher une base existante sans doublon.
@@ -83,18 +84,44 @@ public static class VigieDatabaseInitializer
                 }
 
                 var catalogSector = sectors.SingleOrDefault(item => item.Id == pool.SectorId) ??
-                    sectors.SingleOrDefault(item => item.Code == pool.Code);
+                    sectors.SingleOrDefault(item => item.Code == pool.SectorCode);
                 if (catalogSector is null)
                 {
-                    catalogSector = Sector.Create(pool.SectorId, organization.Id, $"Secteur {pool.Code}", pool.Code);
+                    catalogSector = Sector.Create(pool.SectorId, organization.Id, pool.SectorName, pool.SectorCode);
                     context.Sectors.Add(catalogSector);
                     sectors.Add(catalogSector);
                 }
+                catalogSector.Activate();
                 site.SetSector(catalogSector.Id);
             }
 
             if (isDemoOrganization)
                 EnsureDemoStaff(context, organization.Id, sectors, sites);
+
+            // Les versions précédentes créaient un secteur par piscine. Une fois les
+            // piscines rattachées aux secteurs géographiques, archiver ces lignes
+            // générées si elles ne servent plus à aucun site ni membership.
+            var activeCatalogCodes = pools
+                .Select(pool => pool.SectorCode)
+                .ToHashSet(StringComparer.OrdinalIgnoreCase);
+            var generatedCatalogCodes = LavalPoolCatalog.All
+                .Concat(pools)
+                .SelectMany(pool => new[] { pool.Code, $"SITE-{pool.SiteId:N}" })
+                .ToHashSet(StringComparer.OrdinalIgnoreCase);
+            var referencedSectorIds = sites
+                .Where(site => site.SectorId.HasValue)
+                .Select(site => site.SectorId!.Value)
+                .ToHashSet();
+            var membershipSectorIds = await context.OrganizationMemberships
+                .Where(membership => membership.OrganizationId == organization.Id && membership.SectorId.HasValue)
+                .Select(membership => membership.SectorId!.Value)
+                .ToHashSetAsync(cancellationToken);
+            foreach (var obsolete in sectors.Where(sector => sector.IsActive &&
+                !activeCatalogCodes.Contains(sector.Code) &&
+                generatedCatalogCodes.Contains(sector.Code) &&
+                !referencedSectorIds.Contains(sector.Id) &&
+                !membershipSectorIds.Contains(sector.Id)))
+                obsolete.Deactivate();
 
             foreach (var site in sites)
             {

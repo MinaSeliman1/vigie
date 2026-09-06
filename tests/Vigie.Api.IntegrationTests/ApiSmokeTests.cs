@@ -478,7 +478,12 @@ public sealed class ApiSmokeTests : IClassFixture<WebApplicationFactory<Program>
         Assert.Equal("AquaticDirector", payload.User.Role);
         Assert.True(sites!.Count(site => site.IsMunicipal) >= 27);
         Assert.Contains(sites!, site => site.Name == "Piscine Val-des-Arbres" && site.Neighborhood == "Vimont");
-        Assert.True(sectors!.Length >= 27);
+        Assert.Equal(5, sectors!.Length);
+        Assert.Contains(sectors, sector => sector.Code == "NORD");
+        Assert.Contains(sectors, sector => sector.Code == "CENTRE");
+        Assert.Contains(sectors, sector => sector.Code == "EST");
+        Assert.Contains(sectors, sector => sector.Code == "OUEST");
+        Assert.Contains(sectors, sector => sector.Code == "PARC");
     }
 
     [Fact]
@@ -547,7 +552,9 @@ public sealed class ApiSmokeTests : IClassFixture<WebApplicationFactory<Program>
         Assert.Equal(27, first.Count);
         Assert.Equal(27, second.Count);
         Assert.Equal(first.Count, first.Select(pool => pool.SiteId).Distinct().Count());
-        Assert.Equal(first.Count, first.Select(pool => pool.SectorId).Distinct().Count());
+        Assert.Equal(4, first.Select(pool => pool.SectorId).Distinct().Count());
+        Assert.Equal(4, first.Select(pool => pool.SectorCode).Distinct(StringComparer.OrdinalIgnoreCase).Count());
+        Assert.Contains(first, pool => pool.SectorCode == "NORD" && pool.SectorName == "Secteur Nord");
         Assert.Empty(first.Select(pool => pool.SiteId).Intersect(second.Select(pool => pool.SiteId)));
         Assert.Empty(first.Select(pool => pool.SectorId).Intersect(second.Select(pool => pool.SectorId)));
     }
