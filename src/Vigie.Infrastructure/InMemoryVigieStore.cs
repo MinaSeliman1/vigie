@@ -204,6 +204,10 @@ public sealed class InMemoryVigieStore :
         AddAuditEntry(AuditEntry.Create(Guid.Parse("70000000-0000-0000-0000-000000000004"), organization.Id, amelie.Id, "swap.created", "SwapRequest", demoSwap.Id, $"receveur={noah.Name}", auditNow.AddHours(-8)));
         AddNotification(Notification.Create(Guid.Parse("90000000-0000-0000-0000-000000000001"), organization.Id, amelie.Id, "certification", "Certification à surveiller", "Votre certification Premiers soins expire bientôt.", auditNow.AddHours(-2), "certifications"));
         AddNotification(Notification.Create(Guid.Parse("90000000-0000-0000-0000-000000000002"), organization.Id, director.Id, "swap", "Échange à traiter", "Une demande de remplacement attend votre approbation.", auditNow.AddHours(-1), "swaps"));
+        var availabilityBaseDate = DateTime.UtcNow.Date;
+        UpsertAvailability(amelie.Id, DateOnly.FromDateTime(availabilityBaseDate.AddDays(1)), true, "Disponible après 14 h");
+        UpsertAvailability(noah.Id, DateOnly.FromDateTime(availabilityBaseDate.AddDays(1)), false, "Rendez-vous médical");
+        UpsertAvailability(sofia.Id, DateOnly.FromDateTime(availabilityBaseDate.AddDays(2)), true, null);
     }
 
     private void SeedLavalCatalog(Guid organizationId)

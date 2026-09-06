@@ -32,6 +32,7 @@ public sealed record CreateSwapRequest(Guid AssignmentId, Guid ReceiverId);
 public sealed record DashboardResponse(int UpcomingShifts, int PendingSwapRequests, int CertificationAlerts, IReadOnlyCollection<CertificationResponse> CertificationWarnings);
 public sealed record AvailabilityRequest(DateOnly Date, bool IsAvailable, string? Note);
 public sealed record AvailabilityResponse(Guid Id, Guid EmployeeId, DateOnly Date, bool IsAvailable, string? Note);
+public sealed record TeamAvailabilityResponse(Guid Id, Guid EmployeeId, string EmployeeName, string Email, DateOnly Date, bool IsAvailable, string? Note);
 public sealed record CreateSectorRequest(string Name, string Code);
 public sealed record UpdateSectorRequest(string Name, string Code, bool IsActive = true);
 public sealed record SectorResponse(Guid Id, Guid OrganizationId, string Name, string Code, bool IsActive, DateTimeOffset CreatedAtUtc, DateTimeOffset UpdatedAtUtc);

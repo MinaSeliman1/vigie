@@ -836,6 +836,23 @@ app.MapPost("/api/v1/swap-requests/{requestId:guid}/reject", async (ClaimsPrinci
 }).RequireAuthorization().WithTags("Échanges");
 
 app.MapGet("/api/v1/availability", (ClaimsPrincipal user, IVigieStore store) => Results.Ok(store.Availabilities.Where(a => a.EmployeeId == UserId(user)).OrderBy(a => a.Date).Select(a => new AvailabilityResponse(a.Id, a.EmployeeId, a.Date, a.IsAvailable, a.Note)).ToArray())).RequireAuthorization().WithTags("Disponibilités");
+app.MapGet("/api/v1/availability/team", (ClaimsPrincipal user, DateOnly? from, DateOnly? to, IVigieStore store) =>
+{
+    var scope = OrganizationScopeResolver.Resolve(user, store);
+    if (scope is null) return Problem("SESSION_INVALID", "La session n'est plus valide.", StatusCodes.Status401Unauthorized);
+    if (scope.Role == EmployeeRole.Lifeguard) return Results.StatusCode(StatusCodes.Status403Forbidden);
+    var start = from ?? DateOnly.FromDateTime(DateTime.UtcNow);
+    var end = to ?? start.AddDays(14);
+    var result = store.Availabilities
+        .Where(availability => availability.Date >= start && availability.Date <= end)
+        .Select(availability => new { Availability = availability, Employee = store.Employees.SingleOrDefault(employee => employee.Id == availability.EmployeeId) })
+        .Where(item => item.Employee is not null && item.Employee.OrganizationId == scope.OrganizationId && IsEmployeeVisible(item.Employee!, scope, store))
+        .OrderBy(item => item.Availability.Date)
+        .ThenBy(item => item.Employee!.Name)
+        .Select(item => new TeamAvailabilityResponse(item.Availability.Id, item.Employee!.Id, item.Employee.Name, item.Employee.Email, item.Availability.Date, item.Availability.IsAvailable, item.Availability.Note))
+        .ToArray();
+    return Results.Ok(result);
+}).RequireAuthorization().WithTags("Disponibilités");
 app.MapPut("/api/v1/availability", async (ClaimsPrincipal user, AvailabilityRequest request, IVigieStore store, IUnitOfWork unitOfWork, CancellationToken ct) =>
 {
     var availability = store.UpsertAvailability(UserId(user), request.Date, request.IsAvailable, request.Note);

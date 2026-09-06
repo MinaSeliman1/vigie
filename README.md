@@ -31,7 +31,7 @@ Les limites calendaires (jour d’expiration, début de semaine, quarts de nuit 
 - Connexion avec les rôles `Sauveteur`, `Chef de piscine`, `Chargé de secteur` et `Régie aquatique`.
 - Portée d’accès contrôlée par organisation, secteur et piscine, avec memberships actifs, désactivation logique et version optimiste.
 - Catalogue de référence Laval : 7 piscines intérieures et 20 piscines extérieures, avec adresse, quartier, type et saison d’ouverture.
-- Gestion des sites, secteurs, quarts (création, modification, publication et annulation), assignations, disponibilités et suivi de couverture.
+- Gestion des sites, secteurs, quarts (création, modification, publication et annulation), assignations, disponibilités personnelles et disponibilité de l’équipe, avec suivi de couverture.
 - Calendrier hebdomadaire personnel et d’équipe.
 - Demandes de remplacement, approbation et refus.
 - Suivi des certifications et alertes à 90 et 30 jours de l’échéance.
@@ -124,6 +124,7 @@ L’interface est en français et permet de basculer entre six profils de démon
 - `render.yaml` décrit le déploiement gratuit de l’API, son health check et les secrets attendus sans jamais les stocker dans Git.
 - Le frontend React affiche un calendrier responsive et exécute les parcours création → assignation de quart et demande d’échange → approbation avec les profils de démonstration.
 - La vue `Disponibilités` permet à un sauveteur de déclarer ses jours ouverts ou indisponibles et persiste ce choix via l’API.
+- Les responsables disposent de `GET /api/v1/availability/team` et d’une vue d’équipe qui regroupe les déclarations de leur périmètre, avec contrôle d’accès côté serveur.
 - EF Core et PostgreSQL sont branchés derrière `IVigieStore`; le mode mémoire reste le défaut local pour garder le démarrage reproductible.
 - Les routes publiques `/api/v1/auth/register` et `/api/v1/auth/login` créent ou ouvrent un espace d’organisation ; les invitations `/api/v1/invitations` ne stockent que le hachage d’un jeton et les mots de passe sont stockés sous forme de hachages PBKDF2.
 - Les quarts suivent un workflow brouillon → publié : un responsable prépare et vérifie un quart, puis sa publication le rend visible aux sauveteurs. Les quarts existants sont migrés comme publiés pour préserver la continuité de service.

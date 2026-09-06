@@ -1,4 +1,4 @@
-import type { ApiProblem, AssignmentResponse, AuditEntryResponse, AvailabilityResponse, CertificationResponse, CoverageResponse, CreateShiftInput, InvitationResponse, LoginResponse, MembershipResponse, NotificationResponse, RegistrationResponse, SectorResponse, ShiftResponse, SiteResponse, SwapRequestResponse, UpdateShiftInput, UserSummary } from './types'
+import type { ApiProblem, AssignmentResponse, AuditEntryResponse, AvailabilityResponse, CertificationResponse, CoverageResponse, CreateShiftInput, InvitationResponse, LoginResponse, MembershipResponse, NotificationResponse, RegistrationResponse, SectorResponse, ShiftResponse, SiteResponse, SwapRequestResponse, TeamAvailabilityResponse, UpdateShiftInput, UserSummary } from './types'
 
 export const apiConfigured = Boolean(import.meta.env.VITE_API_URL)
 const baseUrl = (import.meta.env.VITE_API_URL as string | undefined)?.replace(/\/$/, '') ?? 'http://localhost:5187'
@@ -61,6 +61,12 @@ export const vigieApi = {
   removeAssignment: (assignmentId: string) => request<void>(`/api/v1/assignments/${assignmentId}`, { method: 'DELETE' }),
   employees: () => request<UserSummary[]>('/api/v1/employees'),
   availability: () => request<AvailabilityResponse[]>('/api/v1/availability'),
+  teamAvailability: (from?: string, to?: string) => {
+    const query = new URLSearchParams()
+    if (from) query.set('from', from)
+    if (to) query.set('to', to)
+    return request<TeamAvailabilityResponse[]>(`/api/v1/availability/team${query.size ? `?${query.toString()}` : ''}`)
+  },
   setAvailability: (date: string, isAvailable: boolean, note?: string) => request<AvailabilityResponse>('/api/v1/availability', { method: 'PUT', body: JSON.stringify({ date, isAvailable, note }) }),
   certifications: () => request<CertificationResponse[]>('/api/v1/certifications'),
   sectors: () => request<SectorResponse[]>('/api/v1/sectors'),

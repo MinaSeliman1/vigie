@@ -26,6 +26,7 @@ public static class VigieDatabaseInitializer
             await EnsureLavalStructureAsync(context, cancellationToken);
             await EnsureDemoAuditEntriesAsync(context, cancellationToken);
             await EnsureDemoNotificationsAsync(context, cancellationToken);
+            await EnsureDemoAvailabilityAsync(context, cancellationToken);
             if (legacyDemoAccounts.Length > 0) await context.SaveChangesAsync(cancellationToken);
             return;
         }
@@ -41,6 +42,7 @@ public static class VigieDatabaseInitializer
         context.Shifts.AddRange(source.Shifts);
         context.Assignments.AddRange(source.Assignments);
         context.SwapRequests.AddRange(source.SwapRequests);
+        context.Availabilities.AddRange(source.Availabilities);
         context.AuditEntries.AddRange(source.AuditEntries);
         context.Notifications.AddRange(source.Notifications);
         context.SiteCertificationRequirements.AddRange(source.SiteCertificationLinks.Select(link => new SiteCertificationRequirement
@@ -268,6 +270,33 @@ public static class VigieDatabaseInitializer
         if (!await context.Notifications.AnyAsync(item => item.Id == Guid.Parse("90000000-0000-0000-0000-000000000002"), cancellationToken))
         {
             context.Notifications.Add(Notification.Create(Guid.Parse("90000000-0000-0000-0000-000000000002"), organization.Id, director.Id, "swap", "Échange à traiter", "Une demande de remplacement attend votre approbation.", now.AddHours(-1), "swaps"));
+            added = true;
+        }
+        if (added) await context.SaveChangesAsync(cancellationToken);
+    }
+
+    private static async Task EnsureDemoAvailabilityAsync(VigieDbContext context, CancellationToken cancellationToken)
+    {
+        var organization = await context.Organizations.SingleOrDefaultAsync(item => item.Slug == "vigie-demo", cancellationToken);
+        if (organization is null) return;
+
+        var employees = await context.Employees
+            .Where(employee => employee.OrganizationId == organization.Id)
+            .ToDictionaryAsync(employee => employee.Email, StringComparer.OrdinalIgnoreCase, cancellationToken);
+        var baseDate = DateTime.UtcNow.Date;
+        var rows = new[]
+        {
+            (Email: "amelie@vigie.demo", Date: DateOnly.FromDateTime(baseDate.AddDays(1)), IsAvailable: true, Note: (string?)"Disponible après 14 h"),
+            (Email: "noah@vigie.demo", Date: DateOnly.FromDateTime(baseDate.AddDays(1)), IsAvailable: false, Note: (string?)"Rendez-vous médical"),
+            (Email: "sofia@vigie.demo", Date: DateOnly.FromDateTime(baseDate.AddDays(2)), IsAvailable: true, Note: (string?)null),
+        };
+
+        var added = false;
+        foreach (var row in rows)
+        {
+            if (!employees.TryGetValue(row.Email, out var employee)) continue;
+            if (await context.Availabilities.AnyAsync(item => item.EmployeeId == employee.Id && item.Date == row.Date, cancellationToken)) continue;
+            context.Availabilities.Add(Availability.Create(employee.Id, row.Date, row.IsAvailable, row.Note));
             added = true;
         }
         if (added) await context.SaveChangesAsync(cancellationToken);

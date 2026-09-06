@@ -128,6 +128,27 @@ public sealed class ApiSmokeTests : IClassFixture<WebApplicationFactory<Program>
     }
 
     [Fact]
+    public async Task Management_can_read_team_availability_and_lifeguards_cannot()
+    {
+        var login = await client.PostAsJsonAsync("/api/v1/auth/login", new { email = "regie@vigie.demo", password = "vigie-demo" });
+        var director = await login.Content.ReadFromJsonAsync<LoginPayload>();
+        client.DefaultRequestHeaders.Authorization = new System.Net.Http.Headers.AuthenticationHeaderValue("Bearer", director!.Token);
+
+        var team = await client.GetFromJsonAsync<TeamAvailabilityPayload[]>("/api/v1/availability/team");
+
+        var lifeguardLogin = await client.PostAsJsonAsync("/api/v1/auth/login", new { email = "amelie@vigie.demo", password = "vigie-demo" });
+        var lifeguard = await lifeguardLogin.Content.ReadFromJsonAsync<LoginPayload>();
+        client.DefaultRequestHeaders.Authorization = new System.Net.Http.Headers.AuthenticationHeaderValue("Bearer", lifeguard!.Token);
+        var forbidden = await client.GetAsync("/api/v1/availability/team");
+
+        Assert.Equal(HttpStatusCode.OK, login.StatusCode);
+        Assert.NotEmpty(team!);
+        Assert.Contains(team!, row => !row.IsAvailable);
+        Assert.Contains(team!, row => row.EmployeeName == "Amélie Roy");
+        Assert.Equal(HttpStatusCode.Forbidden, forbidden.StatusCode);
+    }
+
+    [Fact]
     public async Task Authenticated_user_can_restore_their_session()
     {
         var login = await client.PostAsJsonAsync("/api/v1/auth/login", new { email = "amelie@vigie.demo", password = "vigie-demo" });
@@ -755,6 +776,7 @@ public sealed class ApiSmokeTests : IClassFixture<WebApplicationFactory<Program>
     private sealed record OpeningSeasonPayload(int StartMonth, int StartDay, int EndMonth, int EndDay);
     private sealed record ShiftPayload(Guid Id, string? Status = null, string? PublicationStatus = null);
     private sealed record CoveragePayload(Guid ShiftId, Guid SiteId, string SiteName, DateTimeOffset StartUtc, DateTimeOffset EndUtc, int RequiredLifeguards, int AssignedLifeguards, bool IsCovered, string Status, string PublicationStatus);
+    private sealed record TeamAvailabilityPayload(Guid Id, Guid EmployeeId, string EmployeeName, string Email, DateOnly Date, bool IsAvailable, string? Note);
     private sealed record AssignmentPayload(Guid Id, Guid ShiftId, Guid EmployeeId, string EmployeeName);
     private sealed record SwapPayload(Guid Id, string? Status = null);
     private sealed record NotificationPayload(Guid Id, string Type, string Title, string Body, string? ActionUrl, DateTimeOffset CreatedAtUtc, bool IsRead, DateTimeOffset? ReadAtUtc);
