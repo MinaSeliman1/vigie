@@ -12,7 +12,7 @@ type Role = ApiRole
 type View = 'calendar' | 'swaps' | 'certifications' | 'team' | 'sites' | 'availability' | 'audit'
 type AuthMode = 'login' | 'register' | 'accept-invitation'
 type DemoUser = { id: string; apiId?: string; name: string; email: string; role: Role; initials: string; organizationId?: string; siteId?: string | null; sectorId?: string | null; isDemoAccount: boolean }
-type Shift = { id: string; assignmentId?: string; day: string; date: number; start: string; end: string; site: string; siteKind: string; status: 'assigné' | 'disponible'; lifecycleStatus?: string; colleagues: string[]; requiredLifeguards: number; assignments?: Array<{ id: string; employeeId: string; employeeName: string }> }
+type Shift = { id: string; assignmentId?: string; siteId?: string; startUtc?: string; endUtc?: string; day: string; date: number; start: string; end: string; site: string; siteKind: string; status: 'assigné' | 'disponible'; lifecycleStatus?: string; colleagues: string[]; requiredLifeguards: number; assignments?: Array<{ id: string; employeeId: string; employeeName: string }> }
 type Swap = { id: string; shiftId: string; requester: string; receiver: string; shiftLabel: string; status: 'En attente' | 'Approuvé' | 'Refusé'; requestedAt?: string }
 type CertificationRow = { id: string; initials: string; name: string; email: string; type: string; expiry: string; detail: string; warning: boolean }
 type InviteDraft = { name: string; email: string; role: Role; siteId: string; sectorId: string }
@@ -129,6 +129,9 @@ function toUiShift(response: ShiftResponse, employeeId: string): Shift {
   return {
     id: response.id,
     assignmentId: assignment?.id,
+    siteId: response.siteId,
+    startUtc: response.startUtc,
+    endUtc: response.endUtc,
     day: frenchDays[start.getDay()],
     date: start.getDate(),
     start: formatTime(response.startUtc),
@@ -214,6 +217,10 @@ function App() {
   const [createShiftSubmitting, setCreateShiftSubmitting] = useState(false)
   const [createShiftErrors, setCreateShiftErrors] = useState<Partial<Record<keyof CreateShiftDraft | 'form', string>>>({})
   const [createShiftDraft, setCreateShiftDraft] = useState<CreateShiftDraft>({ siteId: '', date: tomorrowInputValue(), startTime: '09:00', endTime: '17:00', requiredLifeguards: 2 })
+  const [editShiftOpen, setEditShiftOpen] = useState(false)
+  const [editShiftSubmitting, setEditShiftSubmitting] = useState(false)
+  const [editShiftErrors, setEditShiftErrors] = useState<Partial<Record<keyof CreateShiftDraft | 'form', string>>>({})
+  const [editShiftDraft, setEditShiftDraft] = useState<CreateShiftDraft>({ siteId: '', date: tomorrowInputValue(), startTime: '09:00', endTime: '17:00', requiredLifeguards: 2 })
   const [swapFilter, setSwapFilter] = useState<SwapFilter>('all')
   const [selectedSwap, setSelectedSwap] = useState<Swap | null>(null)
   const [decidingSwapId, setDecidingSwapId] = useState<string | null>(null)
@@ -552,6 +559,40 @@ function App() {
       setCreateShiftSubmitting(false)
     }
   }
+  function openEditShift(shift: Shift) {
+    if (!isManagement || !shift.startUtc || !shift.endUtc) { flash('La modification de ce quart est disponible après la synchronisation API.'); return }
+    const start = new Date(shift.startUtc)
+    const end = new Date(shift.endUtc)
+    setEditShiftDraft({ siteId: shift.siteId ?? '', date: start.toISOString().slice(0, 10), startTime: start.toISOString().slice(11, 16), endTime: end.toISOString().slice(11, 16), requiredLifeguards: shift.requiredLifeguards })
+    setEditShiftErrors({})
+    setEditShiftOpen(true)
+  }
+  function closeEditShift() {
+    if (editShiftSubmitting) return
+    setEditShiftOpen(false)
+    setEditShiftErrors({})
+  }
+  async function submitEditShift(event: FormEvent<HTMLFormElement>) {
+    event.preventDefault()
+    if (!selectedShift || editShiftSubmitting) return
+    const errors = validateCreateShiftDraft(editShiftDraft)
+    setEditShiftErrors(errors)
+    if (Object.keys(errors).length > 0) return
+    setEditShiftSubmitting(true)
+    try {
+      if (!apiConfigured || apiState !== 'ready') throw new Error('La modification exige une connexion à l’API.')
+      const updated = await vigieApi.updateShift(selectedShift.id, createShiftRequest(editShiftDraft))
+      const next = toUiShift(updated, currentUser.apiId ?? currentUser.id)
+      setShifts((items) => items.map((item) => item.id === next.id ? next : item))
+      setSelectedShift(next)
+      setEditShiftOpen(false)
+      flash('Quart modifié et règles métier revérifiées')
+    } catch (error) {
+      setEditShiftErrors({ form: error instanceof Error ? error.message : 'Le quart ne peut pas être modifié.' })
+    } finally {
+      setEditShiftSubmitting(false)
+    }
+  }
   async function createSwap(receiver: string) {
     if (!selectedShift) return
     const receiverUser = teamMembers.find((user) => user.name === receiver)
@@ -656,7 +697,7 @@ function App() {
       {createShiftErrors.form && <p className="form-error" role="alert">{createShiftErrors.form}</p>}
       <div className="modal-actions"><button className="secondary-button" type="button" onClick={closeCreateShift}>Annuler</button><button className="primary-button" type="submit" disabled={createShiftSubmitting}>{createShiftSubmitting ? 'Création…' : 'Créer le quart'}</button></div>
     </form></div>}
-    {selectedShift && <div className="drawer-backdrop" onClick={() => setSelectedShift(null)}><aside className="shift-drawer" onClick={(event) => event.stopPropagation()}><button className="drawer-close" onClick={() => setSelectedShift(null)} aria-label="Fermer"><Icon name="close" /></button><span className="drawer-kicker">DÉTAIL DU QUART</span><h2>{selectedShift.site}</h2><p className="drawer-site">{selectedShift.siteKind} · {selectedShift.lifecycleStatus === 'Cancelled' ? 'Quart annulé' : 'Période d’ouverture valide'}</p><div className="drawer-time"><strong>{selectedShift.day} {selectedShift.date} septembre</strong><span>{selectedShift.start} – {selectedShift.end}</span></div><div className="drawer-rule" /><div className="drawer-detail"><span>Équipe assignée</span><div className="avatar-stack">{selectedShift.colleagues.length === 0 ? <em className="empty-assignment">Aucune</em> : selectedShift.colleagues.map((person) => <i key={person}>{person}</i>)}</div></div><div className="drawer-detail"><span>Statut</span><b className={isManagement ? ((selectedShift.assignments?.length ?? selectedShift.colleagues.length) >= selectedShift.requiredLifeguards ? 'status-tag approved' : 'status-tag pending') : selectedShift.status === 'assigné' ? 'status-tag approved' : 'status-tag pending'}>{isManagement ? `${selectedShift.assignments?.length ?? selectedShift.colleagues.length}/${selectedShift.requiredLifeguards} assignés` : selectedShift.lifecycleStatus === 'Cancelled' ? 'Annulé' : selectedShift.status === 'assigné' ? 'Assigné' : 'Disponible'}</b></div>{isManagement && selectedShift.lifecycleStatus !== 'Cancelled' && <button className="primary-button full" onClick={() => openAssignmentModal(selectedShift)}><Icon name="users" />Gérer les assignations</button>}{isManagement && selectedShift.lifecycleStatus !== 'Cancelled' && apiConfigured && <button className="secondary-button full" disabled={shiftActionSubmitting} onClick={() => { void cancelSelectedShift() }}>{shiftActionSubmitting ? 'Annulation…' : 'Annuler ce quart'}</button>}{selectedShift.status === 'assigné' && !isManagement && <button className="primary-button full" onClick={() => setSwapModalOpen(true)}><Icon name="swap" />Demander un échange</button>}{selectedShift.status === 'disponible' && selectedShift.lifecycleStatus !== 'Cancelled' && !isManagement && <button className="primary-button full" onClick={() => flash('Votre intérêt a été communiqué au coordonnateur')}><Icon name="check" />Me proposer sur ce quart</button>}</aside></div>}
+    {editShiftOpen && selectedShift && <div className="modal-backdrop" onClick={closeEditShift}><form className="create-shift-modal edit-shift-modal" onClick={(event) => event.stopPropagation()} onSubmit={submitEditShift} noValidate><button className="drawer-close" type="button" onClick={closeEditShift} aria-label="Fermer"><Icon name="close" /></button><span className="drawer-kicker">MODIFIER LE QUART</span><h2>Replanifier {selectedShift.site}</h2><p>Les règles de saison, de chevauchement et de certification seront revérifiées à l’enregistrement.</p><div className="form-grid"><label>Date<input type="date" value={editShiftDraft.date} onChange={(event) => setEditShiftDraft((draft) => ({ ...draft, date: event.target.value }))} aria-invalid={Boolean(editShiftErrors.date)} />{editShiftErrors.date && <small className="field-error">{editShiftErrors.date}</small>}</label><label>Début<input type="time" value={editShiftDraft.startTime} onChange={(event) => setEditShiftDraft((draft) => ({ ...draft, startTime: event.target.value }))} /></label><label>Fin<input type="time" value={editShiftDraft.endTime} onChange={(event) => setEditShiftDraft((draft) => ({ ...draft, endTime: event.target.value }))} aria-invalid={Boolean(editShiftErrors.endTime)} />{editShiftErrors.endTime && <small className="field-error">{editShiftErrors.endTime}</small>}</label><label>Sauveteurs requis<input type="number" min="1" max="50" value={editShiftDraft.requiredLifeguards} onChange={(event) => setEditShiftDraft((draft) => ({ ...draft, requiredLifeguards: Number(event.target.value) }))} aria-invalid={Boolean(editShiftErrors.requiredLifeguards)} />{editShiftErrors.requiredLifeguards && <small className="field-error">{editShiftErrors.requiredLifeguards}</small>}</label></div>{editShiftErrors.form && <p className="form-error" role="alert">{editShiftErrors.form}</p>}<div className="modal-actions"><button className="secondary-button" type="button" onClick={closeEditShift}>Annuler</button><button className="primary-button" type="submit" disabled={editShiftSubmitting}>{editShiftSubmitting ? 'Validation…' : 'Enregistrer'}</button></div></form></div>}    {selectedShift && <div className="drawer-backdrop" onClick={() => setSelectedShift(null)}><aside className="shift-drawer" onClick={(event) => event.stopPropagation()}><button className="drawer-close" onClick={() => setSelectedShift(null)} aria-label="Fermer"><Icon name="close" /></button><span className="drawer-kicker">DÉTAIL DU QUART</span><h2>{selectedShift.site}</h2><p className="drawer-site">{selectedShift.siteKind} · {selectedShift.lifecycleStatus === 'Cancelled' ? 'Quart annulé' : 'Période d’ouverture valide'}</p><div className="drawer-time"><strong>{selectedShift.day} {selectedShift.date} septembre</strong><span>{selectedShift.start} – {selectedShift.end}</span></div><div className="drawer-rule" /><div className="drawer-detail"><span>Équipe assignée</span><div className="avatar-stack">{selectedShift.colleagues.length === 0 ? <em className="empty-assignment">Aucune</em> : selectedShift.colleagues.map((person) => <i key={person}>{person}</i>)}</div></div><div className="drawer-detail"><span>Statut</span><b className={isManagement ? ((selectedShift.assignments?.length ?? selectedShift.colleagues.length) >= selectedShift.requiredLifeguards ? 'status-tag approved' : 'status-tag pending') : selectedShift.status === 'assigné' ? 'status-tag approved' : 'status-tag pending'}>{isManagement ? `${selectedShift.assignments?.length ?? selectedShift.colleagues.length}/${selectedShift.requiredLifeguards} assignés` : selectedShift.lifecycleStatus === 'Cancelled' ? 'Annulé' : selectedShift.status === 'assigné' ? 'Assigné' : 'Disponible'}</b></div>{isManagement && selectedShift.lifecycleStatus !== 'Cancelled' && apiConfigured && <button className="secondary-button full" onClick={() => openEditShift(selectedShift)}>Modifier le quart</button>}{isManagement && selectedShift.lifecycleStatus !== 'Cancelled' && <button className="primary-button full" onClick={() => openAssignmentModal(selectedShift)}><Icon name="users" />Gérer les assignations</button>}{isManagement && selectedShift.lifecycleStatus !== 'Cancelled' && apiConfigured && <button className="secondary-button full" disabled={shiftActionSubmitting} onClick={() => { void cancelSelectedShift() }}>{shiftActionSubmitting ? 'Annulation…' : 'Annuler ce quart'}</button>}{selectedShift.status === 'assigné' && !isManagement && <button className="primary-button full" onClick={() => setSwapModalOpen(true)}><Icon name="swap" />Demander un échange</button>}{selectedShift.status === 'disponible' && selectedShift.lifecycleStatus !== 'Cancelled' && !isManagement && <button className="primary-button full" onClick={() => flash('Votre intérêt a été communiqué au coordonnateur')}><Icon name="check" />Me proposer sur ce quart</button>}</aside></div>}
     {assignmentModalOpen && selectedShift && <div className="modal-backdrop" onClick={closeAssignmentModal}><div className="swap-modal assignment-modal" onClick={(event) => event.stopPropagation()}><button className="drawer-close" onClick={closeAssignmentModal} aria-label="Fermer"><Icon name="close" /></button><span className="drawer-kicker">ASSIGNATION</span><h2>Ajouter un sauveteur</h2><p>Vigie rejouera les règles de certification, de chevauchement et de quota avant l’enregistrement.</p><div className="modal-shift"><strong>{selectedShift.site}</strong><span>{selectedShift.day} {selectedShift.date} septembre · {selectedShift.start} – {selectedShift.end}</span></div><label className="assignment-select-label">Sauveteur<select value={assignmentEmployeeId} onChange={(event) => setAssignmentEmployeeId(event.target.value)}><option value="">Choisir un sauveteur</option>{teamMembers.filter((member) => member.role === 'Lifeguard' && !(selectedShift.assignments ?? []).some((assignment) => assignment.employeeId === member.id)).map((member) => <option key={member.id} value={member.id}>{member.name}</option>)}</select></label>{assignmentError && <p className="form-error" role="alert">{assignmentError}</p>}<div className="modal-actions"><button className="secondary-button" type="button" onClick={closeAssignmentModal}>Annuler</button><button className="primary-button" type="button" disabled={!assignmentEmployeeId || assignmentSubmitting} onClick={() => { void submitAssignment() }}>{assignmentSubmitting ? 'Validation…' : 'Assigner'}</button></div></div></div>}
     {swapModalOpen && <div className="modal-backdrop"><div className="swap-modal"><button className="drawer-close" onClick={() => setSwapModalOpen(false)} aria-label="Fermer"><Icon name="close" /></button><span className="drawer-kicker">NOUVEL ÉCHANGE</span><h2>Choisir un receveur</h2><p>Votre demande restera en attente jusqu’à l’approbation du coordonnateur.</p><div className="modal-shift"><strong>{selectedShift?.site}</strong><span>{selectedShift?.day} {selectedShift?.date} septembre · {selectedShift?.start} – {selectedShift?.end}</span></div><div className="receiver-list">{teamMembers.filter((user) => user.id !== currentUser.apiId && user.role === 'Lifeguard').map((user) => <button key={user.id} onClick={() => createSwap(user.name)}><span className="mini-avatar">{initials(user.name)}</span><span><strong>{user.name}</strong><small>Disponible · certifications à jour</small></span><Icon name="arrow" /></button>)}</div></div></div>}
     {currentUser.isDemoAccount && <div className="commercial-cta"><span><strong>Vous gérez un vrai centre aquatique ?</strong><small>Créez un espace isolé pour votre équipe et vos données.</small></span><button className="primary-button" onClick={() => openAuth('register')}>Créer mon espace</button></div>}
