@@ -55,6 +55,11 @@ public static class VigieDatabaseInitializer
         var organizations = await context.Organizations.AsTracking().ToArrayAsync(cancellationToken);
         foreach (var organization in organizations)
         {
+            var employees = await context.Employees
+                .Where(employee => employee.OrganizationId == organization.Id)
+                .AsTracking()
+                .ToArrayAsync(cancellationToken);
+            var isDemoOrganization = employees.Any(employee => employee.Email.EndsWith("@vigie.demo", StringComparison.OrdinalIgnoreCase));
             var sites = await context.Sites.Where(site => site.OrganizationId == organization.Id).AsTracking().ToArrayAsync(cancellationToken);
             var sectors = await context.Sectors.Where(sector => sector.OrganizationId == organization.Id).AsTracking().ToListAsync(cancellationToken);
 
@@ -88,7 +93,7 @@ public static class VigieDatabaseInitializer
                 site.SetSector(catalogSector.Id);
             }
 
-            if (organization.Slug == "vigie-demo")
+            if (isDemoOrganization)
                 EnsureDemoStaff(context, organization.Id, sectors, sites);
 
             foreach (var site in sites)
@@ -108,7 +113,6 @@ public static class VigieDatabaseInitializer
                 }
             }
 
-            var employees = await context.Employees.Where(employee => employee.OrganizationId == organization.Id).AsTracking().ToArrayAsync(cancellationToken);
             var existingEmployeeIds = await context.OrganizationMemberships
                 .Where(membership => membership.OrganizationId == organization.Id && membership.IsActive)
                 .Select(membership => membership.EmployeeId)
@@ -132,9 +136,22 @@ public static class VigieDatabaseInitializer
 
     private static void EnsureDemoStaff(VigieDbContext context, Guid organizationId, IReadOnlyCollection<Sector> sectors, IReadOnlyCollection<Site> sites)
     {
-        var nordSector = sectors.FirstOrDefault(sector => sector.Code == "NORD");
-        var nordSite = sites.FirstOrDefault(site => site.Id == Guid.Parse("20000000-0000-0000-0000-000000000001"));
-        if (nordSector is null || nordSite is null) return;
+        var mutableSectors = sectors as List<Sector> ?? sectors.ToList();
+        var nordSector = mutableSectors.FirstOrDefault(sector => sector.Code == "NORD");
+        if (nordSector is null)
+        {
+            nordSector = Sector.Create(Guid.NewGuid(), organizationId, "Secteur Nord", "NORD");
+            context.Sectors.Add(nordSector);
+            mutableSectors.Add(nordSector);
+        }
+
+        var nordSite = sites.FirstOrDefault(site => site.Id == Guid.Parse("20000000-0000-0000-0000-000000000001")) ??
+            sites.FirstOrDefault(site => site.Name == "Piscine du Nord");
+        if (nordSite is not null) nordSite.SetSector(nordSector.Id);
+
+        var northNeighborhoods = new[] { "Vimont", "Fabreville", "Sainte-Rose", "Auteuil" };
+        foreach (var site in sites.Where(site => site.IsMunicipal && northNeighborhoods.Contains(site.Neighborhood, StringComparer.OrdinalIgnoreCase)))
+            site.SetSector(nordSector.Id);
 
         EnsureDemoEmployee(context, organizationId, Guid.Parse("10000000-0000-0000-0000-000000000005"), "Marc-André Bouchard", "charge.nord@vigie.demo", EmployeeRole.SectorManager, nordSector.Id, null);
         EnsureDemoEmployee(context, organizationId, Guid.Parse("10000000-0000-0000-0000-000000000006"), "Élodie Martel", "regie@vigie.demo", EmployeeRole.AquaticDirector, null, null);
