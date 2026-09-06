@@ -846,7 +846,7 @@ app.MapGet("/api/v1/availability/team", (ClaimsPrincipal user, DateOnly? from, D
     var result = store.Availabilities
         .Where(availability => availability.Date >= start && availability.Date <= end)
         .Select(availability => new { Availability = availability, Employee = store.Employees.SingleOrDefault(employee => employee.Id == availability.EmployeeId) })
-        .Where(item => item.Employee is not null && item.Employee.OrganizationId == scope.OrganizationId && IsEmployeeVisible(item.Employee!, scope, store))
+        .Where(item => item.Employee is not null && item.Employee.Role == EmployeeRole.Lifeguard && item.Employee.OrganizationId == scope.OrganizationId && IsEmployeeVisible(item.Employee!, scope, store))
         .OrderBy(item => item.Availability.Date)
         .ThenBy(item => item.Employee!.Name)
         .Select(item => new TeamAvailabilityResponse(item.Availability.Id, item.Employee!.Id, item.Employee.Name, item.Employee.Email, item.Availability.Date, item.Availability.IsAvailable, item.Availability.Note))
