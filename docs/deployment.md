@@ -23,6 +23,8 @@ Vigie applique automatiquement les migrations EF Core et charge les données fic
    - `ConnectionStrings__Vigie` : la chaîne Session pooler Supabase copiée à l’étape précédente.
 5. Laisser `AllowedOrigins` à `https://minaseliman1.github.io` et lancer le déploiement.
 
+La récupération de compte est prête pour Resend. Pour activer l’envoi réel des courriels transactionnels, ajouter ensuite dans les variables d’environnement du service `Resend__ApiKey` et `Resend__From` (avec un domaine expéditeur vérifié). Sans ces deux variables, l’API conserve un parcours sécurisé et répond de façon générique, mais aucun courriel ne peut être remis.
+
 Le service doit répondre à `https://<nom-du-service>.onrender.com/health` avec un JSON contenant `"status":"ok"`. Render fournit une URL publique et exécute le health check `/health` à chaque déploiement. Les services Free se mettent en veille après 15 minutes sans trafic et peuvent prendre environ une minute à redémarrer; c’est attendu pour une offre à 0 $. Voir les [limites Render Free](https://render.com/docs/free).
 
 ## 3. Relier la démo GitHub Pages

@@ -24,8 +24,8 @@ Transformer la démonstration Vigie en un logiciel que plusieurs centres aquatiq
 - ✅ Révoquer explicitement les sessions après un changement de mot de passe, avec un compteur persistant vérifié par l’API.
 - ✅ Ajouter inscription d’organisation et invitation d’équipe à usage unique avec expiration.
 - ✅ Restaurer une session réelle côté interface après un rechargement et permettre le changement de mot de passe.
-- Ajouter récupération de mot de passe avec un fournisseur de courriel transactionnel.
-- Couvrir les erreurs d’authentification sans révéler si une adresse existe.
+- ✅ Ajouter récupération de mot de passe à jeton unique, expiration courte et révocation des sessions; le fournisseur courriel reste configurable.
+- ✅ Couvrir les erreurs d’authentification sans révéler si une adresse existe.
 
 ### 2. Multi-tenant et autorisations
 

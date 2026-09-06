@@ -22,6 +22,8 @@ async function request<T>(path: string, init: RequestInit = {}): Promise<T> {
 
 export const vigieApi = {
   login: (email: string, password: string) => request<LoginResponse>('/api/v1/auth/login', { method: 'POST', body: JSON.stringify({ email, password }) }),
+  requestPasswordReset: (email: string) => request<{ message: string; resetToken?: string | null }>('/api/v1/auth/password-reset/request', { method: 'POST', body: JSON.stringify({ email }) }),
+  confirmPasswordReset: (token: string, newPassword: string) => request<{ message: string }>('/api/v1/auth/password-reset/confirm', { method: 'POST', body: JSON.stringify({ token, newPassword }) }),
   me: () => request<UserSummary>('/api/v1/auth/me'),
   changePassword: (currentPassword: string, newPassword: string) => request<LoginResponse>('/api/v1/auth/change-password', { method: 'POST', body: JSON.stringify({ currentPassword, newPassword }) }),
   audit: (limit = 50) => request<AuditEntryResponse[]>(`/api/v1/audit?limit=${limit}`),

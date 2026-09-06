@@ -110,6 +110,34 @@ public sealed class ApiSmokeTests : IClassFixture<WebApplicationFactory<Program>
     }
 
     [Fact]
+    public async Task Password_reset_uses_a_single_use_token_and_revokes_sessions()
+    {
+        var email = $"reset-{Guid.NewGuid():N}@exemple.test";
+        var registration = await client.PostAsJsonAsync("/api/v1/auth/register", new
+        {
+            organizationName = $"Centre récupération {Guid.NewGuid():N}",
+            name = "Compte récupération",
+            email,
+            password = "Mot-de-passe1"
+        });
+        var account = await registration.Content.ReadFromJsonAsync<RegistrationPayload>();
+        var request = await client.PostAsJsonAsync("/api/v1/auth/password-reset/request", new { email });
+        var requested = await request.Content.ReadFromJsonAsync<PasswordResetRequestPayload>();
+        var confirm = await client.PostAsJsonAsync("/api/v1/auth/password-reset/confirm", new { token = requested!.ResetToken, newPassword = "Nouveau-reset1" });
+        var reused = await client.PostAsJsonAsync("/api/v1/auth/password-reset/confirm", new { token = requested.ResetToken, newPassword = "Nouveau-reset2" });
+
+        Assert.Equal(HttpStatusCode.Created, registration.StatusCode);
+        Assert.Equal(HttpStatusCode.Accepted, request.StatusCode);
+        Assert.False(string.IsNullOrWhiteSpace(requested?.ResetToken));
+        Assert.Equal(HttpStatusCode.OK, confirm.StatusCode);
+        Assert.Equal(HttpStatusCode.BadRequest, reused.StatusCode);
+        client.DefaultRequestHeaders.Authorization = new System.Net.Http.Headers.AuthenticationHeaderValue("Bearer", account!.Login.Token);
+        Assert.Equal(HttpStatusCode.Unauthorized, (await client.GetAsync("/api/v1/auth/me")).StatusCode);
+        var login = await client.PostAsJsonAsync("/api/v1/auth/login", new { email, password = "Nouveau-reset1" });
+        Assert.Equal(HttpStatusCode.OK, login.StatusCode);
+    }
+
+    [Fact]
     public async Task Lifeguard_cannot_approve_a_swap()
     {
         var login = await client.PostAsJsonAsync("/api/v1/auth/login", new { email = "amelie@vigie.demo", password = "vigie-demo" });
@@ -639,6 +667,7 @@ public sealed class ApiSmokeTests : IClassFixture<WebApplicationFactory<Program>
     private sealed record AssignmentPayload(Guid Id, Guid ShiftId, Guid EmployeeId, string EmployeeName);
     private sealed record SwapPayload(Guid Id, string? Status = null);
     private sealed record NotificationPayload(Guid Id, string Type, string Title, string Body, string? ActionUrl, DateTimeOffset CreatedAtUtc, bool IsRead, DateTimeOffset? ReadAtUtc);
+    private sealed record PasswordResetRequestPayload(string Message, string? ResetToken);
     private sealed record SectorPayload(Guid Id, Guid OrganizationId, string Name, string Code, bool IsActive, DateTimeOffset CreatedAtUtc, DateTimeOffset UpdatedAtUtc);
     private sealed record MemberPayload(Guid Id, Guid EmployeeId, string EmployeeName, string Email, string Role, Guid OrganizationId, Guid? SiteId, string? SiteName, Guid? SectorId, string? SectorName, bool IsActive, int Version);
 }

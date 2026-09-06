@@ -20,6 +20,7 @@ public sealed class VigieDbContext(DbContextOptions<VigieDbContext> options) : D
     public DbSet<SwapRequest> SwapRequests => Set<SwapRequest>();
     public DbSet<SiteCertificationRequirement> SiteCertificationRequirements => Set<SiteCertificationRequirement>();
     public DbSet<Notification> Notifications => Set<Notification>();
+    public DbSet<PasswordResetToken> PasswordResetTokens => Set<PasswordResetToken>();
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
@@ -177,7 +178,7 @@ public sealed class VigieDbContext(DbContextOptions<VigieDbContext> options) : D
             entity.HasOne<Site>().WithMany().HasForeignKey(x => x.SiteId).OnDelete(DeleteBehavior.Restrict);
             entity.HasOne<CertificationType>().WithMany().HasForeignKey(x => x.CertificationTypeId).OnDelete(DeleteBehavior.Restrict);
         });
-        modelBuilder.Entity<Notification>(entity =>
+    modelBuilder.Entity<Notification>(entity =>
         {
             entity.HasKey(x => x.Id);
             entity.Property(x => x.Type).HasMaxLength(40).IsRequired();
@@ -189,7 +190,19 @@ public sealed class VigieDbContext(DbContextOptions<VigieDbContext> options) : D
             entity.HasIndex(x => new { x.RecipientEmployeeId, x.ReadAtUtc });
             entity.HasOne<Organization>().WithMany().HasForeignKey(x => x.OrganizationId).OnDelete(DeleteBehavior.Restrict);
             entity.HasOne<Employee>().WithMany().HasForeignKey(x => x.RecipientEmployeeId).OnDelete(DeleteBehavior.Restrict);
-        });
+    });
+
+    modelBuilder.Entity<PasswordResetToken>(entity =>
+    {
+        entity.HasKey(x => x.Id);
+        entity.Property(x => x.TokenHash).HasMaxLength(64).IsRequired();
+        entity.Property(x => x.CreatedAtUtc).IsRequired();
+        entity.Property(x => x.ExpiresAtUtc).IsRequired();
+        entity.HasIndex(x => x.TokenHash).IsUnique();
+        entity.HasIndex(x => new { x.EmployeeId, x.CreatedAtUtc });
+        entity.HasOne<Organization>().WithMany().HasForeignKey(x => x.OrganizationId).OnDelete(DeleteBehavior.Restrict);
+        entity.HasOne<Employee>().WithMany().HasForeignKey(x => x.EmployeeId).OnDelete(DeleteBehavior.Restrict);
+    });
     }
 
     private static OpeningSeason ParseOpeningSeason(string value)

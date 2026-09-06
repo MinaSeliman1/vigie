@@ -25,6 +25,7 @@ if (string.IsNullOrWhiteSpace(jwtKey))
 
 builder.Services.AddVigiePersistence(builder.Configuration);
 builder.Services.AddSingleton<IClock, SystemClock>();
+builder.Services.AddHttpClient<ITransactionalEmailSender, ResendTransactionalEmailSender>();
 var accessTokenMinutes = builder.Configuration.GetValue("Jwt:AccessTokenMinutes", 60);
 if (accessTokenMinutes is < 15 or > 240) throw new InvalidOperationException("Jwt:AccessTokenMinutes doit être compris entre 15 et 240.");
 builder.Services.AddSingleton(new JwtTokenService(jwtKey, TimeSpan.FromMinutes(accessTokenMinutes)));
@@ -164,6 +165,46 @@ app.MapPost("/api/v1/auth/login", (LoginRequest request, IVigieStore store, JwtT
     var membership = PrimaryMembership(employee, store);
     var (token, expires) = tokens.Create(employee, membership);
     return Results.Ok(new LoginResponse(token, expires, User(employee, store)));
+}).AllowAnonymous().RequireRateLimiting("auth").WithTags("Authentification");
+
+app.MapPost("/api/v1/auth/password-reset/request", async (PasswordResetRequest request, IVigieStore store, IUnitOfWork unitOfWork, ITransactionalEmailSender emailSender, IHostEnvironment environment, IConfiguration configuration, CancellationToken ct) =>
+{
+    var genericMessage = "Si un compte correspond à ce courriel, un lien de récupération vient d'être envoyé.";
+    if (request is null || string.IsNullOrWhiteSpace(request.Email)) return Results.Accepted(value: new PasswordResetRequestResponse(genericMessage));
+    var employee = store.Employees.SingleOrDefault(item => string.Equals(item.Email, request.Email.Trim(), StringComparison.OrdinalIgnoreCase));
+    if (employee is null) return Results.Accepted(value: new PasswordResetRequestResponse(genericMessage));
+
+    var rawToken = Base64UrlEncoder.Encode(RandomNumberGenerator.GetBytes(32));
+    var now = DateTimeOffset.UtcNow;
+    var resetToken = PasswordResetToken.Create(Guid.NewGuid(), employee.OrganizationId, employee.Id, HashResetToken(rawToken), now, now.AddMinutes(30));
+    store.AddPasswordResetToken(resetToken);
+    var resetLink = $"{PublicAppUrl(configuration).TrimEnd('/')}/?reset={Uri.EscapeDataString(rawToken)}";
+    await unitOfWork.SaveChangesAsync(ct);
+    await emailSender.SendPasswordResetAsync(employee, resetLink, ct);
+    return Results.Accepted(value: new PasswordResetRequestResponse(genericMessage, environment.IsDevelopment() ? rawToken : null));
+}).AllowAnonymous().RequireRateLimiting("auth").WithTags("Authentification");
+
+app.MapPost("/api/v1/auth/password-reset/confirm", async (PasswordResetConfirmRequest request, IVigieStore store, IUnitOfWork unitOfWork, CancellationToken ct) =>
+{
+    if (request is null || string.IsNullOrWhiteSpace(request.Token) || string.IsNullOrWhiteSpace(request.NewPassword))
+        return Problem("INVALID_PASSWORD_RESET", "Le lien ou le nouveau mot de passe est invalide.");
+    if (!PasswordPolicy.IsStrong(request.NewPassword))
+        return Problem("WEAK_PASSWORD", "Le nouveau mot de passe doit contenir au moins 12 caractères, une majuscule, une minuscule et un chiffre.");
+    var token = store.PasswordResetTokens.SingleOrDefault(item => item.TokenHash == HashResetToken(request.Token));
+    var employee = token is null ? null : store.Employees.SingleOrDefault(item => item.Id == token.EmployeeId && item.OrganizationId == token.OrganizationId);
+    if (token is null || employee is null || !token.IsUsable(DateTimeOffset.UtcNow))
+        return Problem("INVALID_PASSWORD_RESET", "Le lien de récupération est expiré ou invalide.", StatusCodes.Status400BadRequest);
+    try
+    {
+        token.MarkUsed(DateTimeOffset.UtcNow);
+        employee.SetPasswordHash(PasswordHasher.Hash(request.NewPassword));
+        employee.RevokeSessions();
+        store.UpdatePasswordResetToken(token);
+        store.AddAuditEntry(Audit(employee.OrganizationId, employee.Id, "account.password_reset", "Employee", employee.Id));
+        await unitOfWork.SaveChangesAsync(ct);
+        return Results.Ok(new PasswordResetRequestResponse("Votre mot de passe a été réinitialisé. Vous pouvez vous connecter."));
+    }
+    catch (DomainException ex) { return Problem("INVALID_PASSWORD_RESET", ex.Message); }
 }).AllowAnonymous().RequireRateLimiting("auth").WithTags("Authentification");
 
 app.MapGet("/api/v1/auth/me", (ClaimsPrincipal user, IVigieStore store) =>
@@ -755,6 +796,9 @@ app.Run();
 
 static Guid UserId(ClaimsPrincipal principal) => Guid.Parse(principal.FindFirstValue(JwtRegisteredClaimNames.Sub) ?? principal.FindFirstValue(ClaimTypes.NameIdentifier) ?? throw new InvalidOperationException("Identité absente."));
 static Guid OrganizationId(ClaimsPrincipal principal) => Guid.Parse(principal.FindFirstValue("organization_id") ?? throw new InvalidOperationException("Organisation absente."));
+static string HashResetToken(string token) => Convert.ToHexString(SHA256.HashData(Encoding.UTF8.GetBytes(token))).ToLowerInvariant();
+static string PublicAppUrl(IConfiguration configuration)
+    => configuration["PublicAppUrl"] ?? configuration.GetSection("AllowedOrigins").GetChildren().Select(item => item.Value).FirstOrDefault(value => !string.IsNullOrWhiteSpace(value)) ?? configuration["AllowedOrigins"]?.Split(',', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries).FirstOrDefault() ?? "http://localhost:5173";
 static OrganizationMembership? PrimaryMembership(Employee employee, IVigieStore store)
     => store.Memberships.Where(membership => membership.EmployeeId == employee.Id && membership.OrganizationId == employee.OrganizationId && membership.IsActive)
         .OrderBy(membership => membership.Role == EmployeeRole.AquaticDirector ? 0 : membership.Role == EmployeeRole.SectorManager ? 1 : membership.Role is EmployeeRole.PoolChief or EmployeeRole.Coordinator ? 2 : 3)

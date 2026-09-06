@@ -24,6 +24,7 @@ public sealed class EfVigieStore(VigieDbContext db) : IVigieStore
     public IReadOnlyCollection<SwapRequest> SwapRequests => db.SwapRequests.AsNoTracking().ToArray();
     public IReadOnlyCollection<Availability> Availabilities => db.Availabilities.AsNoTracking().ToArray();
     public IReadOnlyCollection<Notification> Notifications => db.Notifications.AsNoTracking().ToArray();
+    public IReadOnlyCollection<PasswordResetToken> PasswordResetTokens => db.PasswordResetTokens.AsNoTracking().ToArray();
 
     public Task<Employee?> GetAsync(Guid id, CancellationToken cancellationToken)
         => db.Employees.SingleOrDefaultAsync(employee => employee.Id == id, cancellationToken);
@@ -103,6 +104,8 @@ public sealed class EfVigieStore(VigieDbContext db) : IVigieStore
     public void AddShift(Shift shift) => db.Shifts.Add(shift);
     public void AddNotification(Notification notification) => db.Notifications.Add(notification);
     public void UpdateNotification(Notification notification) => db.Notifications.Update(notification);
+    public void AddPasswordResetToken(PasswordResetToken token) => db.PasswordResetTokens.Add(token);
+    public void UpdatePasswordResetToken(PasswordResetToken token) => db.PasswordResetTokens.Update(token);
 
     public Availability UpsertAvailability(Guid employeeId, DateOnly onDate, bool isAvailable, string? note)
     {

@@ -90,7 +90,7 @@ Le backend cible .NET 9 et le frontend utilise Node.js 22 dans la CI. L’authen
 
 Le périmètre restant est isolé derrière les mêmes ports d’application afin de ne pas fragiliser la démo.
 
-Les prochaines étapes sont détaillées dans la [feuille de route commerciale](docs/roadmaps/2026-09-05-commercial-product.md) et les [Issues du dépôt](https://github.com/MinaSeliman1/vigie/issues) : récupération de compte, courriels transactionnels, facturation et exploitation de production. La procédure reproductible de déploiement reste disponible dans [`docs/deployment.md`](docs/deployment.md).
+Les prochaines étapes sont détaillées dans la [feuille de route commerciale](docs/roadmaps/2026-09-05-commercial-product.md) et les [Issues du dépôt](https://github.com/MinaSeliman1/vigie/issues) : courriels transactionnels, facturation et exploitation de production. La procédure reproductible de déploiement reste disponible dans [`docs/deployment.md`](docs/deployment.md).
 
 ## Démarrer en local
 

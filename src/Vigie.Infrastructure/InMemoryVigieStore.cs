@@ -27,6 +27,7 @@ public sealed class InMemoryVigieStore :
     private readonly Dictionary<Guid, SwapRequest> swapRequests = [];
     private readonly Dictionary<Guid, Availability> availabilities = [];
     private readonly Dictionary<Guid, Notification> notifications = [];
+    private readonly Dictionary<Guid, PasswordResetToken> passwordResetTokens = [];
     private readonly Dictionary<Guid, HashSet<Guid>> siteCertificationTypes = [];
 
     public InMemoryVigieStore()
@@ -48,6 +49,7 @@ public sealed class InMemoryVigieStore :
     public IReadOnlyCollection<SwapRequest> SwapRequests => swapRequests.Values.ToArray();
     public IReadOnlyCollection<Availability> Availabilities => availabilities.Values.ToArray();
     public IReadOnlyCollection<Notification> Notifications => notifications.Values.ToArray();
+    public IReadOnlyCollection<PasswordResetToken> PasswordResetTokens => passwordResetTokens.Values.ToArray();
     public IReadOnlyCollection<(Guid SiteId, Guid CertificationTypeId)> SiteCertificationLinks
         => siteCertificationTypes.SelectMany(pair => pair.Value.Select(typeId => (pair.Key, typeId))).ToArray();
 
@@ -114,6 +116,8 @@ public sealed class InMemoryVigieStore :
     public void AddShift(Shift shift) => shifts[shift.Id] = shift;
     public void AddNotification(Notification notification) => notifications[notification.Id] = notification;
     public void UpdateNotification(Notification notification) => notifications[notification.Id] = notification;
+    public void AddPasswordResetToken(PasswordResetToken token) => passwordResetTokens[token.Id] = token;
+    public void UpdatePasswordResetToken(PasswordResetToken token) => passwordResetTokens[token.Id] = token;
     public void AddCertification(Certification certification) => certifications[certification.Id] = certification;
     public void AddCertificationTypeForSite(Guid siteId, Guid certificationTypeId) => siteCertificationTypes.GetOrAdd(siteId).Add(certificationTypeId);
 
