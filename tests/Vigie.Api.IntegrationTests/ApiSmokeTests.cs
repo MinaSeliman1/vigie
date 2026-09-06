@@ -237,8 +237,12 @@ public sealed class ApiSmokeTests : IClassFixture<WebApplicationFactory<Program>
         client.DefaultRequestHeaders.Authorization = new System.Net.Http.Headers.AuthenticationHeaderValue("Bearer", created!.Login.Token);
 
         var response = await client.GetFromJsonAsync<AuditPayload[]>("/api/v1/audit");
+        var export = await client.GetAsync("/api/v1/audit/export");
+        var exportBody = await export.Content.ReadAsStringAsync();
 
         Assert.Contains(response!, entry => entry.Action == "organization.created" && entry.EntityType == "Organization");
+        Assert.Equal(HttpStatusCode.OK, export.StatusCode);
+        Assert.Contains("organization.created", exportBody, StringComparison.Ordinal);
     }
 
     [Fact]

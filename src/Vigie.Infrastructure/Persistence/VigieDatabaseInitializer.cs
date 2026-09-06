@@ -61,7 +61,11 @@ public static class VigieDatabaseInitializer
             AuditEntry.Create(Guid.NewGuid(), demoOrganization.Id, coordinator.Id, "organization.created", "Organization", demoOrganization.Id, null, auditNow.AddDays(-30)),
         };
         if (shifts.Length > 0) entries.Add(AuditEntry.Create(Guid.NewGuid(), demoOrganization.Id, coordinator.Id, "shift.created", "Shift", shifts[0].Id, null, auditNow.AddDays(-4)));
-        if (assignment is not null) entries.Add(AuditEntry.Create(Guid.NewGuid(), demoOrganization.Id, coordinator.Id, "assignment.created", "Assignment", assignment.Id, $"employee={assignment.EmployeeId}", auditNow.AddDays(-3)));
+        if (assignment is not null)
+        {
+            var assignedEmployee = employees.Values.SingleOrDefault(employee => employee.Id == assignment.EmployeeId);
+            entries.Add(AuditEntry.Create(Guid.NewGuid(), demoOrganization.Id, coordinator.Id, "assignment.created", "Assignment", assignment.Id, assignedEmployee is null ? null : $"employé={assignedEmployee.Name}", auditNow.AddDays(-3)));
+        }
         var swap = await context.SwapRequests.Where(request => context.Assignments.Any(item => item.Id == request.AssignmentId && context.Shifts.Any(shift => shift.Id == item.ShiftId && context.Sites.Any(site => site.Id == shift.SiteId && site.OrganizationId == demoOrganization.Id)))).OrderByDescending(request => request.RequestedAtUtc).FirstOrDefaultAsync(cancellationToken);
         if (swap is not null) entries.Add(AuditEntry.Create(Guid.NewGuid(), demoOrganization.Id, lifeguard.Id, "swap.created", "SwapRequest", swap.Id, null, auditNow.AddHours(-8)));
         context.AuditEntries.AddRange(entries);

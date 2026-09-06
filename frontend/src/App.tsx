@@ -181,6 +181,7 @@ function App() {
   const [employees, setEmployees] = useState<UserSummary[] | null>(null)
   const [availabilities, setAvailabilities] = useState<AvailabilityResponse[] | null>(null)
   const [auditEntries, setAuditEntries] = useState<AuditEntryResponse[]>([])
+  const [auditExporting, setAuditExporting] = useState(false)
   const [sites, setSites] = useState<SiteResponse[]>([])
   const [toast, setToast] = useState('')
   const [apiState, setApiState] = useState<'inactive' | 'loading' | 'ready' | 'error'>(apiConfigured ? 'loading' : 'inactive')
@@ -265,6 +266,24 @@ function App() {
   }, [authBootstrapped, currentUserEmail, currentUserId, currentUserIsDemo, currentUserName, currentUserOrganizationId, currentUserRole])
 
   function flash(message: string) { setToast(message); window.setTimeout(() => setToast(''), 2800) }
+  async function exportAudit() {
+    if (auditExporting) return
+    setAuditExporting(true)
+    try {
+      const blob = await vigieApi.exportAudit()
+      const url = URL.createObjectURL(blob)
+      const link = document.createElement('a')
+      link.href = url
+      link.download = 'vigie-historique.csv'
+      link.click()
+      URL.revokeObjectURL(url)
+      flash('Historique exporté en CSV')
+    } catch (error) {
+      flash(error instanceof Error ? error.message : 'L’export ne peut pas être généré.')
+    } finally {
+      setAuditExporting(false)
+    }
+  }
   function selectUser(id: string) { const user = demoUsers.find((candidate) => candidate.id === id); if (user) { localStorage.removeItem('vigie.token'); if (apiConfigured) setApiState('loading'); setCurrentUser(user); setView('calendar'); flash(`Profil de démonstration : ${user.name}`) } }
   function openAuth(mode: 'login' | 'register') { setAuthError(''); setAuthForm({ organizationName: '', name: '', email: '', password: '' }); setAuthModal(mode) }
   function closeAuth() { if (!authSubmitting) { setAuthModal(null); setAuthError('') } }
@@ -497,7 +516,7 @@ function App() {
           <div className="cert-list">{certificationRows.map((certification) => <div className="cert-row" key={certification.id}><span className="mini-avatar">{certification.initials}</span><div className="cert-person"><strong>{certification.name}</strong><span>{certification.email}</span></div><div className="cert-name"><strong>{certification.type}</strong><span>Certification requise</span></div><div className={`cert-expiry ${certification.warning ? 'warning' : ''}`}><strong>{certification.expiry}</strong><span>{certification.detail}</span></div><span className={`cert-status ${certification.warning ? 'warning' : 'valid'}`}>{certification.warning ? 'À surveiller' : 'À jour'}</span></div>)}</div>
         </section>}
         {view === 'team' && <section className="full-section team-page"><div className="team-summary"><div><span className="metric-label">MEMBRES ACTIFS</span><strong>{teamMembers.length}</strong><p>Profils chargés depuis l’équipe Vigie.</p></div><div><span className="metric-label">COORDONNATEURS</span><strong>{teamMembers.filter((member) => member.role === 'Coordinator').length}</strong><p>Accès à la planification et aux décisions.</p></div><div><span className="metric-label">CERTIFICATIONS À SURVEILLER</span><strong>{certificationRows.filter((certification) => certification.warning).length}</strong><p>Échéances dans les 90 prochains jours.</p></div></div><div className="team-list"><div className="team-list-head"><span>MEMBRE</span><span>RÔLE</span><span>CERTIFICATION</span><span>CONTACT</span></div>{teamMembers.map((member) => { const memberCertifications = certificationRows.filter((certification) => certification.name === member.name); const hasWarning = memberCertifications.some((certification) => certification.warning); const certificationClass = memberCertifications.length === 0 || hasWarning ? 'warning' : 'valid'; return <div className="team-row" key={member.id}><div className="person-cell"><span className="mini-avatar">{initials(member.name)}</span><div><strong>{member.name}</strong><small>{member.email}</small></div></div><span className="role-pill">{member.role === 'Coordinator' ? 'Coordonnateur' : 'Sauveteur'}</span><span className={`cert-status ${certificationClass}`}>{memberCertifications.length === 0 ? 'À vérifier' : hasWarning ? 'À surveiller' : 'À jour'}</span><a className="team-email" href={`mailto:${member.email}`}>{member.email}</a></div> })}</div></section>}
-        {view === 'audit' && <section className="full-section audit-page"><div className="section-header"><div><h2>Journal des opérations</h2><p>Les actions sensibles de votre organisation, conservées pour la traçabilité.</p></div><span className="audit-count">{auditEntries.length} opération{auditEntries.length === 1 ? '' : 's'}</span></div>{auditEntries.length === 0 ? <div className="empty-state">Aucune opération enregistrée pour le moment.</div> : <div className="audit-list">{auditEntries.map((entry) => <div className="audit-row" key={entry.id}><div><strong>{formatAuditAction(entry.action)}</strong><span>{entry.entityType}{entry.details ? ` · ${entry.details}` : ''}</span></div><div><strong>{entry.actorName ?? 'Système'}</strong><span>{formatAuditDate(entry.createdAtUtc)}</span></div></div>)}</div>}</section>}
+        {view === 'audit' && <section className="full-section audit-page"><div className="section-header"><div><h2>Journal des opérations</h2><p>Les actions sensibles de votre organisation, conservées pour la traçabilité.</p></div><div className="audit-header-actions"><span className="audit-count">{auditEntries.length} opération{auditEntries.length === 1 ? '' : 's'}</span><button className="secondary-button audit-export" onClick={() => { void exportAudit() }} disabled={auditExporting}>{auditExporting ? 'Export…' : 'Exporter CSV'}</button></div></div>{auditEntries.length === 0 ? <div className="empty-state">Aucune opération enregistrée pour le moment.</div> : <div className="audit-list">{auditEntries.map((entry) => <div className="audit-row" key={entry.id}><div><strong>{formatAuditAction(entry.action)}</strong><span>{entry.entityType}{entry.details ? ` · ${entry.details}` : ''}</span></div><div><strong>{entry.actorName ?? 'Système'}</strong><span>{formatAuditDate(entry.createdAtUtc)}</span></div></div>)}</div>}</section>}
         {view === 'availability' && <section className="full-section availability-page"><div className="availability-intro"><div><span className="drawer-kicker">MES DISPONIBILITÉS</span><h2>Une vue claire pour mieux planifier</h2><p>Les changements sont enregistrés dans l’API et servent de signal au coordonnateur lors des prochains quarts.</p></div><span className="availability-legend"><i className="available-dot" />Disponible</span></div><div className="availability-grid">{availabilityDays.map((day) => { const saved = availabilities?.find((availability) => availability.date === day.date); const isAvailable = saved?.isAvailable ?? true; return <article className={`availability-card ${isAvailable ? 'is-available' : 'is-unavailable'}`} key={day.date}><div className="availability-date"><span>{day.day}</span><strong>{day.number}</strong></div><div><strong>{isAvailable ? 'Disponible' : 'Indisponible'}</strong><p>{saved?.note ?? (isAvailable ? 'Vous pouvez prendre un quart.' : 'Aucun quart à proposer ce jour.')}</p></div><button className="availability-toggle" disabled={availabilitySavingDate === day.date} onClick={() => { void toggleAvailability(day.date) }}>{availabilitySavingDate === day.date ? 'Enregistrement…' : isAvailable ? 'Déclarer indisponible' : 'Déclarer disponible'}</button></article> })}</div></section>}
       </div>
     </main>

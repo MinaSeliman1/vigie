@@ -25,6 +25,12 @@ export const vigieApi = {
   me: () => request<UserSummary>('/api/v1/auth/me'),
   changePassword: (currentPassword: string, newPassword: string) => request<LoginResponse>('/api/v1/auth/change-password', { method: 'POST', body: JSON.stringify({ currentPassword, newPassword }) }),
   audit: (limit = 50) => request<AuditEntryResponse[]>(`/api/v1/audit?limit=${limit}`),
+  exportAudit: async () => {
+    const token = localStorage.getItem('vigie.token')
+    const response = await fetch(`${baseUrl}/api/v1/audit/export`, { headers: token ? { Authorization: `Bearer ${token}` } : {} })
+    if (!response.ok) throw new Error('L’export du journal ne peut pas être généré.')
+    return response.blob()
+  },
   register: (organizationName: string, name: string, email: string, password: string) => request<RegistrationResponse>('/api/v1/auth/register', { method: 'POST', body: JSON.stringify({ organizationName, name, email, password }) }),
   acceptInvitation: (token: string, name: string, password: string) => request<LoginResponse>('/api/v1/invitations/accept', { method: 'POST', body: JSON.stringify({ token, name, password }) }),
   inviteMember: (email: string, name: string, role: string) => request<InvitationResponse>('/api/v1/invitations', { method: 'POST', body: JSON.stringify({ email, name, role }) }),

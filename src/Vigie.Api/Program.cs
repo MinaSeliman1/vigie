@@ -217,6 +217,27 @@ app.MapGet("/api/v1/audit", (ClaimsPrincipal user, int? limit, IVigieStore store
     return Results.Ok(result);
 }).RequireAuthorization(new AuthorizeAttribute { Roles = nameof(EmployeeRole.Coordinator) }).WithTags("Audit");
 
+app.MapGet("/api/v1/audit/export", (ClaimsPrincipal user, IVigieStore store) =>
+{
+    var organizationId = OrganizationId(user);
+    var rows = store.AuditEntries
+        .Where(entry => entry.OrganizationId == organizationId)
+        .OrderByDescending(entry => entry.CreatedAtUtc)
+        .Select(entry => new
+        {
+            entry.CreatedAtUtc,
+            entry.Action,
+            entry.EntityType,
+            Actor = entry.ActorId.HasValue ? store.Employees.FirstOrDefault(employee => employee.Id == entry.ActorId.Value)?.Name : null,
+            entry.Details
+        })
+        .ToArray();
+    var csv = new StringBuilder("Date (UTC);Action;Objet;Acteur;Détails\r\n");
+    foreach (var row in rows)
+        csv.AppendLine(string.Join(';', Csv(row.CreatedAtUtc.ToString("O", CultureInfo.InvariantCulture)), Csv(row.Action), Csv(row.EntityType), Csv(row.Actor), Csv(row.Details)));
+    return Results.File(Encoding.UTF8.GetPreamble().Concat(Encoding.UTF8.GetBytes(csv.ToString())).ToArray(), "text/csv; charset=utf-8", "vigie-historique.csv");
+}).RequireAuthorization(new AuthorizeAttribute { Roles = nameof(EmployeeRole.Coordinator) }).WithTags("Audit");
+
 app.MapGet("/api/v1/invitations", (ClaimsPrincipal user, IVigieStore store) =>
 {
     var organizationId = OrganizationId(user);
@@ -332,7 +353,7 @@ app.MapPost("/api/v1/shifts/{shiftId:guid}/assignments", async (ClaimsPrincipal 
         return Problem("NOT_FOUND", "Le quart ou l'employé est introuvable.", StatusCodes.Status404NotFound);
     var result = await service.ExecuteAsync(request.EmployeeId, shiftId, ct);
     if (!result.IsSuccess) return result.ToHttpResult(assignment => Results.Ok(assignment));
-    store.AddAuditEntry(Audit(organizationId, UserId(user), "assignment.created", "Assignment", result.Value!.Id, $"employee={request.EmployeeId}"));
+    store.AddAuditEntry(Audit(organizationId, UserId(user), "assignment.created", "Assignment", result.Value!.Id, $"employé={employee.Name}"));
     await ((IUnitOfWork)store).SaveChangesAsync(ct);
     return Results.Ok(result.Value);
 }).RequireAuthorization(new AuthorizeAttribute { Roles = nameof(EmployeeRole.Coordinator) }).WithTags("Assignations");
@@ -370,7 +391,7 @@ app.MapPost("/api/v1/swap-requests", async (ClaimsPrincipal user, CreateSwapRequ
         return Problem("NOT_FOUND", "L'assignation ou le receveur est introuvable.", StatusCodes.Status404NotFound);
     var result = await service.ExecuteAsync(UserId(user), request.AssignmentId, request.ReceiverId, ct);
     if (!result.IsSuccess) return result.ToHttpResult(swap => Results.Ok(ToSwap(swap, store)));
-    store.AddAuditEntry(Audit(organizationId, UserId(user), "swap.created", "SwapRequest", result.Value!.Id, $"receiver={request.ReceiverId}"));
+    store.AddAuditEntry(Audit(organizationId, UserId(user), "swap.created", "SwapRequest", result.Value!.Id, $"receveur={receiver.Name}"));
     await ((IUnitOfWork)store).SaveChangesAsync(ct);
     return Results.Ok(ToSwap(result.Value!, store));
 }).RequireAuthorization().WithTags("Échanges");
@@ -416,6 +437,7 @@ app.Run();
 static Guid UserId(ClaimsPrincipal principal) => Guid.Parse(principal.FindFirstValue(JwtRegisteredClaimNames.Sub) ?? principal.FindFirstValue(ClaimTypes.NameIdentifier) ?? throw new InvalidOperationException("Identité absente."));
 static Guid OrganizationId(ClaimsPrincipal principal) => Guid.Parse(principal.FindFirstValue("organization_id") ?? throw new InvalidOperationException("Organisation absente."));
 static UserSummary User(Employee employee) => new(employee.Id, employee.Name, employee.Email, employee.Role.ToString(), employee.OrganizationId, employee.IsDemoAccount);
+static string Csv(string? value) => $"\"{(value ?? string.Empty).Replace("\"", "\"\"")}\"";
 static AuditEntry Audit(Guid organizationId, Guid? actorId, string action, string entityType, Guid? entityId = null, string? details = null)
     => AuditEntry.Create(Guid.NewGuid(), organizationId, actorId, action, entityType, entityId, details, DateTimeOffset.UtcNow);
 static OrganizationResponse ToOrganization(Organization organization) => new(organization.Id, organization.Name, organization.Slug, organization.CreatedAtUtc);
