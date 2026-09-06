@@ -43,9 +43,9 @@ Transformer la démonstration Vigie en un logiciel que plusieurs centres aquatiq
 
 ### 4. Historique, notifications et expérience
 
-- Journaliser les actions importantes avec acteur, organisation, objet, résultat et horodatage.
+- ✅ Journaliser les actions importantes avec acteur, organisation, objet et horodatage; le coordonnateur peut exporter l’historique en CSV.
 - Ajouter notifications dans l’application et courriels transactionnels pour invitations, échanges et certifications.
-- Ajouter recherche, filtres, états vides, pagination et export CSV pour les coordonnateurs.
+- Ajouter recherche, filtres et pagination à l’historique coordonnateur.
 - ✅ Utiliser une vraie session pour les comptes commerciaux; le sélecteur reste disponible uniquement dans la démo publique.
 
 ### 5. Mise en production
@@ -57,4 +57,4 @@ Transformer la démonstration Vigie en un logiciel que plusieurs centres aquatiq
 
 ## Décision actuelle
 
-Le MVP/V1 public couvre le domaine et les opérations principales avec des comptes de démonstration. La fondation des comptes réels, l’isolation organisationnelle, les invitations activables et la révocation de sessions sont maintenant en place sans retirer le parcours public existant ; la prochaine tranche ajoute la gestion complète des membres, la récupération de compte et l’historique métier.
+Le MVP/V1 public couvre le domaine et les opérations principales avec des comptes de démonstration. La fondation des comptes réels, l’isolation organisationnelle, les invitations activables, la révocation de sessions et l’historique exportable sont maintenant en place sans retirer le parcours public existant ; la prochaine tranche ajoute la récupération de compte, la gestion complète des membres et les notifications.

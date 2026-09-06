@@ -45,3 +45,4 @@ L’interface inclut un sélecteur de profils de démonstration pour parcourir l
 6. Ouvrir `Détails`, puis approuver la demande et montrer la confirmation ainsi que le statut `Approuvé`.
 7. Ouvrir `Disponibilités` avec le profil sauveteur et basculer un jour pour montrer une écriture persistée par l’API.
 8. Ouvrir `Équipe` et `Certifications` pour expliquer le roster et le signal `À surveiller`.
+9. Revenir sur `Camille Gagnon · coord.`, ouvrir `Historique` et télécharger `Exporter CSV` pour montrer la traçabilité exploitable hors de l’application.
