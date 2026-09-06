@@ -23,6 +23,8 @@ public interface IVigieStore :
     IReadOnlyCollection<Invitation> Invitations { get; }
     IReadOnlyCollection<Employee> Employees { get; }
     IReadOnlyCollection<Site> Sites { get; }
+    IReadOnlyCollection<Sector> Sectors { get; }
+    IReadOnlyCollection<OrganizationMembership> Memberships { get; }
     IReadOnlyCollection<Shift> Shifts { get; }
     IReadOnlyCollection<CertificationType> CertificationTypes { get; }
     IReadOnlyCollection<Certification> Certifications { get; }
@@ -36,6 +38,10 @@ public interface IVigieStore :
     void AddInvitation(Invitation invitation);
     void UpdateInvitation(Invitation invitation);
     void AddSite(Site site);
+    void AddSector(Sector sector);
+    void UpdateSector(Sector sector);
+    void AddMembership(OrganizationMembership membership);
+    void UpdateMembership(OrganizationMembership membership);
     void AddShift(Shift shift);
     Availability UpsertAvailability(Guid employeeId, DateOnly onDate, bool isAvailable, string? note);
 }

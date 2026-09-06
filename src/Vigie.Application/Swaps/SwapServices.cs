@@ -2,7 +2,7 @@ using Vigie.Domain;
 
 namespace Vigie.Application;
 
-public sealed class RequestSwapService(IAssignmentRepository assignments, ISwapRequestRepository swaps, IUnitOfWork unitOfWork)
+public sealed class RequestSwapService(IAssignmentRepository assignments, IShiftRepository shifts, ISwapRequestRepository swaps, IUnitOfWork unitOfWork)
 {
     public async Task<OperationResult<SwapRequest>> ExecuteAsync(Guid requesterId, Guid assignmentId, Guid receiverId, CancellationToken cancellationToken)
     {
@@ -10,6 +10,9 @@ public sealed class RequestSwapService(IAssignmentRepository assignments, ISwapR
         if (assignment is null) return OperationResult<SwapRequest>.Failure("NOT_FOUND", "L'assignation demandée est introuvable.");
         if (assignment.EmployeeId != requesterId) return OperationResult<SwapRequest>.Failure("FORBIDDEN", "Vous ne pouvez demander un échange que pour votre propre assignation.");
         if (receiverId == requesterId) return OperationResult<SwapRequest>.Failure("INVALID_SWAP", "Le receveur doit être un autre sauveteur.");
+        var shift = await shifts.GetAsync(assignment.ShiftId, cancellationToken);
+        if (shift is null) return OperationResult<SwapRequest>.Failure("NOT_FOUND", "Le quart de cette assignation est introuvable.");
+        if (shift.Status == ShiftStatus.Cancelled) return OperationResult<SwapRequest>.Failure("SHIFT_CANCELLED", "Un échange ne peut pas être demandé pour un quart annulé.");
 
         var request = SwapRequest.Create(Guid.NewGuid(), assignmentId, receiverId);
         await swaps.AddAsync(request, cancellationToken);
@@ -32,7 +35,7 @@ public sealed class ApproveSwapService(
     public async Task<OperationResult<SwapRequest>> ExecuteAsync(Guid coordinatorId, Guid requestId, CancellationToken cancellationToken)
     {
         var coordinator = await employees.GetAsync(coordinatorId, cancellationToken);
-        if (coordinator?.Role != EmployeeRole.Coordinator) return OperationResult<SwapRequest>.Failure("FORBIDDEN", "Seul un coordonnateur peut approuver un échange.");
+        if (coordinator is null || coordinator.Role == EmployeeRole.Lifeguard) return OperationResult<SwapRequest>.Failure("FORBIDDEN", "Seul un responsable peut approuver un échange.");
         var request = await swaps.GetAsync(requestId, cancellationToken);
         if (request is null) return OperationResult<SwapRequest>.Failure("NOT_FOUND", "La demande d'échange est introuvable.");
         if (request.Status != SwapStatus.Pending) return OperationResult<SwapRequest>.Failure("CONFLICT", "Cette demande d'échange a déjà été traitée.");
@@ -62,7 +65,7 @@ public sealed class RejectSwapService(IEmployeeRepository employees, ISwapReques
     public async Task<OperationResult<SwapRequest>> ExecuteAsync(Guid coordinatorId, Guid requestId, CancellationToken cancellationToken)
     {
         var coordinator = await employees.GetAsync(coordinatorId, cancellationToken);
-        if (coordinator?.Role != EmployeeRole.Coordinator) return OperationResult<SwapRequest>.Failure("FORBIDDEN", "Seul un coordonnateur peut refuser un échange.");
+        if (coordinator is null || coordinator.Role == EmployeeRole.Lifeguard) return OperationResult<SwapRequest>.Failure("FORBIDDEN", "Seul un responsable peut refuser un échange.");
         var request = await swaps.GetAsync(requestId, cancellationToken);
         if (request is null) return OperationResult<SwapRequest>.Failure("NOT_FOUND", "La demande d'échange est introuvable.");
         if (request.Status != SwapStatus.Pending) return OperationResult<SwapRequest>.Failure("CONFLICT", "Cette demande d'échange a déjà été traitée.");

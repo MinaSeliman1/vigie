@@ -2,6 +2,7 @@
 using System;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Infrastructure;
+using Microsoft.EntityFrameworkCore.Migrations;
 using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 using Npgsql.EntityFrameworkCore.PostgreSQL.Metadata;
 using Vigie.Infrastructure.Persistence;
@@ -11,9 +12,11 @@ using Vigie.Infrastructure.Persistence;
 namespace Vigie.Infrastructure.Persistence.Migrations
 {
     [DbContext(typeof(VigieDbContext))]
-    partial class VigieDbContextModelSnapshot : ModelSnapshot
+    [Migration("20260906162120_AddSiteCatalogMetadata")]
+    partial class AddSiteCatalogMetadata
     {
-        protected override void BuildModel(ModelBuilder modelBuilder)
+        /// <inheritdoc />
+        protected override void BuildTargetModel(ModelBuilder modelBuilder)
         {
 #pragma warning disable 612, 618
             modelBuilder
@@ -339,19 +342,10 @@ namespace Vigie.Infrastructure.Persistence.Migrations
 
                     b.HasIndex("SiteId");
 
-                    b.HasIndex("EmployeeId", "OrganizationId")
-                        .IsUnique()
-                        .HasFilter("\"IsActive\" = TRUE AND \"SiteId\" IS NULL AND \"SectorId\" IS NULL");
-
                     b.HasIndex("OrganizationId", "EmployeeId");
 
-                    b.HasIndex("EmployeeId", "OrganizationId", "SectorId")
-                        .IsUnique()
-                        .HasFilter("\"IsActive\" = TRUE AND \"SectorId\" IS NOT NULL");
-
-                    b.HasIndex("EmployeeId", "OrganizationId", "SiteId")
-                        .IsUnique()
-                        .HasFilter("\"IsActive\" = TRUE AND \"SiteId\" IS NOT NULL");
+                    b.HasIndex("EmployeeId", "OrganizationId", "SiteId", "SectorId", "IsActive")
+                        .IsUnique();
 
                     b.ToTable("OrganizationMemberships");
                 });

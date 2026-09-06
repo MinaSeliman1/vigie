@@ -36,7 +36,7 @@ Transformer la démonstration Vigie en un logiciel que plusieurs centres aquatiq
 
 ### 3. Opérations métier complètes
 
-- Gérer création, modification, publication et annulation de quarts.
+- ✅ Gérer création, modification et annulation de quarts; la publication explicite reste une étape du prochain cycle opérationnel.
 - Permettre une assignation et un retrait avec validation atomique des cinq règles.
 - Exposer certifications, disponibilités et capacité de couverture dans la vue coordonnateur.
 - Prévenir les doublons et verrouiller les décisions concurrentes.

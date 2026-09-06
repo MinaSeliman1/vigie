@@ -6,6 +6,7 @@ public static class RuleCodes
     public const string ShiftOverlap = "SHIFT_OVERLAP";
     public const string WeeklyQuotaExceeded = "WEEKLY_QUOTA_EXCEEDED";
     public const string SiteClosed = "SITE_CLOSED";
+    public const string ShiftCancelled = "SHIFT_CANCELLED";
 }
 
 public sealed record RuleViolation(string Code, string Message, IReadOnlyDictionary<string, string>? Details = null);
@@ -82,9 +83,17 @@ public sealed class SeasonRule : ICheckAssignmentRule
             : new RuleViolation(RuleCodes.SiteClosed, $"Le site « {context.Site.Name} » est fermé pendant la période de ce quart.");
 }
 
+public sealed class CancelledShiftRule : ICheckAssignmentRule
+{
+    public RuleViolation? Check(AssignmentCandidate candidate, AssignmentContext context)
+        => candidate.Shift.Status == ShiftStatus.Cancelled
+            ? new RuleViolation(RuleCodes.ShiftCancelled, "Ce quart est annulé et ne peut plus recevoir d'assignation.")
+            : null;
+}
+
 public static class AssignmentPolicy
 {
-    private static readonly ICheckAssignmentRule[] Rules = [new CertificationRule(), new OverlapRule(), new QuotaRule(), new SeasonRule()];
+    private static readonly ICheckAssignmentRule[] Rules = [new CancelledShiftRule(), new CertificationRule(), new OverlapRule(), new QuotaRule(), new SeasonRule()];
 
     public static IReadOnlyList<RuleViolation> Validate(AssignmentCandidate candidate, AssignmentContext context)
         => Rules.Select(rule => rule.Check(candidate, context)).OfType<RuleViolation>().ToArray();

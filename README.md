@@ -6,7 +6,7 @@
 
 Application de gestion de quarts pour équipes de sauveteurs : horaires, remplacements et suivi des certifications dans un même outil.
 
-> **État : MVP public, fondation commerciale en cours.** La démo UI est publiée sur [GitHub Pages](https://minaseliman1.github.io/vigie/) et l’API est déployée sur Render avec PostgreSQL Free de Supabase. Le parcours public affiche `API connectée` et couvre le calendrier, la création et l’assignation de quarts, les échanges avec approbation, l’équipe, les certifications et l’historique exportable en CSV. Les comptes réels disposent d’un espace isolé, d’invitations activables, d’un audit organisationnel et de sessions révoquées après changement de mot de passe. La feuille de route pour passer à un produit commercial est dans [`docs/roadmaps/2026-09-05-commercial-product.md`](docs/roadmaps/2026-09-05-commercial-product.md). Projet personnel indépendant, sans affiliation officielle avec un employeur. Toutes les données de démonstration sont fictives.
+> **État : fondation opérationnelle publique.** La démo UI est publiée sur [GitHub Pages](https://minaseliman1.github.io/vigie/) et l’API est déployée sur Render avec PostgreSQL Free de Supabase. Le parcours public affiche `API connectée` et couvre le calendrier, la création et l’assignation de quarts, les échanges avec approbation, l’équipe, les certifications, les périmètres et l’historique exportable en CSV. Les comptes réels disposent d’un espace isolé, d’invitations activables, d’un audit organisationnel et de sessions révoquées après changement de mot de passe. Projet personnel indépendant, sans affiliation officielle avec un employeur. Toutes les données de démonstration sont fictives.
 
 ## Le problème
 
@@ -26,10 +26,12 @@ Vigie centralise l’horaire, valide les assignations et soumet les remplacement
 
 Les limites calendaires (jour d’expiration, début de semaine, quarts de nuit et changement d’heure) sont documentées dans la spécification et doivent rester couvertes par des tests dédiés. Ces règles décrivent le produit et ne constituent pas une interprétation réglementaire.
 
-## Périmètre du MVP livré
+## Périmètre opérationnel livré
 
-- Connexion avec les rôles sauveteur et coordonnateur.
-- Gestion des sites, quarts, assignations et disponibilités.
+- Connexion avec les rôles `Sauveteur`, `Chef de piscine`, `Chargé de secteur` et `Régie aquatique`.
+- Portée d’accès contrôlée par organisation, secteur et piscine, avec memberships actifs, désactivation logique et version optimiste.
+- Catalogue de référence Laval : 7 piscines intérieures et 20 piscines extérieures, avec adresse, quartier, type et saison d’ouverture.
+- Gestion des sites, secteurs, quarts (création, modification, annulation), assignations et disponibilités.
 - Calendrier hebdomadaire personnel et d’équipe.
 - Demandes de remplacement, approbation et refus.
 - Suivi des certifications et alertes à 90 et 30 jours de l’échéance.
@@ -64,21 +66,30 @@ Le domaine reste indépendant de l’infrastructure. L’API compose les dépend
 | Docker Compose | Rendre l’environnement local reproductible. |
 | GitHub Actions | Vérifier le build et les tests sur les Pull Requests. |
 
-Le backend cible .NET 9 et le frontend utilise Node.js 22 dans la CI. L’authentification de l’API repose sur des jetons JWT et des rôles sauveteur/coordonnateur.
+Le backend cible .NET 9 et le frontend utilise Node.js 22 dans la CI. L’authentification de l’API repose sur des jetons JWT; les claims de périmètre sont revalidés contre les memberships actifs avant les opérations sensibles.
+
+### Matrice des rôles
+
+| Rôle | Périmètre | Capacités principales |
+| --- | --- | --- |
+| Sauveteur | Ses données et ses piscines affectées | Disponibilités, certifications, consultation et demandes d’échange |
+| Chef de piscine | Une ou plusieurs piscines | Équipe du site, quarts, assignations et décisions d’échange |
+| Chargé de secteur | Un secteur et ses piscines | Supervision de la couverture et des chefs de piscine |
+| Régie aquatique | Toute l’organisation | Piscines, secteurs, membres, politiques, rapports et audit global |
 
 ## Feuille de route
 
 | Jalon | État |
 | --- | --- |
 | 1 — Domaine | ✅ Entités, règles documentées et tests unitaires des cas limites. |
-| 2 — API et authentification | ✅ Endpoints OpenAPI, JWT, rôles et données fictives reproductibles. |
-| 3 — Interface | ✅ Parcours sauveteur et coordonnateur, interface responsive en français. |
+| 2 — API et authentification | ✅ Endpoints OpenAPI, JWT, rôles, memberships et isolation par périmètre. |
+| 3 — Interface | ✅ Parcours responsive en français, profils et catalogue des piscines. |
 | 4 — Démonstration | ✅ Démo UI publique, guide de parcours et workflow GitHub Pages. |
 | 5 — Déploiement API | ✅ API Render, PostgreSQL Supabase et démo GitHub Pages publiés et vérifiés. |
 
 Le périmètre restant est isolé derrière les mêmes ports d’application afin de ne pas fragiliser la démo.
 
-Les prochaines étapes sont détaillées dans la [feuille de route commerciale](docs/roadmaps/2026-09-05-commercial-product.md) et les [Issues du dépôt](https://github.com/MinaSeliman1/vigie/issues) : récupération de compte, gestion complète du cycle de vie des quarts, concurrence optimiste, notifications et exploitation de production. La procédure reproductible de déploiement reste disponible dans [`docs/deployment.md`](docs/deployment.md).
+Les prochaines étapes sont détaillées dans la [feuille de route commerciale](docs/roadmaps/2026-09-05-commercial-product.md) et les [Issues du dépôt](https://github.com/MinaSeliman1/vigie/issues) : récupération de compte, cycle de vie complet des quarts, notifications transactionnelles, facturation et exploitation de production. La procédure reproductible de déploiement reste disponible dans [`docs/deployment.md`](docs/deployment.md).
 
 ## Démarrer en local
 
@@ -101,12 +112,12 @@ npm run build
 npm run dev
 ```
 
-L’interface est en français et permet de basculer entre les profils sauveteur et coordonnateur pour parcourir le flux d’échange.
+L’interface est en français et permet de basculer entre les quatre profils de démonstration pour parcourir les droits par périmètre.
 
 ## Ce qui est déjà vérifiable
 
 - Les cinq règles métier sont testées dans `tests/Vigie.Domain.Tests` sans serveur ni base de données.
-- L’API JWT expose les routes de calendrier, d’assignation, d’échange et de certification ; les tests d’intégration couvrent l’authentification, l’inscription d’organisation, l’isolation entre organisations, les autorisations, les règles de saison, les décisions répétées et le modèle EF.
+- L’API JWT expose les routes de calendrier, d’assignation, d’échange, de certification, de secteurs et de memberships; les tests d’intégration couvrent l’authentification, l’inscription d’organisation, l’isolation entre organisations, les quatre rôles, les règles de saison, les décisions répétées, le catalogue Laval et le modèle EF.
 - La démo UI publique est construite automatiquement par GitHub Actions et publiée sur GitHub Pages à chaque mise à jour de `main`.
 - Le conteneur de l’API est construit dans la CI pour détecter les erreurs de packaging avant un déploiement.
 - `render.yaml` décrit le déploiement gratuit de l’API, son health check et les secrets attendus sans jamais les stocker dans Git.
@@ -116,8 +127,8 @@ L’interface est en français et permet de basculer entre les profils sauveteur
 - Les routes publiques `/api/v1/auth/register` et `/api/v1/auth/login` créent ou ouvrent un espace d’organisation ; les invitations `/api/v1/invitations` ne stockent que le hachage d’un jeton et les mots de passe sont stockés sous forme de hachages PBKDF2.
 - `GET /api/v1/auth/me` restaure une session, et `POST /api/v1/auth/change-password` renouvelle le jeton tout en invalidant les sessions précédentes.
 - Les jetons d’accès expirent après 60 minutes et les routes d’authentification sont limitées à 10 tentatives par minute et par adresse en production.
-- `GET /api/v1/audit` et `GET /api/v1/audit/export` sont réservés au rôle coordonnateur et restent strictement bornés à son organisation.
-- Une migration `InitialCreate` et un seed idempotent s’exécutent automatiquement lorsqu’une chaîne `ConnectionStrings__Vigie` est configurée.
+- `GET /api/v1/audit` et `GET /api/v1/audit/export` sont réservés aux responsables autorisés et restent bornés à leur organisation et à leur périmètre opérationnel.
+- Les migrations `AddLavalOperationsFoundation`, `AddSiteCatalogMetadata` et `FixMembershipScopeIndexes` ainsi qu’un seed idempotent s’exécutent automatiquement lorsqu’une chaîne `ConnectionStrings__Vigie` est configurée.
 
 ## Examiner le projet
 

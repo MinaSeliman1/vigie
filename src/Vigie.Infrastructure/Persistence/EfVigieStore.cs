@@ -15,6 +15,8 @@ public sealed class EfVigieStore(VigieDbContext db) : IVigieStore
     public IReadOnlyCollection<Invitation> Invitations => db.Invitations.AsNoTracking().ToArray();
     public IReadOnlyCollection<Employee> Employees => db.Employees.AsNoTracking().ToArray();
     public IReadOnlyCollection<Site> Sites => db.Sites.AsNoTracking().ToArray();
+    public IReadOnlyCollection<Sector> Sectors => db.Sectors.AsNoTracking().ToArray();
+    public IReadOnlyCollection<OrganizationMembership> Memberships => db.OrganizationMemberships.AsNoTracking().ToArray();
     public IReadOnlyCollection<Shift> Shifts => db.Shifts.AsNoTracking().ToArray();
     public IReadOnlyCollection<CertificationType> CertificationTypes => db.CertificationTypes.AsNoTracking().ToArray();
     public IReadOnlyCollection<Certification> Certifications => db.Certifications.AsNoTracking().ToArray();
@@ -93,6 +95,10 @@ public sealed class EfVigieStore(VigieDbContext db) : IVigieStore
     public void AddInvitation(Invitation invitation) => db.Invitations.Add(invitation);
     public void UpdateInvitation(Invitation invitation) => db.Invitations.Update(invitation);
     public void AddSite(Site site) => db.Sites.Add(site);
+    public void AddSector(Sector sector) => db.Sectors.Add(sector);
+    public void UpdateSector(Sector sector) => db.Sectors.Update(sector);
+    public void AddMembership(OrganizationMembership membership) => db.OrganizationMemberships.Add(membership);
+    public void UpdateMembership(OrganizationMembership membership) => db.OrganizationMemberships.Update(membership);
     public void AddShift(Shift shift) => db.Shifts.Add(shift);
 
     public Availability UpsertAvailability(Guid employeeId, DateOnly onDate, bool isAvailable, string? note)

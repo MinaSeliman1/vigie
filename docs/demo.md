@@ -2,7 +2,7 @@
 
 ## Démo publique
 
-La démo UI est accessible directement sur [minaseliman1.github.io/vigie](https://minaseliman1.github.io/vigie/). Elle démarre avec le profil d’Amélie et permet de basculer vers le profil coordonnateur pour parcourir la planification, l’assignation d’un quart, une demande d’échange et son approbation.
+La démo UI est accessible directement sur [minaseliman1.github.io/vigie](https://minaseliman1.github.io/vigie/). Elle démarre avec le profil d’Amélie et permet de basculer entre les quatre profils pour parcourir la planification, les droits par périmètre, le catalogue Laval, une demande d’échange et son approbation.
 
 ## API
 
@@ -19,7 +19,9 @@ Pour tester le chemin PostgreSQL, démarrer `docker compose up -d postgres`, ren
 | Sauveteur | `amelie@vigie.demo` |
 | Sauveteur | `noah@vigie.demo` |
 | Sauveteur | `sofia@vigie.demo` |
-| Coordonnateur | `coordonnateur@vigie.demo` |
+| Chef de piscine (compatibilité) | `coordonnateur@vigie.demo` |
+| Chargé de secteur — Nord | `charge.nord@vigie.demo` |
+| Régie aquatique | `regie@vigie.demo` |
 
 OpenAPI est disponible à `http://localhost:5187/openapi/v1.json` et l’état du service à `http://localhost:5187/health`.
 
@@ -33,16 +35,22 @@ npm install
 npm run dev
 ```
 
-L’interface inclut un sélecteur de profils de démonstration pour parcourir les deux rôles sans configuration supplémentaire. Elle utilise les données locales par défaut. Pour activer l’API réelle, copier `frontend/.env.example` vers `frontend/.env.local`, conserver `VITE_API_URL=http://localhost:5187`, puis relancer Vite : la connexion, les quarts, les échanges et les certifications seront chargés depuis l’API. Si l’API devient indisponible, l’interface revient au mode de démonstration et affiche son état dans la barre latérale.
+L’interface inclut un sélecteur de profils de démonstration pour parcourir les quatre rôles sans configuration supplémentaire. Elle utilise les données locales par défaut. Pour activer l’API réelle, copier `frontend/.env.example` vers `frontend/.env.local`, conserver `VITE_API_URL=http://localhost:5187`, puis relancer Vite : la connexion, les quarts, les échanges, les certifications, les membres et les piscines seront chargés depuis l’API. Si l’API devient indisponible, l’interface revient au mode de démonstration et affiche son état dans la barre latérale.
 
 ## Parcours à montrer
 
-1. Basculer vers `Camille Gagnon · coord.` et ouvrir un quart dans `Mon calendrier`.
-2. Cliquer sur `Gérer les assignations`, choisir un sauveteur puis montrer que l’API valide les règles métier avant l’écriture.
-3. Revenir au profil `Amélie Roy · sauv.` et sélectionner un quart assigné.
-4. Cliquer sur `Demander un échange` et choisir Noah Tremblay.
-5. Basculer sur le profil coordonnateur et ouvrir `Échanges`.
-6. Ouvrir `Détails`, puis approuver la demande et montrer la confirmation ainsi que le statut `Approuvé`.
-7. Ouvrir `Disponibilités` avec le profil sauveteur et basculer un jour pour montrer une écriture persistée par l’API.
-8. Ouvrir `Équipe` et `Certifications` pour expliquer le roster et le signal `À surveiller`.
-9. Revenir sur `Camille Gagnon · coord.`, ouvrir `Historique` et télécharger `Exporter CSV` pour montrer la traçabilité exploitable hors de l’application.
+1. Basculer vers `Élodie Martel · Régie aquatique` et ouvrir `Piscines` pour montrer les installations municipales et leurs quartiers.
+2. Basculer vers `Marc-André Bouchard · Chargé de secteur` et ouvrir `Piscines` puis `Équipe` : seuls les sites et membres du secteur Nord sont visibles.
+3. Basculer vers `Camille Gagnon · chef de piscine` et ouvrir un quart dans `Mon calendrier`.
+4. Cliquer sur `Gérer les assignations`, choisir un sauveteur puis montrer que l’API valide les règles métier avant l’écriture. Un responsable peut aussi annuler un quart depuis son panneau de détail.
+5. Revenir au profil `Amélie Roy · sauv.` et sélectionner un quart assigné.
+6. Cliquer sur `Demander un échange` et choisir Noah Tremblay.
+7. Basculer sur `Camille Gagnon · chef de piscine` et ouvrir `Échanges`.
+8. Ouvrir `Détails`, puis approuver la demande et montrer la confirmation ainsi que le statut `Approuvé`.
+9. Ouvrir `Disponibilités` avec le profil sauveteur et basculer un jour pour montrer une écriture persistée par l’API.
+10. Ouvrir `Équipe` et `Certifications` pour expliquer le roster et le signal `À surveiller`.
+11. Revenir sur `Élodie Martel · Régie aquatique`, ouvrir `Historique` et télécharger `Exporter CSV` pour montrer la traçabilité exploitable hors de l’application.
+
+## Catalogue Laval
+
+Le seed de démonstration inclut les 7 piscines intérieures et les 20 piscines extérieures listées par la [Ville de Laval](https://www.laval.ca/sports-loisirs/sports/piscines/piscines-interieures/) et la [page des piscines extérieures](https://www.laval.ca/sports-loisirs/sports/piscines/piscines-exterieures-jeux-eau/). Les dates et statuts d’ouverture restent des données opérationnelles à confirmer chaque saison; Vigie conserve la saison configurée par installation et bloque les quarts hors période.

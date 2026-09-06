@@ -24,4 +24,15 @@ public sealed class InvitationTests
         Assert.Equal(InvitationStatus.Accepted, invitation.Status);
         Assert.Throws<DomainException>(() => invitation.Accept(DateTimeOffset.UtcNow));
     }
+
+    [Fact]
+    public void Invitation_keeps_the_requested_role_and_scope()
+    {
+        var siteId = Guid.NewGuid();
+        var invitation = Invitation.Create(Guid.NewGuid(), Guid.NewGuid(), "chef@exemple.test", "Chef", EmployeeRole.PoolChief, "hash", DateTimeOffset.UtcNow, TimeSpan.FromDays(7), siteId, null);
+
+        Assert.Equal(EmployeeRole.PoolChief, invitation.Role);
+        Assert.Equal(siteId, invitation.SiteId);
+        Assert.Null(invitation.SectorId);
+    }
 }

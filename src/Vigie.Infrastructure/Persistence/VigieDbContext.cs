@@ -10,6 +10,8 @@ public sealed class VigieDbContext(DbContextOptions<VigieDbContext> options) : D
     public DbSet<Invitation> Invitations => Set<Invitation>();
     public DbSet<Employee> Employees => Set<Employee>();
     public DbSet<Site> Sites => Set<Site>();
+    public DbSet<Sector> Sectors => Set<Sector>();
+    public DbSet<OrganizationMembership> OrganizationMemberships => Set<OrganizationMembership>();
     public DbSet<CertificationType> CertificationTypes => Set<CertificationType>();
     public DbSet<Certification> Certifications => Set<Certification>();
     public DbSet<Shift> Shifts => Set<Shift>();
@@ -44,6 +46,11 @@ public sealed class VigieDbContext(DbContextOptions<VigieDbContext> options) : D
             entity.Property(x => x.Email).HasMaxLength(180).IsRequired();
             entity.Property(x => x.Name).HasMaxLength(120).IsRequired();
             entity.Property(x => x.Role).HasConversion<string>().HasMaxLength(24).IsRequired();
+            entity.Property(x => x.SiteId);
+            entity.Property(x => x.SectorId);
+            entity.HasIndex(x => new { x.OrganizationId, x.SiteId, x.SectorId });
+            entity.HasOne<Site>().WithMany().HasForeignKey(x => x.SiteId).OnDelete(DeleteBehavior.Restrict);
+            entity.HasOne<Sector>().WithMany().HasForeignKey(x => x.SectorId).OnDelete(DeleteBehavior.Restrict);
             entity.Property(x => x.TokenHash).HasMaxLength(64).IsRequired();
             entity.Property(x => x.Status).HasConversion<string>().HasMaxLength(24).IsRequired();
             entity.HasIndex(x => x.TokenHash).IsUnique();
@@ -70,7 +77,13 @@ public sealed class VigieDbContext(DbContextOptions<VigieDbContext> options) : D
             entity.Property(x => x.OrganizationId).IsRequired();
             entity.HasIndex(x => x.OrganizationId);
             entity.HasOne<Organization>().WithMany().HasForeignKey(x => x.OrganizationId).OnDelete(DeleteBehavior.Restrict);
+            entity.Property(x => x.SectorId);
+            entity.HasIndex(x => new { x.OrganizationId, x.SectorId });
+            entity.HasOne<Sector>().WithMany().HasForeignKey(x => x.SectorId).OnDelete(DeleteBehavior.Restrict);
             entity.Property(x => x.Name).HasMaxLength(120).IsRequired();
+            entity.Property(x => x.Address).HasMaxLength(240).IsRequired();
+            entity.Property(x => x.Neighborhood).HasMaxLength(120).IsRequired();
+            entity.Property(x => x.IsMunicipal).IsRequired();
             entity.Property(x => x.TimeZoneId).HasMaxLength(80).IsRequired();
             entity.Property(x => x.Type).HasConversion<string>().HasMaxLength(24);
             entity.Property(x => x.OpeningSeason)
@@ -79,6 +92,44 @@ public sealed class VigieDbContext(DbContextOptions<VigieDbContext> options) : D
                     value => ParseOpeningSeason(value))
                 .HasMaxLength(12)
                 .IsRequired();
+        });
+        modelBuilder.Entity<Sector>(entity =>
+        {
+            entity.HasKey(x => x.Id);
+            entity.Property(x => x.OrganizationId).IsRequired();
+            entity.Property(x => x.Name).HasMaxLength(120).IsRequired();
+            entity.Property(x => x.Code).HasMaxLength(32).IsRequired();
+            entity.Property(x => x.IsActive).IsRequired();
+            entity.Property(x => x.CreatedAtUtc).IsRequired();
+            entity.Property(x => x.UpdatedAtUtc).IsRequired();
+            entity.HasIndex(x => new { x.OrganizationId, x.Code }).IsUnique();
+            entity.HasIndex(x => new { x.OrganizationId, x.Name }).IsUnique();
+            entity.HasOne<Organization>().WithMany().HasForeignKey(x => x.OrganizationId).OnDelete(DeleteBehavior.Restrict);
+        });
+        modelBuilder.Entity<OrganizationMembership>(entity =>
+        {
+            entity.HasKey(x => x.Id);
+            entity.Property(x => x.OrganizationId).IsRequired();
+            entity.Property(x => x.EmployeeId).IsRequired();
+            entity.Property(x => x.Role).HasConversion<string>().HasMaxLength(24).IsRequired();
+            entity.Property(x => x.IsActive).IsRequired();
+            entity.Property(x => x.Version).IsConcurrencyToken().IsRequired();
+            entity.Property(x => x.CreatedAtUtc).IsRequired();
+            entity.Property(x => x.UpdatedAtUtc).IsRequired();
+            entity.HasIndex(x => new { x.OrganizationId, x.EmployeeId });
+            entity.HasIndex(x => new { x.EmployeeId, x.OrganizationId, x.SiteId })
+                .HasFilter("\"IsActive\" = TRUE AND \"SiteId\" IS NOT NULL")
+                .IsUnique();
+            entity.HasIndex(x => new { x.EmployeeId, x.OrganizationId, x.SectorId })
+                .HasFilter("\"IsActive\" = TRUE AND \"SectorId\" IS NOT NULL")
+                .IsUnique();
+            entity.HasIndex(x => new { x.EmployeeId, x.OrganizationId })
+                .HasFilter("\"IsActive\" = TRUE AND \"SiteId\" IS NULL AND \"SectorId\" IS NULL")
+                .IsUnique();
+            entity.HasOne<Organization>().WithMany().HasForeignKey(x => x.OrganizationId).OnDelete(DeleteBehavior.Restrict);
+            entity.HasOne<Employee>().WithMany().HasForeignKey(x => x.EmployeeId).OnDelete(DeleteBehavior.Restrict);
+            entity.HasOne<Site>().WithMany().HasForeignKey(x => x.SiteId).OnDelete(DeleteBehavior.Restrict);
+            entity.HasOne<Sector>().WithMany().HasForeignKey(x => x.SectorId).OnDelete(DeleteBehavior.Restrict);
         });
         modelBuilder.Entity<CertificationType>(entity => { entity.HasKey(x => x.Id); entity.Property(x => x.Name).HasMaxLength(120).IsRequired(); });
         modelBuilder.Entity<Certification>(entity =>

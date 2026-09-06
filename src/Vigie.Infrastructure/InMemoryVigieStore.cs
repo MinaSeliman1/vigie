@@ -18,6 +18,8 @@ public sealed class InMemoryVigieStore :
     private readonly Dictionary<Guid, Invitation> invitations = [];
     private readonly Dictionary<Guid, Employee> employees = [];
     private readonly Dictionary<Guid, Site> sites = [];
+    private readonly Dictionary<Guid, Sector> sectors = [];
+    private readonly Dictionary<Guid, OrganizationMembership> memberships = [];
     private readonly Dictionary<Guid, Shift> shifts = [];
     private readonly Dictionary<Guid, CertificationType> certificationTypes = [];
     private readonly Dictionary<Guid, Certification> certifications = [];
@@ -36,6 +38,8 @@ public sealed class InMemoryVigieStore :
     public IReadOnlyCollection<Invitation> Invitations => invitations.Values.ToArray();
     public IReadOnlyCollection<Employee> Employees => employees.Values.ToArray();
     public IReadOnlyCollection<Site> Sites => sites.Values.ToArray();
+    public IReadOnlyCollection<Sector> Sectors => sectors.Values.ToArray();
+    public IReadOnlyCollection<OrganizationMembership> Memberships => memberships.Values.ToArray();
     public IReadOnlyCollection<Shift> Shifts => shifts.Values.ToArray();
     public IReadOnlyCollection<CertificationType> CertificationTypes => certificationTypes.Values.ToArray();
     public IReadOnlyCollection<Certification> Certifications => certifications.Values.ToArray();
@@ -101,6 +105,10 @@ public sealed class InMemoryVigieStore :
     public void AddInvitation(Invitation invitation) => invitations[invitation.Id] = invitation;
     public void UpdateInvitation(Invitation invitation) => invitations[invitation.Id] = invitation;
     public void AddSite(Site site) => sites[site.Id] = site;
+    public void AddSector(Sector sector) => sectors[sector.Id] = sector;
+    public void UpdateSector(Sector sector) => sectors[sector.Id] = sector;
+    public void AddMembership(OrganizationMembership membership) => memberships[membership.Id] = membership;
+    public void UpdateMembership(OrganizationMembership membership) => memberships[membership.Id] = membership;
     public void AddShift(Shift shift) => shifts[shift.Id] = shift;
     public void AddCertification(Certification certification) => certifications[certification.Id] = certification;
     public void AddCertificationTypeForSite(Guid siteId, Guid certificationTypeId) => siteCertificationTypes.GetOrAdd(siteId).Add(certificationTypeId);
@@ -122,18 +130,38 @@ public sealed class InMemoryVigieStore :
         var amelie = Employee.Create(Guid.Parse("10000000-0000-0000-0000-000000000002"), "Amélie Roy", "amelie@vigie.demo", EmployeeRole.Lifeguard, 24, organization.Id, true);
         var noah = Employee.Create(Guid.Parse("10000000-0000-0000-0000-000000000003"), "Noah Tremblay", "noah@vigie.demo", EmployeeRole.Lifeguard, 32, organization.Id, true);
         var sofia = Employee.Create(Guid.Parse("10000000-0000-0000-0000-000000000004"), "Sofia Nguyen", "sofia@vigie.demo", EmployeeRole.Lifeguard, 20, organization.Id, true);
-        foreach (var demoEmployee in new[] { coord, amelie, noah, sofia }) demoEmployee.SetPasswordHash(PasswordHasher.Hash("vigie-demo"));
-        foreach (var employee in new[] { coord, amelie, noah, sofia }) employees[employee.Id] = employee;
+        var manager = Employee.Create(Guid.Parse("10000000-0000-0000-0000-000000000005"), "Marc-André Bouchard", "charge.nord@vigie.demo", EmployeeRole.SectorManager, 40, organization.Id, true);
+        var director = Employee.Create(Guid.Parse("10000000-0000-0000-0000-000000000006"), "Élodie Martel", "regie@vigie.demo", EmployeeRole.AquaticDirector, 40, organization.Id, true);
+        foreach (var demoEmployee in new[] { coord, amelie, noah, sofia, manager, director }) demoEmployee.SetPasswordHash(PasswordHasher.Hash("vigie-demo"));
+        foreach (var employee in new[] { coord, amelie, noah, sofia, manager, director }) employees[employee.Id] = employee;
 
         var nord = Site.Create(Guid.Parse("20000000-0000-0000-0000-000000000001"), "Piscine du Nord", "Eastern Standard Time", OpeningSeason.AllYear, SiteType.Indoor, organization.Id);
         var parc = Site.Create(Guid.Parse("20000000-0000-0000-0000-000000000002"), "Bassin du parc", "Eastern Standard Time", new OpeningSeason(5, 15, 9, 15), SiteType.Outdoor, organization.Id);
         sites[nord.Id] = nord; sites[parc.Id] = parc;
+
+        var nordSector = Sector.Create(Guid.Parse("80000000-0000-0000-0000-000000000001"), organization.Id, "Secteur Nord", "NORD");
+        var parcSector = Sector.Create(Guid.Parse("80000000-0000-0000-0000-000000000002"), organization.Id, "Secteur du parc", "PARC");
+        sectors[nordSector.Id] = nordSector; sectors[parcSector.Id] = parcSector;
+        nord.SetSector(nordSector.Id); parc.SetSector(parcSector.Id);
+        memberships[Guid.Parse("81000000-0000-0000-0000-000000000001")] = OrganizationMembership.Create(Guid.Parse("81000000-0000-0000-0000-000000000001"), coord.Id, organization.Id, EmployeeRole.PoolChief, nord.Id, null);
+        memberships[Guid.Parse("81000000-0000-0000-0000-000000000002")] = OrganizationMembership.Create(Guid.Parse("81000000-0000-0000-0000-000000000002"), amelie.Id, organization.Id, EmployeeRole.Lifeguard, nord.Id, null);
+        memberships[Guid.Parse("81000000-0000-0000-0000-000000000003")] = OrganizationMembership.Create(Guid.Parse("81000000-0000-0000-0000-000000000003"), noah.Id, organization.Id, EmployeeRole.Lifeguard, nord.Id, null);
+        memberships[Guid.Parse("81000000-0000-0000-0000-000000000004")] = OrganizationMembership.Create(Guid.Parse("81000000-0000-0000-0000-000000000004"), sofia.Id, organization.Id, EmployeeRole.Lifeguard, parc.Id, null);
+        memberships[Guid.Parse("81000000-0000-0000-0000-000000000005")] = OrganizationMembership.Create(Guid.Parse("81000000-0000-0000-0000-000000000005"), manager.Id, organization.Id, EmployeeRole.SectorManager, null, nordSector.Id);
+        memberships[Guid.Parse("81000000-0000-0000-0000-000000000006")] = OrganizationMembership.Create(Guid.Parse("81000000-0000-0000-0000-000000000006"), director.Id, organization.Id, EmployeeRole.AquaticDirector, null, null);
+
+        SeedLavalCatalog(organization.Id);
 
         var firstAid = CertificationType.Create(Guid.Parse("30000000-0000-0000-0000-000000000001"), "Premiers soins", true);
         var lifeguard = CertificationType.Create(Guid.Parse("30000000-0000-0000-0000-000000000002"), "Sauveteur national", true);
         certificationTypes[firstAid.Id] = firstAid; certificationTypes[lifeguard.Id] = lifeguard;
         AddCertificationTypeForSite(nord.Id, firstAid.Id); AddCertificationTypeForSite(nord.Id, lifeguard.Id);
         AddCertificationTypeForSite(parc.Id, firstAid.Id); AddCertificationTypeForSite(parc.Id, lifeguard.Id);
+        foreach (var pool in LavalPoolCatalog.All)
+        {
+            AddCertificationTypeForSite(pool.SiteId, firstAid.Id);
+            AddCertificationTypeForSite(pool.SiteId, lifeguard.Id);
+        }
         AddCertification(Certification.Create(amelie.Id, firstAid.Id, DateOnly.FromDateTime(DateTime.UtcNow.AddDays(75))));
         AddCertification(Certification.Create(amelie.Id, lifeguard.Id, DateOnly.FromDateTime(DateTime.UtcNow.AddDays(220))));
         AddCertification(Certification.Create(noah.Id, firstAid.Id, DateOnly.FromDateTime(DateTime.UtcNow.AddDays(370))));
@@ -162,6 +190,18 @@ public sealed class InMemoryVigieStore :
         AddAuditEntry(AuditEntry.Create(Guid.Parse("70000000-0000-0000-0000-000000000002"), organization.Id, coord.Id, "shift.created", "Shift", shiftsToAdd[0].Id, null, auditNow.AddDays(-4)));
         AddAuditEntry(AuditEntry.Create(Guid.Parse("70000000-0000-0000-0000-000000000003"), organization.Id, coord.Id, "assignment.created", "Assignment", Guid.Parse("50000000-0000-0000-0000-000000000001"), $"employé={amelie.Name}", auditNow.AddDays(-3)));
         AddAuditEntry(AuditEntry.Create(Guid.Parse("70000000-0000-0000-0000-000000000004"), organization.Id, amelie.Id, "swap.created", "SwapRequest", demoSwap.Id, $"receveur={noah.Name}", auditNow.AddHours(-8)));
+    }
+
+    private void SeedLavalCatalog(Guid organizationId)
+    {
+        foreach (var pool in LavalPoolCatalog.All)
+        {
+            var site = Site.Create(pool.SiteId, pool.Name, "Eastern Standard Time", pool.OpeningSeason, pool.Type, organizationId, pool.Address, pool.Neighborhood, isMunicipal: true);
+            var sector = Sector.Create(pool.SectorId, organizationId, $"Secteur {pool.Code}", pool.Code);
+            site.SetSector(sector.Id);
+            sites[site.Id] = site;
+            sectors[sector.Id] = sector;
+        }
     }
 }
 
