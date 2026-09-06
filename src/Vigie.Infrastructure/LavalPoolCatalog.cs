@@ -19,6 +19,7 @@ public sealed record LavalPoolDefinition(
 /// </summary>
 public static class LavalPoolCatalog
 {
+    public static readonly Guid DemoOrganizationId = Guid.Parse("00000000-0000-0000-0000-000000000001");
     public const string SourceUrl = "https://www.laval.ca/sports-loisirs/sports/piscines/piscines-exterieures-jeux-eau/";
     public const string IndoorSourceUrl = "https://www.laval.ca/sports-loisirs/sports/piscines/piscines-interieures/";
 
@@ -54,6 +55,23 @@ public static class LavalPoolCatalog
         Outdoor("PREVOST", "Piscine Prévost", "110, rue de Toulouse", "Laval-Ouest")
     ];
 
+    /// <summary>
+    /// Retourne des clés propres à l'organisation. Les installations du catalogue
+    /// sont partagées comme référence, mais leurs lignes restent isolées par tenant.
+    /// La démonstration conserve ses clés historiques afin que ses quarts existants
+    /// restent compatibles avec le seed mémoire et les bases déjà initialisées.
+    /// </summary>
+    public static IReadOnlyList<LavalPoolDefinition> ForOrganization(Guid organizationId)
+    {
+        if (organizationId == DemoOrganizationId) return All;
+
+        return All.Select(pool => pool with
+        {
+            SiteId = ScopedGuid(organizationId, pool.SiteId, "site"),
+            SectorId = ScopedGuid(organizationId, pool.SectorId, "sector")
+        }).ToArray();
+    }
+
     private static LavalPoolDefinition Indoor(string code, string name, string address, string neighborhood)
         => Create(code, name, SiteType.Indoor, address, neighborhood, OpeningSeason.AllYear);
 
@@ -72,5 +90,11 @@ public static class LavalPoolCatalog
     {
         var bytes = System.Security.Cryptography.SHA256.HashData(System.Text.Encoding.UTF8.GetBytes(value));
         return new Guid(bytes[..16]);
+    }
+
+    private static Guid ScopedGuid(Guid organizationId, Guid catalogId, string kind)
+    {
+        var input = $"{kind}:{organizationId:N}:{catalogId:N}";
+        return DeterministicGuid(input);
     }
 }

@@ -60,9 +60,12 @@ public static class VigieDatabaseInitializer
 
             // Le catalogue Laval est idempotent : une base existante reçoit les sites
             // manquants sans modifier les quarts ni les affectations déjà en place.
-            foreach (var pool in LavalPoolCatalog.All)
+            foreach (var pool in LavalPoolCatalog.ForOrganization(organization.Id))
             {
-                var site = sites.SingleOrDefault(item => item.Id == pool.SiteId);
+                // Les versions précédentes utilisaient des clés globales. Rechercher
+                // aussi par nom permet de rattacher une base existante sans doublon.
+                var site = sites.SingleOrDefault(item => item.Id == pool.SiteId) ??
+                    sites.SingleOrDefault(item => item.Name == pool.Name);
                 if (site is null)
                 {
                     site = Site.Create(pool.SiteId, pool.Name, "Eastern Standard Time", pool.OpeningSeason, pool.Type, organization.Id, pool.Address, pool.Neighborhood, isMunicipal: true);
@@ -74,7 +77,8 @@ public static class VigieDatabaseInitializer
                     site.SetCatalogMetadata(pool.Address, pool.Neighborhood, isMunicipal: true);
                 }
 
-                var catalogSector = sectors.SingleOrDefault(item => item.Id == pool.SectorId);
+                var catalogSector = sectors.SingleOrDefault(item => item.Id == pool.SectorId) ??
+                    sectors.SingleOrDefault(item => item.Code == pool.Code);
                 if (catalogSector is null)
                 {
                     catalogSector = Sector.Create(pool.SectorId, organization.Id, $"Secteur {pool.Code}", pool.Code);

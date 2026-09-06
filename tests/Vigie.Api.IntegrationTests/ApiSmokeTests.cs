@@ -3,6 +3,7 @@ using System.Net.Http.Json;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.AspNetCore.Mvc.Testing;
 using Vigie.Domain;
+using Vigie.Infrastructure;
 using Vigie.Infrastructure.Persistence;
 
 namespace Vigie.Api.IntegrationTests;
@@ -535,6 +536,20 @@ public sealed class ApiSmokeTests : IClassFixture<WebApplicationFactory<Program>
         Assert.NotNull(sector);
         Assert.NotNull(context.Model.FindEntityType(typeof(OrganizationMembership)));
         Assert.Contains(sector!.GetIndexes(), index => index.IsUnique && index.Properties.Select(property => property.Name).SequenceEqual(new[] { nameof(Sector.OrganizationId), nameof(Sector.Code) }));
+    }
+
+    [Fact]
+    public void Laval_catalog_keys_are_isolated_per_organization()
+    {
+        var first = LavalPoolCatalog.ForOrganization(Guid.NewGuid());
+        var second = LavalPoolCatalog.ForOrganization(Guid.NewGuid());
+
+        Assert.Equal(27, first.Count);
+        Assert.Equal(27, second.Count);
+        Assert.Equal(first.Count, first.Select(pool => pool.SiteId).Distinct().Count());
+        Assert.Equal(first.Count, first.Select(pool => pool.SectorId).Distinct().Count());
+        Assert.Empty(first.Select(pool => pool.SiteId).Intersect(second.Select(pool => pool.SiteId)));
+        Assert.Empty(first.Select(pool => pool.SectorId).Intersect(second.Select(pool => pool.SectorId)));
     }
 
     private sealed record LoginPayload(string Token, UserPayload User);
