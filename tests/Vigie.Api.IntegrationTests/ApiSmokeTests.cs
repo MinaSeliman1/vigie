@@ -54,6 +54,38 @@ public sealed class ApiSmokeTests : IClassFixture<WebApplicationFactory<Program>
     }
 
     [Fact]
+    public async Task Changing_password_revokes_the_previous_session()
+    {
+        var email = $"password-{Guid.NewGuid():N}@exemple.test";
+        var registration = await client.PostAsJsonAsync("/api/v1/auth/register", new
+        {
+            organizationName = $"Centre sécurité {Guid.NewGuid():N}",
+            name = "Compte sécurité",
+            email,
+            password = "Mot-de-passe1"
+        });
+        var created = await registration.Content.ReadFromJsonAsync<RegistrationPayload>();
+        var oldToken = created!.Login.Token;
+        client.DefaultRequestHeaders.Authorization = new System.Net.Http.Headers.AuthenticationHeaderValue("Bearer", oldToken);
+
+        var change = await client.PostAsJsonAsync("/api/v1/auth/change-password", new
+        {
+            currentPassword = "Mot-de-passe1",
+            newPassword = "Nouveau-motdepasse1"
+        });
+        var changed = await change.Content.ReadFromJsonAsync<LoginPayload>();
+
+        Assert.Equal(HttpStatusCode.OK, change.StatusCode);
+        Assert.NotEqual(oldToken, changed?.Token);
+
+        client.DefaultRequestHeaders.Authorization = new System.Net.Http.Headers.AuthenticationHeaderValue("Bearer", oldToken);
+        Assert.Equal(HttpStatusCode.Unauthorized, (await client.GetAsync("/api/v1/auth/me")).StatusCode);
+
+        client.DefaultRequestHeaders.Authorization = new System.Net.Http.Headers.AuthenticationHeaderValue("Bearer", changed!.Token);
+        Assert.Equal(HttpStatusCode.OK, (await client.GetAsync("/api/v1/auth/me")).StatusCode);
+    }
+
+    [Fact]
     public async Task Lifeguard_cannot_approve_a_swap()
     {
         var login = await client.PostAsJsonAsync("/api/v1/auth/login", new { email = "amelie@vigie.demo", password = "vigie-demo" });

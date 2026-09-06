@@ -22,6 +22,7 @@ public sealed class Employee
     public decimal WeeklyQuotaHours { get; private set; }
     public string PasswordHash { get; private set; }
     public bool IsDemoAccount { get; private set; }
+    public int SessionVersion { get; private set; } = 1;
 
     public static Employee Create(Guid id, string name, string email, EmployeeRole role, decimal weeklyQuotaHours, Guid? organizationId = null, bool isDemoAccount = false)
     {
@@ -47,5 +48,11 @@ public sealed class Employee
     {
         if (string.IsNullOrWhiteSpace(passwordHash)) throw new DomainException("Le mot de passe haché est obligatoire.");
         PasswordHash = passwordHash.Trim();
+    }
+
+    public void RevokeSessions()
+    {
+        if (SessionVersion == int.MaxValue) SessionVersion = 1;
+        else SessionVersion++;
     }
 }

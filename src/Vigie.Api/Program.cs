@@ -46,6 +46,27 @@ builder.Services.AddAuthentication(JwtBearerDefaults.AuthenticationScheme).AddJw
         RoleClaimType = ClaimTypes.Role,
         ClockSkew = TimeSpan.FromSeconds(30)
     };
+    options.Events = new JwtBearerEvents
+    {
+        OnTokenValidated = async context =>
+        {
+            var principal = context.Principal;
+            var versionClaim = principal?.FindFirstValue("session_version");
+            if (!int.TryParse(versionClaim, NumberStyles.None, CultureInfo.InvariantCulture, out var tokenVersion)) return;
+
+            var subject = principal?.FindFirstValue(JwtRegisteredClaimNames.Sub) ?? principal?.FindFirstValue(ClaimTypes.NameIdentifier);
+            if (!Guid.TryParse(subject, out var employeeId))
+            {
+                context.Fail("La session est invalide.");
+                return;
+            }
+
+            var employeeRepository = context.HttpContext.RequestServices.GetRequiredService<IEmployeeRepository>();
+            var employee = await employeeRepository.GetAsync(employeeId, context.HttpContext.RequestAborted);
+            if (employee is null || employee.SessionVersion != tokenVersion)
+                context.Fail("La session a été révoquée.");
+        }
+    };
 });
 builder.Services.AddAuthorization();
 builder.Services.AddRateLimiter(options =>
@@ -125,6 +146,26 @@ app.MapGet("/api/v1/auth/me", (ClaimsPrincipal user, IVigieStore store) =>
         ? Problem("SESSION_INVALID", "La session n'est plus valide.", StatusCodes.Status401Unauthorized)
         : Results.Ok(User(employee));
 }).RequireAuthorization().WithTags("Authentification");
+
+app.MapPost("/api/v1/auth/change-password", async (ClaimsPrincipal user, ChangePasswordRequest request, IVigieStore store, JwtTokenService tokens, IUnitOfWork unitOfWork, CancellationToken ct) =>
+{
+    if (request is null || string.IsNullOrWhiteSpace(request.CurrentPassword) || string.IsNullOrWhiteSpace(request.NewPassword))
+        return Problem("INVALID_PASSWORD_CHANGE", "Les deux mots de passe sont obligatoires.");
+    if (!PasswordPolicy.IsStrong(request.NewPassword))
+        return Problem("WEAK_PASSWORD", "Le nouveau mot de passe doit contenir au moins 12 caractères, une majuscule, une minuscule et un chiffre.");
+
+    var employee = await ((IEmployeeRepository)store).GetAsync(UserId(user), ct);
+    if (employee is null || employee.OrganizationId != OrganizationId(user))
+        return Problem("SESSION_INVALID", "La session n'est plus valide.", StatusCodes.Status401Unauthorized);
+    if (!PasswordHasher.Verify(request.CurrentPassword, employee.PasswordHash))
+        return Problem("CURRENT_PASSWORD_INVALID", "Le mot de passe actuel est invalide.", StatusCodes.Status400BadRequest);
+
+    employee.SetPasswordHash(PasswordHasher.Hash(request.NewPassword));
+    employee.RevokeSessions();
+    await unitOfWork.SaveChangesAsync(ct);
+    var (token, expires) = tokens.Create(employee);
+    return Results.Ok(new LoginResponse(token, expires, User(employee)));
+}).RequireAuthorization().RequireRateLimiting("auth").WithTags("Authentification");
 
 app.MapPost("/api/v1/auth/register", async (RegisterOrganizationRequest request, IVigieStore store, IUnitOfWork unitOfWork, JwtTokenService tokens, CancellationToken ct) =>
 {
