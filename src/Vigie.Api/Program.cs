@@ -490,7 +490,7 @@ app.MapGet("/api/v1/invitations", (ClaimsPrincipal user, IVigieStore store) =>
     return Results.Ok(visible);
 }).RequireAuthorization(new AuthorizeAttribute { Roles = nameof(EmployeeRole.Coordinator) }).WithTags("Invitations");
 
-app.MapPost("/api/v1/invitations", async (ClaimsPrincipal user, InviteMemberRequest request, IVigieStore store, IUnitOfWork unitOfWork, IConfiguration configuration, CancellationToken ct) =>
+app.MapPost("/api/v1/invitations", async (ClaimsPrincipal user, InviteMemberRequest request, IVigieStore store, IUnitOfWork unitOfWork, IConfiguration configuration, ITransactionalEmailSender emailSender, CancellationToken ct) =>
 {
     if (request is null || string.IsNullOrWhiteSpace(request.Email) || string.IsNullOrWhiteSpace(request.Name))
         return Problem("INVALID_INVITATION", "Le nom et le courriel du membre sont obligatoires.");
@@ -531,6 +531,11 @@ app.MapPost("/api/v1/invitations", async (ClaimsPrincipal user, InviteMemberRequ
         await unitOfWork.SaveChangesAsync(ct);
         var publicAppUrl = configuration["PublicAppUrl"]?.TrimEnd('/');
         var link = string.IsNullOrWhiteSpace(publicAppUrl) ? null : $"{publicAppUrl}/?invitation={Uri.EscapeDataString(token)}";
+        if (!string.IsNullOrWhiteSpace(link))
+        {
+            try { await emailSender.SendInvitationAsync(invitation.Email, invitation.Name, invitation.Role.ToString(), link, ct); }
+            catch (HttpRequestException) { /* Le lien reste affiché même si le fournisseur courriel est momentanément indisponible. */ }
+        }
         return Results.Created($"/api/v1/invitations/{invitation.Id}", ToInvitation(invitation, token, link));
     }
     catch (DomainException ex) { return Problem("INVALID_INVITATION", ex.Message); }
