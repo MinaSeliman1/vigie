@@ -19,6 +19,7 @@ public sealed class VigieDbContext(DbContextOptions<VigieDbContext> options) : D
     public DbSet<Availability> Availabilities => Set<Availability>();
     public DbSet<SwapRequest> SwapRequests => Set<SwapRequest>();
     public DbSet<SiteCertificationRequirement> SiteCertificationRequirements => Set<SiteCertificationRequirement>();
+    public DbSet<Notification> Notifications => Set<Notification>();
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
@@ -175,6 +176,19 @@ public sealed class VigieDbContext(DbContextOptions<VigieDbContext> options) : D
             entity.HasIndex(x => x.CertificationTypeId);
             entity.HasOne<Site>().WithMany().HasForeignKey(x => x.SiteId).OnDelete(DeleteBehavior.Restrict);
             entity.HasOne<CertificationType>().WithMany().HasForeignKey(x => x.CertificationTypeId).OnDelete(DeleteBehavior.Restrict);
+        });
+        modelBuilder.Entity<Notification>(entity =>
+        {
+            entity.HasKey(x => x.Id);
+            entity.Property(x => x.Type).HasMaxLength(40).IsRequired();
+            entity.Property(x => x.Title).HasMaxLength(160).IsRequired();
+            entity.Property(x => x.Body).HasMaxLength(1000).IsRequired();
+            entity.Property(x => x.ActionUrl).HasMaxLength(240);
+            entity.Property(x => x.CreatedAtUtc).IsRequired();
+            entity.HasIndex(x => new { x.RecipientEmployeeId, x.CreatedAtUtc });
+            entity.HasIndex(x => new { x.RecipientEmployeeId, x.ReadAtUtc });
+            entity.HasOne<Organization>().WithMany().HasForeignKey(x => x.OrganizationId).OnDelete(DeleteBehavior.Restrict);
+            entity.HasOne<Employee>().WithMany().HasForeignKey(x => x.RecipientEmployeeId).OnDelete(DeleteBehavior.Restrict);
         });
     }
 

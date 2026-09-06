@@ -26,6 +26,7 @@ public sealed class InMemoryVigieStore :
     private readonly Dictionary<Guid, Assignment> assignments = [];
     private readonly Dictionary<Guid, SwapRequest> swapRequests = [];
     private readonly Dictionary<Guid, Availability> availabilities = [];
+    private readonly Dictionary<Guid, Notification> notifications = [];
     private readonly Dictionary<Guid, HashSet<Guid>> siteCertificationTypes = [];
 
     public InMemoryVigieStore()
@@ -46,6 +47,7 @@ public sealed class InMemoryVigieStore :
     public IReadOnlyCollection<Assignment> Assignments => assignments.Values.ToArray();
     public IReadOnlyCollection<SwapRequest> SwapRequests => swapRequests.Values.ToArray();
     public IReadOnlyCollection<Availability> Availabilities => availabilities.Values.ToArray();
+    public IReadOnlyCollection<Notification> Notifications => notifications.Values.ToArray();
     public IReadOnlyCollection<(Guid SiteId, Guid CertificationTypeId)> SiteCertificationLinks
         => siteCertificationTypes.SelectMany(pair => pair.Value.Select(typeId => (pair.Key, typeId))).ToArray();
 
@@ -110,6 +112,8 @@ public sealed class InMemoryVigieStore :
     public void AddMembership(OrganizationMembership membership) => memberships[membership.Id] = membership;
     public void UpdateMembership(OrganizationMembership membership) => memberships[membership.Id] = membership;
     public void AddShift(Shift shift) => shifts[shift.Id] = shift;
+    public void AddNotification(Notification notification) => notifications[notification.Id] = notification;
+    public void UpdateNotification(Notification notification) => notifications[notification.Id] = notification;
     public void AddCertification(Certification certification) => certifications[certification.Id] = certification;
     public void AddCertificationTypeForSite(Guid siteId, Guid certificationTypeId) => siteCertificationTypes.GetOrAdd(siteId).Add(certificationTypeId);
 
@@ -190,6 +194,8 @@ public sealed class InMemoryVigieStore :
         AddAuditEntry(AuditEntry.Create(Guid.Parse("70000000-0000-0000-0000-000000000002"), organization.Id, coord.Id, "shift.created", "Shift", shiftsToAdd[0].Id, null, auditNow.AddDays(-4)));
         AddAuditEntry(AuditEntry.Create(Guid.Parse("70000000-0000-0000-0000-000000000003"), organization.Id, coord.Id, "assignment.created", "Assignment", Guid.Parse("50000000-0000-0000-0000-000000000001"), $"employé={amelie.Name}", auditNow.AddDays(-3)));
         AddAuditEntry(AuditEntry.Create(Guid.Parse("70000000-0000-0000-0000-000000000004"), organization.Id, amelie.Id, "swap.created", "SwapRequest", demoSwap.Id, $"receveur={noah.Name}", auditNow.AddHours(-8)));
+        AddNotification(Notification.Create(Guid.Parse("90000000-0000-0000-0000-000000000001"), organization.Id, amelie.Id, "certification", "Certification à surveiller", "Votre certification Premiers soins expire bientôt.", auditNow.AddHours(-2), "certifications"));
+        AddNotification(Notification.Create(Guid.Parse("90000000-0000-0000-0000-000000000002"), organization.Id, director.Id, "swap", "Échange à traiter", "Une demande de remplacement attend votre approbation.", auditNow.AddHours(-1), "swaps"));
     }
 
     private void SeedLavalCatalog(Guid organizationId)

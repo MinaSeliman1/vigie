@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useRef, useState, type FormEvent, type ReactNode } from 'react'
 import { apiConfigured, vigieApi } from './api/client'
-import type { AuditEntryResponse, AvailabilityResponse, MembershipResponse, Role as ApiRole, SectorResponse, CertificationResponse, SiteResponse, ShiftResponse, SwapRequestResponse, UserSummary } from './api/types'
+import type { AuditEntryResponse, AvailabilityResponse, MembershipResponse, NotificationResponse, Role as ApiRole, SectorResponse, CertificationResponse, SiteResponse, ShiftResponse, SwapRequestResponse, UserSummary } from './api/types'
 import { createShiftRequest, type CreateShiftDraft, validateCreateShiftDraft } from './features/shifts/createShift'
 import { filterSwaps, type SwapFilter } from './features/swaps/swapFilters'
 import { filterSites, type SiteTypeFilter } from './features/sites/siteFilters'
@@ -66,6 +66,10 @@ const initialShifts: Shift[] = [
   { id: 's4', day: 'SAM', date: 12, start: '12:00', end: '20:00', site: 'Piscine du Nord', siteKind: 'Intérieur', status: 'disponible', colleagues: [], requiredLifeguards: 2 },
 ]
 const initialSwaps: Swap[] = [{ id: 'swap-1', shiftId: 's1', shiftLabel: 'Mardi 8 sept. · 09:00–17:00', requester: 'Amélie Roy', receiver: 'Noah Tremblay', status: 'En attente', requestedAt: '2026-09-04T15:30:00Z' }]
+const demoNotifications: NotificationResponse[] = [
+  { id: '90000000-0000-0000-0000-000000000001', type: 'certification', title: 'Certification à surveiller', body: 'Votre certification Premiers soins expire bientôt.', actionUrl: 'certifications', createdAtUtc: '2026-09-04T18:00:00Z', isRead: false, readAtUtc: null },
+  { id: '90000000-0000-0000-0000-000000000002', type: 'swap', title: 'Échange à traiter', body: 'Une demande de remplacement attend votre approbation.', actionUrl: 'swaps', createdAtUtc: '2026-09-04T19:00:00Z', isRead: false, readAtUtc: null },
+]
 
 const frenchDays = ['DIM', 'LUN', 'MAR', 'MER', 'JEU', 'VEN', 'SAM']
 const swapStatuses: Record<string, Swap['status']> = { Pending: 'En attente', Approved: 'Approuvé', Rejected: 'Refusé', Cancelled: 'Refusé' }
@@ -208,6 +212,8 @@ function App() {
   const [sectors, setSectors] = useState<SectorResponse[]>([])
   const [availabilities, setAvailabilities] = useState<AvailabilityResponse[] | null>(null)
   const [auditEntries, setAuditEntries] = useState<AuditEntryResponse[]>([])
+  const [notifications, setNotifications] = useState<NotificationResponse[] | null>(null)
+  const [notificationOpen, setNotificationOpen] = useState(false)
   const [auditExporting, setAuditExporting] = useState(false)
   const [sites, setSites] = useState<SiteResponse[]>([])
   const [toast, setToast] = useState('')
@@ -236,6 +242,8 @@ function App() {
   const isManagement = currentUser.role !== 'Lifeguard'
   const pendingSwaps = swaps.filter((swap) => swap.status === 'En attente')
   const assigned = shifts.filter((shift) => shift.status === 'assigné')
+  const visibleNotifications = notifications ?? (currentUser.isDemoAccount ? demoNotifications : [])
+  const unreadNotifications = visibleNotifications.filter((notification) => !notification.isRead)
   const availableSites = useMemo(() => sites.length > 0 ? sites : currentUser.isDemoAccount ? demoSitesForRole(currentUser.role, demoSites) : [], [currentUser.isDemoAccount, currentUser.role, sites])
   const filteredSites = useMemo(() => filterSites(availableSites, { query: siteQuery, type: siteTypeFilter }), [availableSites, siteQuery, siteTypeFilter])
   const availableSectors = sectors.length > 0 ? sectors : currentUser.isDemoAccount ? demoSectors : []
@@ -287,7 +295,7 @@ function App() {
           ? await vigieApi.login(currentUserEmail, 'vigie-demo')
           : null
         if (login) localStorage.setItem('vigie.token', login.token)
-        const [apiShifts, apiSwaps, employees, apiCertifications, apiSites, apiAvailabilities, apiSectors, apiMembers, apiAudit] = await Promise.all([vigieApi.shifts(), vigieApi.swaps(), vigieApi.employees(), vigieApi.certifications(), vigieApi.sites(), vigieApi.availability(), vigieApi.sectors(), vigieApi.members(), isManagement ? vigieApi.audit() : Promise.resolve([])])
+        const [apiShifts, apiSwaps, employees, apiCertifications, apiSites, apiAvailabilities, apiSectors, apiMembers, apiAudit, apiNotifications] = await Promise.all([vigieApi.shifts(), vigieApi.swaps(), vigieApi.employees(), vigieApi.certifications(), vigieApi.sites(), vigieApi.availability(), vigieApi.sectors(), vigieApi.members(), isManagement ? vigieApi.audit() : Promise.resolve([]), vigieApi.notifications()])
         if (!isCurrent()) return
         setApiEmployeeIds(Object.fromEntries(employees.map((employee) => [employee.email, employee.id])))
         setEmployees(employees)
@@ -301,6 +309,8 @@ function App() {
         setSites(apiSites)
         setAvailabilities(apiAvailabilities)
         setAuditEntries(apiAudit)
+        setNotifications(apiNotifications)
+        setNotificationOpen(false)
         setApiState('ready')
       } catch (error) {
         if (!isCurrent()) return
@@ -314,6 +324,8 @@ function App() {
         setCertifications(null)
         setAvailabilities(null)
         setAuditEntries([])
+        setNotifications(null)
+        setNotificationOpen(false)
         setToast(error instanceof Error ? `API indisponible : ${error.message}` : 'API indisponible : mode démo local')
         window.setTimeout(() => setToast(''), 3600)
       }
@@ -323,6 +335,21 @@ function App() {
   }, [authBootstrapped, currentUserEmail, currentUserId, currentUserIsDemo, currentUserName, currentUserOrganizationId, currentUserRole, currentUser.siteId, currentUser.sectorId, isManagement])
 
   function flash(message: string) { setToast(message); window.setTimeout(() => setToast(''), 2800) }
+  async function openNotification(notification: NotificationResponse) {
+    setNotificationOpen(false)
+    if (!notification.isRead && notifications) {
+      try {
+        const updated = await vigieApi.markNotificationRead(notification.id)
+        setNotifications((current) => current?.map((item) => item.id === updated.id ? updated : item) ?? current)
+      } catch {
+        // La navigation reste possible même si le marquage est momentanément indisponible.
+      }
+    }
+    if (notification.actionUrl === 'swaps') setView('swaps')
+    else if (notification.actionUrl === 'certifications') setView('certifications')
+    else if (notification.actionUrl === 'team') setView('team')
+    else setView('calendar')
+  }
   async function exportAudit() {
     if (auditExporting) return
     setAuditExporting(true)
@@ -341,7 +368,7 @@ function App() {
       setAuditExporting(false)
     }
   }
-  function selectUser(id: string) { const user = demoUsers.find((candidate) => candidate.id === id); if (user) { syncGeneration.current += 1; localStorage.removeItem('vigie.token'); if (apiConfigured) setApiState('loading'); setSites([]); setSectors([]); setEmployees(null); setMemberships(null); setCertifications(null); setAvailabilities(null); setAuditEntries([]); setCurrentUser(user); setView('calendar'); flash(`Profil de démonstration : ${user.name}`) } }
+  function selectUser(id: string) { const user = demoUsers.find((candidate) => candidate.id === id); if (user) { syncGeneration.current += 1; localStorage.removeItem('vigie.token'); if (apiConfigured) setApiState('loading'); setSites([]); setSectors([]); setEmployees(null); setMemberships(null); setCertifications(null); setAvailabilities(null); setAuditEntries([]); setNotifications(null); setNotificationOpen(false); setCurrentUser(user); setView('calendar'); flash(`Profil de démonstration : ${user.name}`) } }
   function openAuth(mode: 'login' | 'register') { setAuthError(''); setAuthForm({ organizationName: '', name: '', email: '', password: '' }); setAuthModal(mode) }
   function closeAuth() { if (!authSubmitting) { setAuthModal(null); setAuthError('') } }
   async function submitAuth(event: FormEvent<HTMLFormElement>) {
@@ -661,7 +688,8 @@ function App() {
       <div className="sidebar-bottom"><div className="status-line"><span className="status-pulse" />{apiState === 'ready' ? 'API connectée' : apiState === 'loading' ? 'Connexion à l’API…' : apiState === 'error' ? 'Mode démo local' : 'Système opérationnel'}</div><div className="version">Vigie MVP · v0.1.0</div></div>
     </aside>
     <main className="main-content">
-      <header className="topbar"><button className="mobile-menu" onClick={() => setMobileNavOpen((open) => !open)} aria-label="Ouvrir le menu"><Icon name="menu" /></button><div className="breadcrumbs"><span>Vigie</span><span className="crumb-separator">/</span><strong>{view === 'calendar' ? 'Mon calendrier' : view === 'swaps' ? 'Échanges' : view === 'certifications' ? 'Certifications' : view === 'team' ? 'Équipe' : view === 'sites' ? 'Piscines' : view === 'audit' ? 'Historique' : 'Disponibilités'}</strong></div><div className="topbar-actions"><button className="icon-button" aria-label="Notifications"><Icon name="bell" /><span className="notification-dot" /></button>{currentUser.isDemoAccount ? <div className="profile-switcher"><span className="avatar">{currentUser.initials}</span><select aria-label="Profil de démonstration" value={currentUser.id} onChange={(event) => selectUser(event.target.value)}>{demoUsers.map((user) => <option key={user.id} value={user.id}>{user.name} · {roleLabel(user.role)}</option>)}</select><button className="account-link" onClick={() => openAuth('login')}>Se connecter</button></div> : <div className="profile-switcher"><span className="avatar">{currentUser.initials}</span><span className="account-name">{currentUser.name} · {roleLabel(currentUser.role)}</span><button className="account-link" onClick={openPasswordModal}>Compte</button><button className="account-link" onClick={logout}>Déconnexion</button></div>}</div></header>
+      <header className="topbar"><button className="mobile-menu" onClick={() => setMobileNavOpen((open) => !open)} aria-label="Ouvrir le menu"><Icon name="menu" /></button><div className="breadcrumbs"><span>Vigie</span><span className="crumb-separator">/</span><strong>{view === 'calendar' ? 'Mon calendrier' : view === 'swaps' ? 'Échanges' : view === 'certifications' ? 'Certifications' : view === 'team' ? 'Équipe' : view === 'sites' ? 'Piscines' : view === 'audit' ? 'Historique' : 'Disponibilités'}</strong></div><div className="topbar-actions"><button className="icon-button" aria-label="Notifications" aria-expanded={notificationOpen} onClick={() => setNotificationOpen((open) => !open)}><Icon name="bell" />{unreadNotifications.length > 0 && <span className="notification-count">{unreadNotifications.length > 9 ? '9+' : unreadNotifications.length}</span>}</button>{currentUser.isDemoAccount ? <div className="profile-switcher"><span className="avatar">{currentUser.initials}</span><select aria-label="Profil de démonstration" value={currentUser.id} onChange={(event) => selectUser(event.target.value)}>{demoUsers.map((user) => <option key={user.id} value={user.id}>{user.name} · {roleLabel(user.role)}</option>)}</select><button className="account-link" onClick={() => openAuth('login')}>Se connecter</button></div> : <div className="profile-switcher"><span className="avatar">{currentUser.initials}</span><span className="account-name">{currentUser.name} · {roleLabel(currentUser.role)}</span><button className="account-link" onClick={openPasswordModal}>Compte</button><button className="account-link" onClick={logout}>Déconnexion</button></div>}</div></header>
+      {notificationOpen && <aside className="notification-panel" aria-label="Notifications"><div className="notification-panel-header"><div><span className="drawer-kicker">CENTRE DE NOTIFICATIONS</span><h2>À traiter</h2></div><button className="drawer-close notification-close" onClick={() => setNotificationOpen(false)} aria-label="Fermer les notifications"><Icon name="close" /></button></div>{visibleNotifications.length === 0 ? <p className="notification-empty">Aucune notification pour le moment.</p> : <div className="notification-list">{visibleNotifications.slice(0, 6).map((notification) => <button key={notification.id} className={`notification-row${notification.isRead ? '' : ' is-unread'}`} onClick={() => { void openNotification(notification) }}><span className={`notification-icon notification-icon-${notification.type}`}><Icon name={notification.type === 'certification' ? 'shield' : notification.type === 'swap' ? 'swap' : 'bell'} /></span><span className="notification-copy"><strong>{notification.title}</strong><small>{notification.body}</small><em>{formatAuditDate(notification.createdAtUtc)}</em></span>{!notification.isRead && <i className="notification-unread" />}</button>)}</div>}</aside>}
       <div className="content-wrap">
         <div className="page-heading"><div><p className="eyebrow">SEMAINE DU 7 AU 13 SEPTEMBRE 2026</p><h1>{view === 'calendar' ? (isManagement ? 'Vue équipe' : `Bonjour, ${currentUser.name.split(' ')[0]}`) : view === 'swaps' ? 'Demandes d’échange' : view === 'certifications' ? 'Certifications' : view === 'team' ? 'Équipe' : view === 'sites' ? 'Piscines municipales' : view === 'audit' ? 'Historique' : 'Disponibilités'}</h1><p className="page-subtitle">{view === 'calendar' ? (isManagement ? 'Gardez une vue claire sur les quarts et les remplacements.' : 'Voici vos quarts et les disponibilités de votre équipe.') : view === 'swaps' ? 'Chaque remplacement reste sous contrôle jusqu’à votre approbation.' : view === 'certifications' ? 'La bonne certification, au bon moment, pour chaque quart.' : view === 'team' ? 'Les personnes autorisées et leur état de préparation pour les quarts.' : view === 'sites' ? 'Les installations, secteurs et saisons d’ouverture de votre organisation.' : view === 'audit' ? 'Les opérations importantes de votre organisation, avec leur acteur et leur horodatage.' : 'Indiquez les jours où vous pouvez prendre un quart.'}</p></div>{view === 'calendar' && isManagement && <button className="primary-button" onClick={openCreateShift}><Icon name="plus" />Créer un quart</button>}{view === 'team' && isManagement && <button className="primary-button" onClick={openInvite}><Icon name="plus" />Inviter un membre</button>}</div>
         {view === 'calendar' && <><section className="alert-banner"><div className="alert-icon"><Icon name="shield" /></div><div><strong>Certification à surveiller</strong><span>La certification Premiers soins de {currentUser.id === 'sofia' ? 'Sofia Nguyen' : 'votre dossier'} expire dans {currentUser.id === 'sofia' ? 20 : 75} jours.</span></div><button onClick={() => setView('certifications')}>Voir les détails <Icon name="arrow" /></button></section><div className="metric-row"><div className="metric"><span className="metric-label">QUARTS CETTE SEMAINE</span><strong>{assigned.length + 1}</strong><span className="metric-meta positive">↑ 1 vs. semaine dernière</span></div><div className="metric"><span className="metric-label">HEURES PLANIFIÉES</span><strong>24<span className="metric-unit">h</span></strong><span className="metric-meta">Quota : {isManagement ? '40' : '24'} h</span></div><div className="metric"><span className="metric-label">ÉCHANGES EN ATTENTE</span><strong>{pendingSwaps.length}</strong><span className="metric-meta">Dernière mise à jour il y a 8 min</span></div></div><section className="calendar-section"><div className="section-header"><div><h2>Cette semaine</h2><p>Votre planning du lundi 7 au dimanche 13 septembre</p></div><div className="week-controls"><button aria-label="Semaine précédente">←</button><button className="today-button">Aujourd’hui</button><button aria-label="Semaine suivante">→</button></div></div><div className="calendar-grid"><div className="time-column"><span /><span>08:00</span><span>12:00</span><span>16:00</span><span>20:00</span></div>{['LUN','MAR','MER','JEU','VEN','SAM','DIM'].map((day) => <div className={`day-column ${day === 'MAR' ? 'today' : ''}`} key={day}><div className="day-header"><span>{day}</span><strong>{day === 'MAR' ? '8' : day === 'MER' ? '9' : day === 'VEN' ? '11' : day === 'SAM' ? '12' : '•'}</strong></div><div className="day-body">{shifts.filter((shift) => shift.day === day).map((shift) => <button className={`shift-block ${shift.status}`} key={shift.id} onClick={() => setSelectedShift(shift)}><span className="shift-time">{shift.start} – {shift.end}</span><strong>{shift.site}</strong><small>{shift.siteKind}</small><span className="shift-people">{shift.colleagues.map((colleague) => <i key={colleague}>{colleague}</i>)}</span></button>)}</div></div>)}</div></section><div className="lower-grid"><section className="list-section"><div className="section-header compact"><div><h2>Échanges en attente</h2><p>Les demandes à traiter</p></div><button className="text-button" onClick={() => setView('swaps')}>Tout voir <Icon name="arrow" /></button></div>{pendingSwaps.length === 0 ? <div className="empty-state">Aucune demande en attente.</div> : pendingSwaps.map((swap) => <div className="swap-row" key={swap.id}><div className="mini-avatar">{swap.requester.split(' ').map((part) => part[0]).join('')}</div><div className="swap-copy"><strong>{swap.requester} <span>→</span> {swap.receiver}</strong><span>{swap.shiftLabel}</span></div><span className="pending-label">En attente</span></div>)}</section><section className="list-section"><div className="section-header compact"><div><h2>À venir</h2><p>Prochains quarts assignés</p></div></div>{shifts.slice(0, 2).map((shift) => <div className="upcoming-row" key={shift.id}><div className="date-block"><strong>{shift.date}</strong><span>{shift.day}</span></div><div><strong>{shift.site}</strong><span>{shift.start} – {shift.end}</span></div><span className="assigned-mark"><Icon name="check" /></span></div>)}</section></div></>}

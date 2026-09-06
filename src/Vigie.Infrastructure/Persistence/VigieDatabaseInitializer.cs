@@ -25,6 +25,7 @@ public static class VigieDatabaseInitializer
             foreach (var employee in legacyDemoAccounts) employee.SetPasswordHash(PasswordHasher.Hash("vigie-demo"));
             await EnsureLavalStructureAsync(context, cancellationToken);
             await EnsureDemoAuditEntriesAsync(context, cancellationToken);
+            await EnsureDemoNotificationsAsync(context, cancellationToken);
             if (legacyDemoAccounts.Length > 0) await context.SaveChangesAsync(cancellationToken);
             return;
         }
@@ -41,6 +42,7 @@ public static class VigieDatabaseInitializer
         context.Assignments.AddRange(source.Assignments);
         context.SwapRequests.AddRange(source.SwapRequests);
         context.AuditEntries.AddRange(source.AuditEntries);
+        context.Notifications.AddRange(source.Notifications);
         context.SiteCertificationRequirements.AddRange(source.SiteCertificationLinks.Select(link => new SiteCertificationRequirement
         {
             SiteId = link.SiteId,
@@ -244,5 +246,30 @@ public static class VigieDatabaseInitializer
         if (swap is not null) entries.Add(AuditEntry.Create(Guid.NewGuid(), demoOrganization.Id, lifeguard.Id, "swap.created", "SwapRequest", swap.Id, null, auditNow.AddHours(-8)));
         context.AuditEntries.AddRange(entries);
         await context.SaveChangesAsync(cancellationToken);
+    }
+
+    private static async Task EnsureDemoNotificationsAsync(VigieDbContext context, CancellationToken cancellationToken)
+    {
+        var organization = await context.Organizations.SingleOrDefaultAsync(item => item.Slug == "vigie-demo", cancellationToken);
+        if (organization is null) return;
+
+        var employees = await context.Employees
+            .Where(employee => employee.OrganizationId == organization.Id)
+            .ToDictionaryAsync(employee => employee.Email, StringComparer.OrdinalIgnoreCase, cancellationToken);
+        if (!employees.TryGetValue("amelie@vigie.demo", out var amelie) || !employees.TryGetValue("regie@vigie.demo", out var director)) return;
+
+        var now = DateTimeOffset.UtcNow;
+        var added = false;
+        if (!await context.Notifications.AnyAsync(item => item.Id == Guid.Parse("90000000-0000-0000-0000-000000000001"), cancellationToken))
+        {
+            context.Notifications.Add(Notification.Create(Guid.Parse("90000000-0000-0000-0000-000000000001"), organization.Id, amelie.Id, "certification", "Certification à surveiller", "Votre certification Premiers soins expire bientôt.", now.AddHours(-2), "certifications"));
+            added = true;
+        }
+        if (!await context.Notifications.AnyAsync(item => item.Id == Guid.Parse("90000000-0000-0000-0000-000000000002"), cancellationToken))
+        {
+            context.Notifications.Add(Notification.Create(Guid.Parse("90000000-0000-0000-0000-000000000002"), organization.Id, director.Id, "swap", "Échange à traiter", "Une demande de remplacement attend votre approbation.", now.AddHours(-1), "swaps"));
+            added = true;
+        }
+        if (added) await context.SaveChangesAsync(cancellationToken);
     }
 }

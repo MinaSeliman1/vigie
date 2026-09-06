@@ -129,6 +129,32 @@ app.MapOpenApi();
 
 app.MapGet("/health", () => Results.Ok(new { status = "ok", service = "vigie-api" }));
 
+app.MapGet("/api/v1/notifications", (ClaimsPrincipal user, IVigieStore store) =>
+{
+    var scope = OrganizationScopeResolver.Resolve(user, store);
+    if (scope is null) return Problem("SESSION_INVALID", "La session n'est plus valide.", StatusCodes.Status401Unauthorized);
+    var notifications = store.Notifications
+        .Where(notification => notification.OrganizationId == scope.OrganizationId && notification.RecipientEmployeeId == scope.EmployeeId)
+        .OrderByDescending(notification => notification.CreatedAtUtc)
+        .Take(50)
+        .Select(ToNotification)
+        .ToArray();
+    return Results.Ok(notifications);
+}).RequireAuthorization().WithTags("Notifications");
+
+app.MapPost("/api/v1/notifications/{notificationId:guid}/read", async (ClaimsPrincipal user, Guid notificationId, IVigieStore store, IUnitOfWork unitOfWork, CancellationToken ct) =>
+{
+    var scope = OrganizationScopeResolver.Resolve(user, store);
+    if (scope is null) return Problem("SESSION_INVALID", "La session n'est plus valide.", StatusCodes.Status401Unauthorized);
+    var notification = store.Notifications.SingleOrDefault(item => item.Id == notificationId && item.OrganizationId == scope.OrganizationId);
+    if (notification is null) return Problem("NOT_FOUND", "La notification est introuvable.", StatusCodes.Status404NotFound);
+    if (notification.RecipientEmployeeId != scope.EmployeeId) return Results.StatusCode(StatusCodes.Status403Forbidden);
+    notification.MarkRead(DateTimeOffset.UtcNow);
+    store.UpdateNotification(notification);
+    await unitOfWork.SaveChangesAsync(ct);
+    return Results.Ok(ToNotification(notification));
+}).RequireAuthorization().WithTags("Notifications");
+
 app.MapPost("/api/v1/auth/login", (LoginRequest request, IVigieStore store, JwtTokenService tokens) =>
 {
     if (request is null || string.IsNullOrWhiteSpace(request.Email) || string.IsNullOrWhiteSpace(request.Password))
@@ -626,6 +652,7 @@ app.MapPost("/api/v1/shifts/{shiftId:guid}/assignments", async (ClaimsPrincipal 
     var result = await service.ExecuteAsync(request.EmployeeId, shiftId, ct);
     if (!result.IsSuccess) return result.ToHttpResult(assignment => Results.Ok(assignment));
     store.AddAuditEntry(Audit(organizationId, UserId(user), "assignment.created", "Assignment", result.Value!.Id, $"employé={employee.Name}"));
+    AddNotification(store, organizationId, employee.Id, "assignment", "Nouveau quart assigné", $"Un quart vous a été assigné à {site.Name} le {shift.StartUtc:ddd d MMM à HH:mm}.", "calendar");
     await ((IUnitOfWork)store).SaveChangesAsync(ct);
     return Results.Ok(result.Value);
 }).RequireAuthorization().WithTags("Assignations");
@@ -675,6 +702,7 @@ app.MapPost("/api/v1/swap-requests", async (ClaimsPrincipal user, CreateSwapRequ
     var result = await service.ExecuteAsync(UserId(user), request.AssignmentId, request.ReceiverId, ct);
     if (!result.IsSuccess) return result.ToHttpResult(swap => Results.Ok(ToSwap(swap, store)));
     store.AddAuditEntry(Audit(organizationId, UserId(user), "swap.created", "SwapRequest", result.Value!.Id, $"receveur={receiver.Name}"));
+    NotifyManagement(store, organizationId, shift, "Échange à traiter", $"Une demande de remplacement pour {shift.StartUtc:ddd d MMM à HH:mm} attend votre approbation.", "swaps");
     await ((IUnitOfWork)store).SaveChangesAsync(ct);
     return Results.Ok(ToSwap(result.Value!, store));
 }).RequireAuthorization().WithTags("Échanges");
@@ -698,6 +726,7 @@ app.MapPost("/api/v1/swap-requests/{requestId:guid}/approve", async (ClaimsPrinc
     var result = await service.ExecuteAsync(UserId(user), requestId, ct);
     if (!result.IsSuccess) return result.ToHttpResult(swap => Results.Ok(ToSwap(swap, store)));
     store.AddAuditEntry(Audit(OrganizationId(user), UserId(user), "swap.approved", "SwapRequest", requestId));
+    NotifySwapParticipants(store, result.Value!, "Échange approuvé", "Votre demande d'échange a été approuvée.");
     await ((IUnitOfWork)store).SaveChangesAsync(ct);
     return Results.Ok(ToSwap(result.Value!, store));
 }).RequireAuthorization().WithTags("Échanges");
@@ -709,6 +738,7 @@ app.MapPost("/api/v1/swap-requests/{requestId:guid}/reject", async (ClaimsPrinci
     var result = await service.ExecuteAsync(UserId(user), requestId, ct);
     if (!result.IsSuccess) return result.ToHttpResult(swap => Results.Ok(ToSwap(swap, store)));
     store.AddAuditEntry(Audit(OrganizationId(user), UserId(user), "swap.rejected", "SwapRequest", requestId));
+    NotifySwapParticipants(store, result.Value!, "Échange refusé", "Votre demande d'échange a été refusée.");
     await ((IUnitOfWork)store).SaveChangesAsync(ct);
     return Results.Ok(ToSwap(result.Value!, store));
 }).RequireAuthorization().WithTags("Échanges");
@@ -824,6 +854,36 @@ static SwapRequestResponse ToSwap(SwapRequest request, IVigieStore store)
 {
     var assignment = store.Assignments.Single(a => a.Id == request.AssignmentId); var shift = store.Shifts.Single(s => s.Id == assignment.ShiftId); var requester = store.Employees.Single(e => e.Id == assignment.EmployeeId); var receiver = store.Employees.Single(e => e.Id == request.ReceiverId);
     return new SwapRequestResponse(request.Id, request.AssignmentId, requester.Id, requester.Name, request.ReceiverId, receiver.Name, $"{shift.StartUtc:ddd d MMM HH:mm} · {store.Sites.Single(s => s.Id == shift.SiteId).Name}", request.Status.ToString(), request.RequestedAtUtc);
+}
+static NotificationResponse ToNotification(Notification notification)
+    => new(notification.Id, notification.Type, notification.Title, notification.Body, notification.ActionUrl, notification.CreatedAtUtc, notification.IsRead, notification.ReadAtUtc);
+static void AddNotification(IVigieStore store, Guid organizationId, Guid recipientEmployeeId, string type, string title, string body, string? actionUrl)
+{
+    if (!store.Employees.Any(employee => employee.Id == recipientEmployeeId && employee.OrganizationId == organizationId)) return;
+    store.AddNotification(Notification.Create(Guid.NewGuid(), organizationId, recipientEmployeeId, type, title, body, DateTimeOffset.UtcNow, actionUrl));
+}
+static void NotifyManagement(IVigieStore store, Guid organizationId, Shift shift, string title, string body, string actionUrl)
+{
+    var site = store.Sites.SingleOrDefault(item => item.Id == shift.SiteId && item.OrganizationId == organizationId);
+    if (site is null) return;
+    var recipients = store.Memberships
+        .Where(membership => membership.OrganizationId == organizationId && membership.IsActive)
+        .Where(membership => membership.Role == EmployeeRole.AquaticDirector ||
+            membership.Role == EmployeeRole.SectorManager && membership.SectorId.HasValue && membership.SectorId == site.SectorId ||
+            (membership.Role is EmployeeRole.PoolChief or EmployeeRole.Coordinator) && membership.SiteId == site.Id)
+        .Select(membership => membership.EmployeeId)
+        .Distinct()
+        .ToArray();
+    foreach (var recipient in recipients) AddNotification(store, organizationId, recipient, "swap", title, body, actionUrl);
+}
+static void NotifySwapParticipants(IVigieStore store, SwapRequest swap, string title, string body)
+{
+    var assignment = store.Assignments.SingleOrDefault(item => item.Id == swap.AssignmentId);
+    var shift = assignment is null ? null : store.Shifts.SingleOrDefault(item => item.Id == assignment.ShiftId);
+    var site = shift is null ? null : store.Sites.SingleOrDefault(item => item.Id == shift.SiteId);
+    if (assignment is null || site is null) return;
+    foreach (var recipient in new[] { assignment.EmployeeId, swap.ReceiverId }.Distinct())
+        AddNotification(store, site.OrganizationId, recipient, "swap", title, body, "swaps");
 }
 static IResult Problem(string code, string message, int status = StatusCodes.Status400BadRequest) => Results.Problem(statusCode: status, title: "La demande ne peut pas être traitée", detail: message, extensions: new Dictionary<string, object?> { ["code"] = code, ["message"] = message });
 

@@ -3,6 +3,7 @@ export type Role = 'Lifeguard' | 'PoolChief' | 'SectorManager' | 'AquaticDirecto
 export type UserSummary = { id: string; name: string; email: string; role: Role; organizationId: string; isDemoAccount: boolean; siteId?: string | null; sectorId?: string | null }
 export type AuditEntryResponse = { id: string; action: string; entityType: string; entityId?: string | null; details?: string | null; actorName?: string | null; createdAtUtc: string }
 export type LoginResponse = { token: string; expiresAtUtc: string; user: UserSummary }
+export type NotificationResponse = { id: string; type: string; title: string; body: string; actionUrl?: string | null; createdAtUtc: string; isRead: boolean; readAtUtc?: string | null }
 export type OrganizationResponse = { id: string; name: string; slug: string; createdAtUtc: string }
 export type RegistrationResponse = { login: LoginResponse; organization: OrganizationResponse }
 export type InvitationResponse = { id: string; email: string; name: string; role: Role; status: string; expiresAtUtc: string; inviteToken?: string | null; inviteLink?: string | null; siteId?: string | null; sectorId?: string | null }

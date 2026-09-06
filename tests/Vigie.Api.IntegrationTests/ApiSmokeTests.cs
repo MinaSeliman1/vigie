@@ -57,6 +57,27 @@ public sealed class ApiSmokeTests : IClassFixture<WebApplicationFactory<Program>
     }
 
     [Fact]
+    public async Task Employee_can_read_and_mark_a_notification()
+    {
+        var login = await client.PostAsJsonAsync("/api/v1/auth/login", new { email = "amelie@vigie.demo", password = "vigie-demo" });
+        var payload = await login.Content.ReadFromJsonAsync<LoginPayload>();
+        client.DefaultRequestHeaders.Authorization = new System.Net.Http.Headers.AuthenticationHeaderValue("Bearer", payload!.Token);
+
+        var notifications = await client.GetFromJsonAsync<NotificationPayload[]>("/api/v1/notifications");
+        var notification = notifications!.Single(item => item.Type == "certification");
+        var marked = await client.PostAsync($"/api/v1/notifications/{notification.Id}/read", content: null);
+        var markedPayload = await marked.Content.ReadFromJsonAsync<NotificationPayload>();
+        var refreshed = await client.GetFromJsonAsync<NotificationPayload[]>("/api/v1/notifications");
+
+        Assert.Equal(HttpStatusCode.OK, login.StatusCode);
+        Assert.NotEmpty(notifications!);
+        Assert.False(notification.IsRead);
+        Assert.Equal(HttpStatusCode.OK, marked.StatusCode);
+        Assert.True(markedPayload?.IsRead);
+        Assert.True(refreshed!.Single(item => item.Id == notification.Id).IsRead);
+    }
+
+    [Fact]
     public async Task Changing_password_revokes_the_previous_session()
     {
         var email = $"password-{Guid.NewGuid():N}@exemple.test";
@@ -617,6 +638,7 @@ public sealed class ApiSmokeTests : IClassFixture<WebApplicationFactory<Program>
     private sealed record ShiftPayload(Guid Id, string? Status = null);
     private sealed record AssignmentPayload(Guid Id, Guid ShiftId, Guid EmployeeId, string EmployeeName);
     private sealed record SwapPayload(Guid Id, string? Status = null);
+    private sealed record NotificationPayload(Guid Id, string Type, string Title, string Body, string? ActionUrl, DateTimeOffset CreatedAtUtc, bool IsRead, DateTimeOffset? ReadAtUtc);
     private sealed record SectorPayload(Guid Id, Guid OrganizationId, string Name, string Code, bool IsActive, DateTimeOffset CreatedAtUtc, DateTimeOffset UpdatedAtUtc);
     private sealed record MemberPayload(Guid Id, Guid EmployeeId, string EmployeeName, string Email, string Role, Guid OrganizationId, Guid? SiteId, string? SiteName, Guid? SectorId, string? SectorName, bool IsActive, int Version);
 }

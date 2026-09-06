@@ -31,6 +31,7 @@ public interface IVigieStore :
     IReadOnlyCollection<Assignment> Assignments { get; }
     IReadOnlyCollection<SwapRequest> SwapRequests { get; }
     IReadOnlyCollection<Availability> Availabilities { get; }
+    IReadOnlyCollection<Notification> Notifications { get; }
 
     void AddOrganization(Organization organization);
     void AddAuditEntry(AuditEntry entry);
@@ -43,5 +44,7 @@ public interface IVigieStore :
     void AddMembership(OrganizationMembership membership);
     void UpdateMembership(OrganizationMembership membership);
     void AddShift(Shift shift);
+    void AddNotification(Notification notification);
+    void UpdateNotification(Notification notification);
     Availability UpsertAvailability(Guid employeeId, DateOnly onDate, bool isAvailable, string? note);
 }
