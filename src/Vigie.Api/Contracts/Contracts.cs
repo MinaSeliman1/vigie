@@ -9,6 +9,7 @@ public sealed record PasswordResetConfirmRequest(string Token, string NewPasswor
 public sealed record PasswordResetRequestResponse(string Message, string? ResetToken = null);
 public sealed record NotificationResponse(Guid Id, string Type, string Title, string Body, string? ActionUrl, DateTimeOffset CreatedAtUtc, bool IsRead, DateTimeOffset? ReadAtUtc);
 public sealed record AuditEntryResponse(Guid Id, string Action, string EntityType, Guid? EntityId, string? Details, string? ActorName, DateTimeOffset CreatedAtUtc);
+public sealed record AuditPageResponse(IReadOnlyList<AuditEntryResponse> Items, int Total, int Page, int PageSize);
 public sealed record LoginResponse(string Token, DateTimeOffset ExpiresAtUtc, UserSummary User);
 public sealed record RegisterOrganizationRequest(string OrganizationName, string Name, string Email, string Password);
 public sealed record OrganizationResponse(Guid Id, string Name, string Slug, DateTimeOffset CreatedAtUtc);

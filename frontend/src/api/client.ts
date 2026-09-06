@@ -1,4 +1,4 @@
-import type { ApiProblem, AssignmentResponse, AuditEntryResponse, AvailabilityResponse, CertificationResponse, CoverageResponse, CreateShiftInput, InvitationResponse, LoginResponse, MembershipResponse, NotificationResponse, RegistrationResponse, SectorResponse, ShiftResponse, SiteResponse, SwapRequestResponse, TeamAvailabilityResponse, UpdateShiftInput, UserSummary } from './types'
+import type { ApiProblem, AssignmentResponse, AuditEntryResponse, AuditPageResponse, AvailabilityResponse, CertificationResponse, CoverageResponse, CreateShiftInput, InvitationResponse, LoginResponse, MembershipResponse, NotificationResponse, RegistrationResponse, SectorResponse, ShiftResponse, SiteResponse, SwapRequestResponse, TeamAvailabilityResponse, UpdateShiftInput, UserSummary } from './types'
 
 export const apiConfigured = Boolean(import.meta.env.VITE_API_URL)
 const baseUrl = (import.meta.env.VITE_API_URL as string | undefined)?.replace(/\/$/, '') ?? 'http://localhost:5187'
@@ -27,6 +27,11 @@ export const vigieApi = {
   me: () => request<UserSummary>('/api/v1/auth/me'),
   changePassword: (currentPassword: string, newPassword: string) => request<LoginResponse>('/api/v1/auth/change-password', { method: 'POST', body: JSON.stringify({ currentPassword, newPassword }) }),
   audit: (limit = 50) => request<AuditEntryResponse[]>(`/api/v1/audit?limit=${limit}`),
+  auditSearch: (filters: { q?: string; action?: string; entityType?: string; from?: string; to?: string; page?: number; pageSize?: number } = {}) => {
+    const query = new URLSearchParams()
+    for (const [key, value] of Object.entries(filters)) if (value !== undefined && value !== '') query.set(key, String(value))
+    return request<AuditPageResponse>(`/api/v1/audit/query${query.size ? `?${query.toString()}` : ''}`)
+  },
   notifications: () => request<NotificationResponse[]>('/api/v1/notifications'),
   markNotificationRead: (notificationId: string) => request<NotificationResponse>(`/api/v1/notifications/${notificationId}/read`, { method: 'POST' }),
   exportAudit: async () => {

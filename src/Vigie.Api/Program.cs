@@ -456,6 +456,37 @@ app.MapGet("/api/v1/audit", (ClaimsPrincipal user, int? limit, IVigieStore store
     return Results.Ok(result);
 }).RequireAuthorization(new AuthorizeAttribute { Roles = nameof(EmployeeRole.Coordinator) }).WithTags("Audit");
 
+app.MapGet("/api/v1/audit/query", (ClaimsPrincipal user, string? q, string? action, string? entityType, DateOnly? from, DateOnly? to, int? page, int? pageSize, IVigieStore store) =>
+{
+    var scope = OrganizationScopeResolver.Resolve(user, store);
+    if (scope is null) return Problem("SESSION_INVALID", "La session n'est plus valide.", StatusCodes.Status401Unauthorized);
+    var actorNames = store.Employees.ToDictionary(employee => employee.Id, employee => employee.Name);
+    var normalizedQuery = q?.Trim();
+    var normalizedAction = action?.Trim();
+    var normalizedEntityType = entityType?.Trim();
+    var filtered = store.AuditEntries
+        .Where(entry => entry.OrganizationId == scope.OrganizationId && IsAuditVisible(entry, scope, store))
+        .Where(entry => string.IsNullOrWhiteSpace(normalizedAction) || string.Equals(entry.Action, normalizedAction, StringComparison.OrdinalIgnoreCase))
+        .Where(entry => string.IsNullOrWhiteSpace(normalizedEntityType) || string.Equals(entry.EntityType, normalizedEntityType, StringComparison.OrdinalIgnoreCase))
+        .Where(entry => !from.HasValue || DateOnly.FromDateTime(entry.CreatedAtUtc.UtcDateTime) >= from.Value)
+        .Where(entry => !to.HasValue || DateOnly.FromDateTime(entry.CreatedAtUtc.UtcDateTime) <= to.Value)
+        .Where(entry => string.IsNullOrWhiteSpace(normalizedQuery) ||
+            entry.Action.Contains(normalizedQuery, StringComparison.OrdinalIgnoreCase) ||
+            entry.EntityType.Contains(normalizedQuery, StringComparison.OrdinalIgnoreCase) ||
+            entry.Details?.Contains(normalizedQuery, StringComparison.OrdinalIgnoreCase) == true ||
+            entry.ActorId.HasValue && actorNames.TryGetValue(entry.ActorId.Value, out var actorName) && actorName.Contains(normalizedQuery, StringComparison.OrdinalIgnoreCase))
+        .OrderByDescending(entry => entry.CreatedAtUtc)
+        .ToArray();
+    var currentPage = Math.Max(page ?? 1, 1);
+    var currentPageSize = Math.Clamp(pageSize ?? 20, 1, 50);
+    var items = filtered
+        .Skip((currentPage - 1) * currentPageSize)
+        .Take(currentPageSize)
+        .Select(entry => new AuditEntryResponse(entry.Id, entry.Action, entry.EntityType, entry.EntityId, entry.Details, entry.ActorId.HasValue && actorNames.TryGetValue(entry.ActorId.Value, out var actorName) ? actorName : null, entry.CreatedAtUtc))
+        .ToArray();
+    return Results.Ok(new AuditPageResponse(items, filtered.Length, currentPage, currentPageSize));
+}).RequireAuthorization(new AuthorizeAttribute { Roles = nameof(EmployeeRole.Coordinator) }).WithTags("Audit");
+
 app.MapGet("/api/v1/audit/export", (ClaimsPrincipal user, IVigieStore store) =>
 {
     var scope = OrganizationScopeResolver.Resolve(user, store);

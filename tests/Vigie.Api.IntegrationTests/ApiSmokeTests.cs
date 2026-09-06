@@ -395,10 +395,16 @@ public sealed class ApiSmokeTests : IClassFixture<WebApplicationFactory<Program>
         client.DefaultRequestHeaders.Authorization = new System.Net.Http.Headers.AuthenticationHeaderValue("Bearer", created!.Login.Token);
 
         var response = await client.GetFromJsonAsync<AuditPayload[]>("/api/v1/audit");
+        var page = await client.GetFromJsonAsync<AuditPagePayload>("/api/v1/audit/query?pageSize=1");
+        var filteredPage = await client.GetFromJsonAsync<AuditPagePayload>("/api/v1/audit/query?q=organization");
         var export = await client.GetAsync("/api/v1/audit/export");
         var exportBody = await export.Content.ReadAsStringAsync();
 
         Assert.Contains(response!, entry => entry.Action == "organization.created" && entry.EntityType == "Organization");
+        Assert.Equal(1, page?.Items.Length);
+        Assert.Equal(response!.Length, page?.Total);
+        Assert.Single(filteredPage!.Items);
+        Assert.Equal("organization.created", filteredPage.Items[0].Action);
         Assert.Equal(HttpStatusCode.OK, export.StatusCode);
         Assert.Contains("organization.created", exportBody, StringComparison.Ordinal);
     }
@@ -772,6 +778,7 @@ public sealed class ApiSmokeTests : IClassFixture<WebApplicationFactory<Program>
     private sealed record OrganizationPayload(Guid Id, string Name, string Slug, DateTimeOffset CreatedAtUtc);
     private sealed record InvitationPayload(Guid Id, string Email, string Name, string Role, string Status, DateTimeOffset ExpiresAtUtc, string? InviteToken, string? InviteLink);
     private sealed record AuditPayload(Guid Id, string Action, string EntityType, Guid? EntityId, string? Details, string? ActorName, DateTimeOffset CreatedAtUtc);
+    private sealed record AuditPagePayload(AuditPayload[] Items, int Total, int Page, int PageSize);
     private sealed record SitePayload(Guid Id, string Name = "", string Type = "", string TimeZoneId = "", OpeningSeasonPayload? OpeningSeason = null, string Address = "", string Neighborhood = "", bool IsMunicipal = false, Guid? SectorId = null, string? SectorName = null);
     private sealed record OpeningSeasonPayload(int StartMonth, int StartDay, int EndMonth, int EndDay);
     private sealed record ShiftPayload(Guid Id, string? Status = null, string? PublicationStatus = null);
