@@ -112,7 +112,7 @@ npm run build
 npm run dev
 ```
 
-L’interface est en français et permet de basculer entre les quatre profils de démonstration pour parcourir les droits par périmètre.
+L’interface est en français et permet de basculer entre six profils de démonstration couvrant les quatre rôles pour parcourir les droits par périmètre. Le profil Régie conserve l’accès au catalogue des 27 piscines municipales même lorsque l’API gratuite est temporairement en veille.
 
 ## Ce qui est déjà vérifiable
 

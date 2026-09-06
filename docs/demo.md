@@ -2,7 +2,7 @@
 
 ## Démo publique
 
-La démo UI est accessible directement sur [minaseliman1.github.io/vigie](https://minaseliman1.github.io/vigie/). Elle démarre avec le profil d’Amélie et permet de basculer entre les quatre profils pour parcourir la planification, les droits par périmètre, le catalogue Laval, une demande d’échange et son approbation.
+La démo UI est accessible directement sur [minaseliman1.github.io/vigie](https://minaseliman1.github.io/vigie/). Elle démarre avec le profil d’Amélie et permet de basculer entre six profils couvrant les quatre rôles pour parcourir la planification, les droits par périmètre, le catalogue Laval, une demande d’échange et son approbation.
 
 ## API
 
@@ -35,7 +35,7 @@ npm install
 npm run dev
 ```
 
-L’interface inclut un sélecteur de profils de démonstration pour parcourir les quatre rôles sans configuration supplémentaire. Elle utilise les données locales par défaut. Pour activer l’API réelle, copier `frontend/.env.example` vers `frontend/.env.local`, conserver `VITE_API_URL=http://localhost:5187`, puis relancer Vite : la connexion, les quarts, les échanges, les certifications, les membres et les piscines seront chargés depuis l’API. Si l’API devient indisponible, l’interface revient au mode de démonstration et affiche son état dans la barre latérale.
+L’interface inclut un sélecteur de profils de démonstration pour parcourir les quatre rôles sans configuration supplémentaire. Elle utilise les données locales par défaut; le profil Régie affiche les 27 installations municipales même lorsque l’API gratuite est en veille, et le chargé de secteur conserve son périmètre Nord. Pour activer l’API réelle, copier `frontend/.env.example` vers `frontend/.env.local`, conserver `VITE_API_URL=http://localhost:5187`, puis relancer Vite : la connexion, les quarts, les échanges, les certifications, les membres et les piscines seront chargés depuis l’API. Si l’API devient indisponible, l’interface revient au mode de démonstration et affiche son état dans la barre latérale.
 
 ## Parcours à montrer
 
