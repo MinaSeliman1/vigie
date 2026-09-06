@@ -132,6 +132,55 @@ app.MapGet("/api/v1/organization", (ClaimsPrincipal user, IVigieStore store) =>
     return organization is null ? Problem("NOT_FOUND", "L'organisation est introuvable.", StatusCodes.Status404NotFound) : Results.Ok(ToOrganization(organization));
 }).RequireAuthorization().WithTags("Organisation");
 
+app.MapGet("/api/v1/invitations", (ClaimsPrincipal user, IVigieStore store) =>
+{
+    var organizationId = OrganizationId(user);
+    return Results.Ok(store.Invitations.Where(invitation => invitation.OrganizationId == organizationId).OrderByDescending(invitation => invitation.CreatedAtUtc).Select(invitation => ToInvitation(invitation)).ToArray());
+}).RequireAuthorization(new AuthorizeAttribute { Roles = nameof(EmployeeRole.Coordinator) }).WithTags("Invitations");
+
+app.MapPost("/api/v1/invitations", async (ClaimsPrincipal user, InviteMemberRequest request, IVigieStore store, IUnitOfWork unitOfWork, IConfiguration configuration, CancellationToken ct) =>
+{
+    if (!Enum.TryParse<EmployeeRole>(request.Role, true, out var role)) return Problem("INVALID_ROLE", "Le rôle de l'invitation est invalide.");
+    var organizationId = OrganizationId(user);
+    var email = request.Email.Trim().ToLowerInvariant();
+    if (store.Employees.Any(employee => string.Equals(employee.Email, email, StringComparison.OrdinalIgnoreCase)) ||
+        store.Invitations.Any(invitation => invitation.OrganizationId == organizationId && string.Equals(invitation.Email, email, StringComparison.OrdinalIgnoreCase) && invitation.IsPending(DateTimeOffset.UtcNow)))
+        return Problem("INVITATION_EXISTS", "Un compte ou une invitation existe déjà pour ce courriel.", StatusCodes.Status409Conflict);
+    try
+    {
+        var (token, tokenHash) = InvitationToken.Create();
+        var invitation = Invitation.Create(Guid.NewGuid(), organizationId, email, request.Name, role, tokenHash, DateTimeOffset.UtcNow, TimeSpan.FromDays(7));
+        store.AddInvitation(invitation);
+        await unitOfWork.SaveChangesAsync(ct);
+        var publicAppUrl = configuration["PublicAppUrl"]?.TrimEnd('/');
+        var link = string.IsNullOrWhiteSpace(publicAppUrl) ? null : $"{publicAppUrl}/?invitation={Uri.EscapeDataString(token)}";
+        return Results.Created($"/api/v1/invitations/{invitation.Id}", ToInvitation(invitation, token, link));
+    }
+    catch (DomainException ex) { return Problem("INVALID_INVITATION", ex.Message); }
+}).RequireAuthorization(new AuthorizeAttribute { Roles = nameof(EmployeeRole.Coordinator) }).WithTags("Invitations");
+
+app.MapPost("/api/v1/invitations/accept", async (AcceptInvitationRequest request, IVigieStore store, IUnitOfWork unitOfWork, JwtTokenService tokens, CancellationToken ct) =>
+{
+    if (string.IsNullOrWhiteSpace(request.Token)) return Problem("INVALID_INVITATION", "Le jeton d'invitation est obligatoire.");
+    if (string.IsNullOrWhiteSpace(request.Password) || request.Password.Length < 12) return Problem("WEAK_PASSWORD", "Le mot de passe doit contenir au moins 12 caractères.");
+    var invitation = store.Invitations.SingleOrDefault(item => item.TokenHash == InvitationToken.Hash(request.Token));
+    if (invitation is null || !invitation.IsPending(DateTimeOffset.UtcNow)) return Problem("INVALID_INVITATION", "Cette invitation est expirée ou déjà utilisée.", StatusCodes.Status400BadRequest);
+    if (store.Employees.Any(employee => string.Equals(employee.Email, invitation.Email, StringComparison.OrdinalIgnoreCase))) return Problem("ACCOUNT_EXISTS", "Impossible d'activer cette invitation.", StatusCodes.Status409Conflict);
+    try
+    {
+        var name = string.IsNullOrWhiteSpace(request.Name) ? invitation.Name : request.Name;
+        var employee = Employee.Create(Guid.NewGuid(), name, invitation.Email, invitation.Role, invitation.Role == EmployeeRole.Coordinator ? 40 : 24, invitation.OrganizationId);
+        employee.SetPasswordHash(PasswordHasher.Hash(request.Password));
+        invitation.Accept(DateTimeOffset.UtcNow);
+        store.AddEmployee(employee);
+        store.UpdateInvitation(invitation);
+        await unitOfWork.SaveChangesAsync(ct);
+        var (token, expires) = tokens.Create(employee);
+        return Results.Ok(new LoginResponse(token, expires, User(employee)));
+    }
+    catch (DomainException ex) { return Problem("INVALID_INVITATION", ex.Message); }
+}).AllowAnonymous().WithTags("Invitations");
+
 app.MapGet("/api/v1/dashboard", (ClaimsPrincipal user, IVigieStore store) =>
 {
     var employeeId = UserId(user);
@@ -261,6 +310,8 @@ static Guid UserId(ClaimsPrincipal principal) => Guid.Parse(principal.FindFirstV
 static Guid OrganizationId(ClaimsPrincipal principal) => Guid.Parse(principal.FindFirstValue("organization_id") ?? throw new InvalidOperationException("Organisation absente."));
 static UserSummary User(Employee employee) => new(employee.Id, employee.Name, employee.Email, employee.Role.ToString(), employee.OrganizationId, employee.IsDemoAccount);
 static OrganizationResponse ToOrganization(Organization organization) => new(organization.Id, organization.Name, organization.Slug, organization.CreatedAtUtc);
+static InvitationResponse ToInvitation(Invitation invitation, string? token = null, string? link = null)
+    => new(invitation.Id, invitation.Email, invitation.Name, invitation.Role.ToString(), invitation.Status.ToString(), invitation.ExpiresAtUtc, token, link);
 static bool SwapBelongsToOrganization(Guid requestId, Guid organizationId, IVigieStore store)
 {
     var request = store.SwapRequests.SingleOrDefault(item => item.Id == requestId);

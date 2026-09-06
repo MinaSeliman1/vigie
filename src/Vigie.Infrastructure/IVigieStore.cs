@@ -19,6 +19,7 @@ public interface IVigieStore :
     IUnitOfWork
 {
     IReadOnlyCollection<Organization> Organizations { get; }
+    IReadOnlyCollection<Invitation> Invitations { get; }
     IReadOnlyCollection<Employee> Employees { get; }
     IReadOnlyCollection<Site> Sites { get; }
     IReadOnlyCollection<Shift> Shifts { get; }
@@ -30,6 +31,8 @@ public interface IVigieStore :
 
     void AddOrganization(Organization organization);
     void AddEmployee(Employee employee);
+    void AddInvitation(Invitation invitation);
+    void UpdateInvitation(Invitation invitation);
     void AddSite(Site site);
     void AddShift(Shift shift);
     Availability UpsertAvailability(Guid employeeId, DateOnly onDate, bool isAvailable, string? note);

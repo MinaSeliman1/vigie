@@ -11,6 +11,7 @@ namespace Vigie.Infrastructure.Persistence;
 public sealed class EfVigieStore(VigieDbContext db) : IVigieStore
 {
     public IReadOnlyCollection<Organization> Organizations => db.Organizations.AsNoTracking().ToArray();
+    public IReadOnlyCollection<Invitation> Invitations => db.Invitations.AsNoTracking().ToArray();
     public IReadOnlyCollection<Employee> Employees => db.Employees.AsNoTracking().ToArray();
     public IReadOnlyCollection<Site> Sites => db.Sites.AsNoTracking().ToArray();
     public IReadOnlyCollection<Shift> Shifts => db.Shifts.AsNoTracking().ToArray();
@@ -87,6 +88,8 @@ public sealed class EfVigieStore(VigieDbContext db) : IVigieStore
 
     public void AddOrganization(Organization organization) => db.Organizations.Add(organization);
     public void AddEmployee(Employee employee) => db.Employees.Add(employee);
+    public void AddInvitation(Invitation invitation) => db.Invitations.Add(invitation);
+    public void UpdateInvitation(Invitation invitation) => db.Invitations.Update(invitation);
     public void AddSite(Site site) => db.Sites.Add(site);
     public void AddShift(Shift shift) => db.Shifts.Add(shift);
 

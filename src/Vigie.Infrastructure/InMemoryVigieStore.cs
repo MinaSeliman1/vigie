@@ -14,6 +14,7 @@ public sealed class InMemoryVigieStore :
 {
     private readonly object sync = new();
     private readonly Dictionary<Guid, Organization> organizations = [];
+    private readonly Dictionary<Guid, Invitation> invitations = [];
     private readonly Dictionary<Guid, Employee> employees = [];
     private readonly Dictionary<Guid, Site> sites = [];
     private readonly Dictionary<Guid, Shift> shifts = [];
@@ -30,6 +31,7 @@ public sealed class InMemoryVigieStore :
     }
 
     public IReadOnlyCollection<Organization> Organizations => organizations.Values.ToArray();
+    public IReadOnlyCollection<Invitation> Invitations => invitations.Values.ToArray();
     public IReadOnlyCollection<Employee> Employees => employees.Values.ToArray();
     public IReadOnlyCollection<Site> Sites => sites.Values.ToArray();
     public IReadOnlyCollection<Shift> Shifts => shifts.Values.ToArray();
@@ -93,6 +95,8 @@ public sealed class InMemoryVigieStore :
 
     public void AddOrganization(Organization organization) => organizations[organization.Id] = organization;
     public void AddEmployee(Employee employee) => employees[employee.Id] = employee;
+    public void AddInvitation(Invitation invitation) => invitations[invitation.Id] = invitation;
+    public void UpdateInvitation(Invitation invitation) => invitations[invitation.Id] = invitation;
     public void AddSite(Site site) => sites[site.Id] = site;
     public void AddShift(Shift shift) => shifts[shift.Id] = shift;
     public void AddCertification(Certification certification) => certifications[certification.Id] = certification;

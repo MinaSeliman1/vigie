@@ -15,6 +15,8 @@ services:
         value: "10000"
       - key: AllowedOrigins
         value: https://minaseliman1.github.io
+      - key: PublicAppUrl
+        value: https://minaseliman1.github.io/vigie
       - key: Jwt__Key
         sync: false
       - key: ConnectionStrings__Vigie

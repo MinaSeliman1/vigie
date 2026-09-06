@@ -6,6 +6,7 @@ namespace Vigie.Infrastructure.Persistence;
 public sealed class VigieDbContext(DbContextOptions<VigieDbContext> options) : DbContext(options)
 {
     public DbSet<Organization> Organizations => Set<Organization>();
+    public DbSet<Invitation> Invitations => Set<Invitation>();
     public DbSet<Employee> Employees => Set<Employee>();
     public DbSet<Site> Sites => Set<Site>();
     public DbSet<CertificationType> CertificationTypes => Set<CertificationType>();
@@ -25,6 +26,18 @@ public sealed class VigieDbContext(DbContextOptions<VigieDbContext> options) : D
             entity.Property(x => x.Slug).HasMaxLength(80).IsRequired();
             entity.HasIndex(x => x.Slug).IsUnique();
             entity.Property(x => x.CreatedAtUtc).IsRequired();
+        });
+        modelBuilder.Entity<Invitation>(entity =>
+        {
+            entity.HasKey(x => x.Id);
+            entity.Property(x => x.Email).HasMaxLength(180).IsRequired();
+            entity.Property(x => x.Name).HasMaxLength(120).IsRequired();
+            entity.Property(x => x.Role).HasConversion<string>().HasMaxLength(24).IsRequired();
+            entity.Property(x => x.TokenHash).HasMaxLength(64).IsRequired();
+            entity.Property(x => x.Status).HasConversion<string>().HasMaxLength(24).IsRequired();
+            entity.HasIndex(x => x.TokenHash).IsUnique();
+            entity.HasIndex(x => new { x.OrganizationId, x.Email, x.Status });
+            entity.HasOne<Organization>().WithMany().HasForeignKey(x => x.OrganizationId).OnDelete(DeleteBehavior.Restrict);
         });
         modelBuilder.Entity<Employee>(entity =>
         {

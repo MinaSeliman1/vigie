@@ -4,6 +4,7 @@ export type UserSummary = { id: string; name: string; email: string; role: Role;
 export type LoginResponse = { token: string; expiresAtUtc: string; user: UserSummary }
 export type OrganizationResponse = { id: string; name: string; slug: string; createdAtUtc: string }
 export type RegistrationResponse = { login: LoginResponse; organization: OrganizationResponse }
+export type InvitationResponse = { id: string; email: string; name: string; role: Role; status: string; expiresAtUtc: string; inviteToken?: string | null; inviteLink?: string | null }
 export type ApiProblem = { code?: string; message?: string; detail?: string; errors?: Array<{ code: string; message: string }> }
 export type SiteResponse = { id: string; name: string; type: string; timeZoneId: string; openingSeason: { startMonth: number; startDay: number; endMonth: number; endDay: number } }
 export type CreateShiftInput = { siteId: string; startUtc: string; endUtc: string; requiredLifeguards: number }

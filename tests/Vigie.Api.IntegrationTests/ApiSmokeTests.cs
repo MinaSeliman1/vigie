@@ -173,6 +173,30 @@ public sealed class ApiSmokeTests : IClassFixture<WebApplicationFactory<Program>
     }
 
     [Fact]
+    public async Task Coordinator_can_invite_and_activate_a_lifeguard_once()
+    {
+        var coordinatorLogin = await client.PostAsJsonAsync("/api/v1/auth/login", new { email = "coordonnateur@vigie.demo", password = "vigie-demo" });
+        var coordinator = await coordinatorLogin.Content.ReadFromJsonAsync<LoginPayload>();
+        client.DefaultRequestHeaders.Authorization = new System.Net.Http.Headers.AuthenticationHeaderValue("Bearer", coordinator!.Token);
+        var email = $"invite-{Guid.NewGuid():N}@exemple.test";
+        var invitationResponse = await client.PostAsJsonAsync("/api/v1/invitations", new { email, name = "Sauveteur invité", role = "Lifeguard" });
+        var invitation = await invitationResponse.Content.ReadFromJsonAsync<InvitationPayload>();
+
+        Assert.Equal(HttpStatusCode.Created, invitationResponse.StatusCode);
+        Assert.NotNull(invitation?.InviteToken);
+
+        client.DefaultRequestHeaders.Authorization = null;
+        var accept = await client.PostAsJsonAsync("/api/v1/invitations/accept", new { token = invitation!.InviteToken, password = "mot-de-passe-invite" });
+        var accepted = await accept.Content.ReadFromJsonAsync<LoginPayload>();
+        var secondAccept = await client.PostAsJsonAsync("/api/v1/invitations/accept", new { token = invitation.InviteToken, password = "mot-de-passe-invite" });
+
+        Assert.Equal(HttpStatusCode.OK, accept.StatusCode);
+        Assert.Equal(email, accepted?.User.Email);
+        Assert.Equal("Lifeguard", accepted?.User.Role);
+        Assert.Equal(HttpStatusCode.BadRequest, secondAccept.StatusCode);
+    }
+
+    [Fact]
     public void Ef_model_maps_the_opening_season_without_a_database()
     {
         var options = new DbContextOptionsBuilder<VigieDbContext>()
@@ -192,6 +216,7 @@ public sealed class ApiSmokeTests : IClassFixture<WebApplicationFactory<Program>
     private sealed record UserPayload(Guid Id, string Name, string Email, string Role, Guid OrganizationId, bool IsDemoAccount);
     private sealed record RegistrationPayload(LoginPayload Login, OrganizationPayload Organization);
     private sealed record OrganizationPayload(Guid Id, string Name, string Slug, DateTimeOffset CreatedAtUtc);
+    private sealed record InvitationPayload(Guid Id, string Email, string Name, string Role, string Status, DateTimeOffset ExpiresAtUtc, string? InviteToken, string? InviteLink);
     private sealed record SitePayload(Guid Id);
     private sealed record ShiftPayload(Guid Id);
     private sealed record AssignmentPayload(Guid Id, Guid ShiftId, Guid EmployeeId, string EmployeeName);

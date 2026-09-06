@@ -8,6 +8,9 @@ public sealed record RegisterOrganizationRequest(string OrganizationName, string
 public sealed record OrganizationResponse(Guid Id, string Name, string Slug, DateTimeOffset CreatedAtUtc);
 public sealed record RegistrationResponse(LoginResponse Login, OrganizationResponse Organization);
 public sealed record UserSummary(Guid Id, string Name, string Email, string Role, Guid OrganizationId, bool IsDemoAccount);
+public sealed record InviteMemberRequest(string Email, string Name, string Role);
+public sealed record InvitationResponse(Guid Id, string Email, string Name, string Role, string Status, DateTimeOffset ExpiresAtUtc, string? InviteToken, string? InviteLink);
+public sealed record AcceptInvitationRequest(string Token, string Password, string? Name);
 public sealed record SiteResponse(Guid Id, string Name, string Type, string TimeZoneId, OpeningSeason OpeningSeason);
 public sealed record ShiftResponse(Guid Id, Guid SiteId, string SiteName, string SiteType, DateTimeOffset StartUtc, DateTimeOffset EndUtc, int RequiredLifeguards, IReadOnlyCollection<AssignmentResponse> Assignments);
 public sealed record AssignmentResponse(Guid Id, Guid ShiftId, Guid EmployeeId, string EmployeeName);
