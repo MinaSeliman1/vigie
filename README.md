@@ -37,6 +37,7 @@ Les limites calendaires (jour d’expiration, début de semaine, quarts de nuit 
 - Suivi des certifications et alertes à 90 et 30 jours de l’échéance.
 - Création d’un espace d’organisation avec coordonnateur et isolation des sites et des équipes.
 - Invitations d’équipe à usage unique, expiration après sept jours et activation avec un mot de passe personnel.
+- Administration de l’équipe pour le coordonnateur : changement de rôle et de périmètre (piscine ou secteur), désactivation logique et protection contre les modifications concurrentes.
 - Journal d’audit organisationnel pour les créations, assignations, invitations et décisions d’échange, avec export CSV coordonnateur.
 
 La génération automatique d’horaires, les courriels/SMS, les exports et l’application mobile sont hors du périmètre initial.

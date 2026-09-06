@@ -57,4 +57,4 @@ Transformer la démonstration Vigie en un logiciel que plusieurs centres aquatiq
 
 ## Décision actuelle
 
-Le MVP/V1 public couvre le domaine et les opérations principales avec des comptes de démonstration. La fondation des comptes réels, l’isolation organisationnelle, les invitations activables, la révocation de sessions et l’historique exportable sont maintenant en place sans retirer le parcours public existant ; la prochaine tranche ajoute la récupération de compte, la gestion complète des membres et les notifications.
+Le MVP/V1 public couvre le domaine et les opérations principales avec des comptes de démonstration. La fondation des comptes réels, l’isolation organisationnelle, les invitations activables, la gestion des rattachements depuis l’interface coordonnateur, la révocation de sessions et l’historique exportable sont maintenant en place sans retirer le parcours public existant ; les prochaines tranches ajoutent la récupération de compte, les notifications et l’exploitation commerciale.

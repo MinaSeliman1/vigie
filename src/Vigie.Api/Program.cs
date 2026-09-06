@@ -334,7 +334,7 @@ app.MapPatch("/api/v1/memberships/{membershipId:guid}", async (ClaimsPrincipal u
         var role = string.IsNullOrWhiteSpace(request.Role) ? membership.Role : Enum.TryParse<EmployeeRole>(request.Role, true, out var parsed) ? parsed : throw new DomainException("Le rôle du membership est invalide.");
         if (!scope.IsDirector && (role is EmployeeRole.AquaticDirector or EmployeeRole.SectorManager || scope.IsPoolChief && role != EmployeeRole.Lifeguard))
             return Results.StatusCode(StatusCodes.Status403Forbidden);
-        var nextSite = role == EmployeeRole.AquaticDirector ? null : request.SiteId ?? membership.SiteId;
+        var nextSite = role is EmployeeRole.AquaticDirector or EmployeeRole.SectorManager ? null : request.SiteId ?? membership.SiteId;
         var nextSector = role is EmployeeRole.AquaticDirector or EmployeeRole.PoolChief or EmployeeRole.Lifeguard ? null : request.SectorId ?? membership.SectorId;
         var nextSiteEntity = nextSite.HasValue ? store.Sites.SingleOrDefault(item => item.Id == nextSite && item.OrganizationId == scope.OrganizationId) : null;
         var nextSectorEntity = nextSector.HasValue ? store.Sectors.SingleOrDefault(item => item.Id == nextSector && item.OrganizationId == scope.OrganizationId) : null;

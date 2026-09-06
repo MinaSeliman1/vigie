@@ -363,6 +363,52 @@ public sealed class ApiSmokeTests : IClassFixture<WebApplicationFactory<Program>
     }
 
     [Fact]
+    public async Task Aquatic_director_can_move_a_membership_from_site_to_sector_scope()
+    {
+        var registration = await client.PostAsJsonAsync("/api/v1/auth/register", new
+        {
+            organizationName = $"Centre rattachement {Guid.NewGuid():N}",
+            name = "Directrice rattachement",
+            email = $"rattachement-{Guid.NewGuid():N}@exemple.test",
+            password = "Mot-de-passe1"
+        });
+        var account = await registration.Content.ReadFromJsonAsync<RegistrationPayload>();
+        client.DefaultRequestHeaders.Authorization = new System.Net.Http.Headers.AuthenticationHeaderValue("Bearer", account!.Login.Token);
+        var sectorResponse = await client.PostAsJsonAsync("/api/v1/sectors", new { name = "Secteur test", code = "TEST" });
+        var sector = await sectorResponse.Content.ReadFromJsonAsync<SectorPayload>();
+        var siteResponse = await client.PostAsJsonAsync("/api/v1/sites", new
+        {
+            name = "Piscine test",
+            type = "Indoor",
+            timeZoneId = "Eastern Standard Time",
+            startMonth = 1,
+            startDay = 1,
+            endMonth = 12,
+            endDay = 31
+        });
+        var site = await siteResponse.Content.ReadFromJsonAsync<SitePayload>();
+        var inviteEmail = $"sauveteur-rattachement-{Guid.NewGuid():N}@exemple.test";
+        var invitationResponse = await client.PostAsJsonAsync("/api/v1/invitations", new { email = inviteEmail, name = "Sauveteur test", role = "Lifeguard", siteId = site!.Id });
+        var invitation = await invitationResponse.Content.ReadFromJsonAsync<InvitationPayload>();
+
+        client.DefaultRequestHeaders.Authorization = null;
+        var accept = await client.PostAsJsonAsync("/api/v1/invitations/accept", new { token = invitation!.InviteToken, password = "Mot-de-passe1" });
+        var accepted = await accept.Content.ReadFromJsonAsync<LoginPayload>();
+        client.DefaultRequestHeaders.Authorization = new System.Net.Http.Headers.AuthenticationHeaderValue("Bearer", account.Login.Token);
+        var members = await client.GetFromJsonAsync<MemberPayload[]>("/api/v1/members");
+        var membership = members!.Single(member => member.EmployeeId == accepted!.User.Id);
+        var update = await client.PatchAsJsonAsync($"/api/v1/memberships/{membership.Id}", new { role = "SectorManager", sectorId = sector!.Id, expectedVersion = membership.Version });
+        var updated = await update.Content.ReadFromJsonAsync<MemberPayload>();
+
+        Assert.Equal(HttpStatusCode.Created, sectorResponse.StatusCode);
+        Assert.Equal(HttpStatusCode.OK, accept.StatusCode);
+        Assert.Equal(HttpStatusCode.OK, update.StatusCode);
+        Assert.Equal("SectorManager", updated?.Role);
+        Assert.Null(updated?.SiteId);
+        Assert.Equal(sector.Id, updated?.SectorId);
+    }
+
+    [Fact]
     public async Task Sector_manager_is_scoped_to_their_sector()
     {
         var login = await client.PostAsJsonAsync("/api/v1/auth/login", new { email = "charge.nord@vigie.demo", password = "vigie-demo" });
