@@ -13,7 +13,7 @@ public sealed record UserSummary(Guid Id, string Name, string Email, string Role
 public sealed record InviteMemberRequest(string Email, string Name, string Role, Guid? SiteId = null, Guid? SectorId = null);
 public sealed record InvitationResponse(Guid Id, string Email, string Name, string Role, string Status, DateTimeOffset ExpiresAtUtc, string? InviteToken, string? InviteLink, Guid? SiteId = null, Guid? SectorId = null);
 public sealed record AcceptInvitationRequest(string Token, string Password, string? Name);
-public sealed record SiteResponse(Guid Id, string Name, string Type, string TimeZoneId, OpeningSeason OpeningSeason, string Address = "", string Neighborhood = "", bool IsMunicipal = false);
+public sealed record SiteResponse(Guid Id, string Name, string Type, string TimeZoneId, OpeningSeason OpeningSeason, string Address = "", string Neighborhood = "", bool IsMunicipal = false, Guid? SectorId = null, string? SectorName = null);
 public sealed record ShiftResponse(Guid Id, Guid SiteId, string SiteName, string SiteType, DateTimeOffset StartUtc, DateTimeOffset EndUtc, int RequiredLifeguards, IReadOnlyCollection<AssignmentResponse> Assignments, string Status = nameof(ShiftStatus.Open));
 public sealed record AssignmentResponse(Guid Id, Guid ShiftId, Guid EmployeeId, string EmployeeName);
 public sealed record CreateShiftRequest(Guid SiteId, DateTimeOffset StartUtc, DateTimeOffset EndUtc, int RequiredLifeguards);

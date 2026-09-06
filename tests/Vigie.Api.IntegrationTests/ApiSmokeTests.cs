@@ -524,6 +524,7 @@ public sealed class ApiSmokeTests : IClassFixture<WebApplicationFactory<Program>
         Assert.Equal("AquaticDirector", payload.User.Role);
         Assert.True(sites!.Count(site => site.IsMunicipal) >= 27);
         Assert.Contains(sites!, site => site.Name == "Piscine Val-des-Arbres" && site.Neighborhood == "Vimont");
+        Assert.Contains(sites!, site => site.Name == "Piscine Val-des-Arbres" && site.SectorName == "Secteur Est");
         Assert.Equal(5, sectors!.Length);
         Assert.Contains(sectors, sector => sector.Code == "NORD");
         Assert.Contains(sectors, sector => sector.Code == "CENTRE");
@@ -611,7 +612,7 @@ public sealed class ApiSmokeTests : IClassFixture<WebApplicationFactory<Program>
     private sealed record OrganizationPayload(Guid Id, string Name, string Slug, DateTimeOffset CreatedAtUtc);
     private sealed record InvitationPayload(Guid Id, string Email, string Name, string Role, string Status, DateTimeOffset ExpiresAtUtc, string? InviteToken, string? InviteLink);
     private sealed record AuditPayload(Guid Id, string Action, string EntityType, Guid? EntityId, string? Details, string? ActorName, DateTimeOffset CreatedAtUtc);
-    private sealed record SitePayload(Guid Id, string Name = "", string Type = "", string TimeZoneId = "", OpeningSeasonPayload? OpeningSeason = null, string Address = "", string Neighborhood = "", bool IsMunicipal = false);
+    private sealed record SitePayload(Guid Id, string Name = "", string Type = "", string TimeZoneId = "", OpeningSeasonPayload? OpeningSeason = null, string Address = "", string Neighborhood = "", bool IsMunicipal = false, Guid? SectorId = null, string? SectorName = null);
     private sealed record OpeningSeasonPayload(int StartMonth, int StartDay, int EndMonth, int EndDay);
     private sealed record ShiftPayload(Guid Id, string? Status = null);
     private sealed record AssignmentPayload(Guid Id, Guid ShiftId, Guid EmployeeId, string EmployeeName);

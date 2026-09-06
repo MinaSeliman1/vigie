@@ -523,7 +523,7 @@ app.MapGet("/api/v1/sites", (ClaimsPrincipal user, IVigieStore store) =>
         .Where(site => site.OrganizationId == scope.OrganizationId)
         .Where(site => IsSiteVisible(site, scope, store))
         .OrderBy(site => site.Name)
-        .Select(ToSite)
+        .Select(site => ToSite(site, store))
         .ToArray();
     return Results.Ok(visible);
 }).RequireAuthorization().WithTags("Sites");
@@ -538,7 +538,7 @@ app.MapPost("/api/v1/sites", async (ClaimsPrincipal user, CreateSiteRequest requ
         store.AddSite(site);
         store.AddAuditEntry(Audit(OrganizationId(user), UserId(user), "site.created", "Site", site.Id));
         await unitOfWork.SaveChangesAsync(ct);
-        return Results.Created($"/api/v1/sites/{site.Id}", ToSite(site));
+        return Results.Created($"/api/v1/sites/{site.Id}", ToSite(site, store));
     }
     catch (DomainException ex) { return Problem("INVALID_SITE", ex.Message); }
 }).RequireAuthorization().WithTags("Sites");
@@ -810,7 +810,11 @@ static Site? SwapSite(Guid requestId, IVigieStore store)
     var shift = assignment is null ? null : store.Shifts.SingleOrDefault(item => item.Id == assignment.ShiftId);
     return shift is null ? null : store.Sites.SingleOrDefault(site => site.Id == shift.SiteId);
 }
-static SiteResponse ToSite(Site site) => new(site.Id, site.Name, site.Type.ToString(), site.TimeZoneId, site.OpeningSeason, site.Address, site.Neighborhood, site.IsMunicipal);
+static SiteResponse ToSite(Site site, IVigieStore store)
+{
+    var sector = site.SectorId.HasValue ? store.Sectors.SingleOrDefault(item => item.Id == site.SectorId) : null;
+    return new SiteResponse(site.Id, site.Name, site.Type.ToString(), site.TimeZoneId, site.OpeningSeason, site.Address, site.Neighborhood, site.IsMunicipal, site.SectorId, sector?.Name);
+}
 static ShiftResponse ToShift(Shift shift, IVigieStore store)
 {
     var site = store.Sites.Single(s => s.Id == shift.SiteId);
