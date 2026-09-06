@@ -21,15 +21,16 @@ Transformer la démonstration Vigie en un logiciel que plusieurs centres aquatiq
 - ✅ Remplacer le mot de passe codé en dur par des mots de passe hachés PBKDF2 et des comptes explicitement marqués démonstration.
 - ✅ Créer un espace d’organisation avec un coordonnateur propriétaire et vérifier l’isolation des sites et des équipes côté API.
 - ✅ Expiration courte des jetons d’accès et limitation des tentatives sur les routes d’authentification.
-- Ajouter rotation de clé JWT et révocation explicite des sessions.
+- ✅ Révoquer explicitement les sessions après un changement de mot de passe, avec un compteur persistant vérifié par l’API.
 - ✅ Ajouter inscription d’organisation et invitation d’équipe à usage unique avec expiration.
-- Ajouter récupération de mot de passe et session persistante côté interface.
+- ✅ Restaurer une session réelle côté interface après un rechargement et permettre le changement de mot de passe.
+- Ajouter récupération de mot de passe avec un fournisseur de courriel transactionnel.
 - Couvrir les erreurs d’authentification sans révéler si une adresse existe.
 
 ### 2. Multi-tenant et autorisations
 
 - Ajouter `Organization`, membership et rôle par organisation.
-- Scoper chaque requête métier à l’organisation du jeton.
+- ✅ Scoper chaque requête métier à l’organisation du jeton.
 - Ajouter les règles de propriété pour sites, équipes, certifications et disponibilités.
 - Tester l’impossibilité de lire ou modifier les données d’une autre organisation.
 
@@ -45,7 +46,7 @@ Transformer la démonstration Vigie en un logiciel que plusieurs centres aquatiq
 - Journaliser les actions importantes avec acteur, organisation, objet, résultat et horodatage.
 - Ajouter notifications dans l’application et courriels transactionnels pour invitations, échanges et certifications.
 - Ajouter recherche, filtres, états vides, pagination et export CSV pour les coordonnateurs.
-- Remplacer le sélecteur de profils de démo par une vraie session et une page d’accueil adaptée au rôle.
+- ✅ Utiliser une vraie session pour les comptes commerciaux; le sélecteur reste disponible uniquement dans la démo publique.
 
 ### 5. Mise en production
 
@@ -56,4 +57,4 @@ Transformer la démonstration Vigie en un logiciel que plusieurs centres aquatiq
 
 ## Décision actuelle
 
-Le MVP/V1 public couvre le domaine et les opérations principales avec des comptes de démonstration. La fondation des comptes réels, l’isolation organisationnelle et les invitations d’équipe sont maintenant en place sans retirer le parcours public existant ; la prochaine tranche ajoute la gestion complète des membres et la récupération de compte.
+Le MVP/V1 public couvre le domaine et les opérations principales avec des comptes de démonstration. La fondation des comptes réels, l’isolation organisationnelle, les invitations activables et la révocation de sessions sont maintenant en place sans retirer le parcours public existant ; la prochaine tranche ajoute la gestion complète des membres, la récupération de compte et l’historique métier.

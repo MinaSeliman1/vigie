@@ -6,7 +6,7 @@
 
 Application de gestion de quarts pour équipes de sauveteurs : horaires, remplacements et suivi des certifications dans un même outil.
 
-> **État : MVP public, fondation commerciale en cours.** La démo UI est publiée sur [GitHub Pages](https://minaseliman1.github.io/vigie/) et l’API est déployée sur Render avec PostgreSQL Free de Supabase. Le parcours public affiche `API connectée` et couvre le calendrier, la création et l’assignation de quarts, les échanges avec approbation, l’équipe et les certifications. La feuille de route pour passer à un produit commercial est dans [`docs/roadmaps/2026-09-05-commercial-product.md`](docs/roadmaps/2026-09-05-commercial-product.md). Projet personnel indépendant, sans affiliation officielle avec un employeur. Toutes les données de démonstration sont fictives.
+> **État : MVP public, fondation commerciale en cours.** La démo UI est publiée sur [GitHub Pages](https://minaseliman1.github.io/vigie/) et l’API est déployée sur Render avec PostgreSQL Free de Supabase. Le parcours public affiche `API connectée` et couvre le calendrier, la création et l’assignation de quarts, les échanges avec approbation, l’équipe et les certifications. Les comptes réels disposent d’un espace isolé, d’invitations activables et de sessions révoquées après changement de mot de passe. La feuille de route pour passer à un produit commercial est dans [`docs/roadmaps/2026-09-05-commercial-product.md`](docs/roadmaps/2026-09-05-commercial-product.md). Projet personnel indépendant, sans affiliation officielle avec un employeur. Toutes les données de démonstration sont fictives.
 
 ## Le problème
 
@@ -113,6 +113,7 @@ L’interface est en français et permet de basculer entre les profils sauveteur
 - La vue `Disponibilités` permet à un sauveteur de déclarer ses jours ouverts ou indisponibles et persiste ce choix via l’API.
 - EF Core et PostgreSQL sont branchés derrière `IVigieStore`; le mode mémoire reste le défaut local pour garder le démarrage reproductible.
 - Les routes publiques `/api/v1/auth/register` et `/api/v1/auth/login` créent ou ouvrent un espace d’organisation ; les invitations `/api/v1/invitations` ne stockent que le hachage d’un jeton et les mots de passe sont stockés sous forme de hachages PBKDF2.
+- `GET /api/v1/auth/me` restaure une session, et `POST /api/v1/auth/change-password` renouvelle le jeton tout en invalidant les sessions précédentes.
 - Les jetons d’accès expirent après 60 minutes et les routes d’authentification sont limitées à 10 tentatives par minute et par adresse en production.
 - Une migration `InitialCreate` et un seed idempotent s’exécutent automatiquement lorsqu’une chaîne `ConnectionStrings__Vigie` est configurée.
 
