@@ -131,7 +131,7 @@ L’interface est en français et permet de basculer entre six profils de démon
 - `GET /api/v1/coverage` expose aux responsables l’effectif requis, l’effectif assigné et les quarts à compléter dans leur périmètre; les sauveteurs ne peuvent pas consulter cette vue de pilotage.
 - `GET /api/v1/auth/me` restaure une session, et `POST /api/v1/auth/change-password` renouvelle le jeton tout en invalidant les sessions précédentes.
 - Les jetons d’accès expirent après 60 minutes et les routes d’authentification sont limitées à 10 tentatives par minute et par adresse en production.
-- `GET /api/v1/audit` et `GET /api/v1/audit/export` sont réservés aux responsables autorisés et restent bornés à leur organisation et à leur périmètre opérationnel.
+- `GET /api/v1/audit`, `GET /api/v1/audit/query` et `GET /api/v1/audit/export` sont réservés aux responsables autorisés et restent bornés à leur organisation et à leur périmètre opérationnel; la recherche accepte texte, action, objet, dates et pagination.
 - Les migrations `AddLavalOperationsFoundation`, `AddSiteCatalogMetadata` et `FixMembershipScopeIndexes` ainsi qu’un seed idempotent s’exécutent automatiquement lorsqu’une chaîne `ConnectionStrings__Vigie` est configurée.
 
 ## Examiner le projet

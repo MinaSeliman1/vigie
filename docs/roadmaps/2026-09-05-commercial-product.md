@@ -46,7 +46,7 @@ Transformer la démonstration Vigie en un logiciel que plusieurs centres aquatiq
 - ✅ Journaliser les actions importantes avec acteur, organisation, objet et horodatage; le coordonnateur peut exporter l’historique en CSV.
 - ✅ Ajouter les notifications dans l’application pour les assignations, échanges et alertes de certification; les courriels transactionnels restent derrière un fournisseur configurable.
 - ✅ Brancher les invitations d’équipe et la récupération de compte sur Resend lorsque `Resend__ApiKey` et `Resend__From` sont configurés; le lien reste disponible si l’envoi est désactivé.
-- Ajouter recherche, filtres et pagination à l’historique coordonnateur.
+- ✅ Ajouter recherche, filtres et pagination à l’historique coordonnateur.
 - ✅ Utiliser une vraie session pour les comptes commerciaux; le sélecteur reste disponible uniquement dans la démo publique.
 
 ### 5. Mise en production
