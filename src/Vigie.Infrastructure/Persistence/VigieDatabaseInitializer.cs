@@ -108,6 +108,10 @@ public static class VigieDatabaseInitializer
                 .Concat(pools)
                 .SelectMany(pool => new[] { pool.Code, $"SITE-{pool.SiteId:N}" })
                 .ToHashSet(StringComparer.OrdinalIgnoreCase);
+            if (isDemoOrganization)
+                generatedCatalogCodes.UnionWith(sectors
+                    .Where(sector => sector.Code.StartsWith("SITE-", StringComparison.OrdinalIgnoreCase))
+                    .Select(sector => sector.Code));
             var referencedSectorIds = sites
                 .Where(site => site.SectorId.HasValue)
                 .Select(site => site.SectorId!.Value)
@@ -171,10 +175,24 @@ public static class VigieDatabaseInitializer
             context.Sectors.Add(nordSector);
             mutableSectors.Add(nordSector);
         }
+        nordSector.Activate();
+
+        var parkSector = mutableSectors.FirstOrDefault(sector => sector.Code == "PARC");
+        if (parkSector is null)
+        {
+            parkSector = Sector.Create(Guid.Parse("80000000-0000-0000-0000-000000000002"), organizationId, "Secteur du parc", "PARC");
+            context.Sectors.Add(parkSector);
+            mutableSectors.Add(parkSector);
+        }
+        parkSector.Activate();
 
         var nordSite = sites.FirstOrDefault(site => site.Id == Guid.Parse("20000000-0000-0000-0000-000000000001")) ??
             sites.FirstOrDefault(site => site.Name == "Piscine du Nord");
         if (nordSite is not null) nordSite.SetSector(nordSector.Id);
+
+        var parkSite = sites.FirstOrDefault(site => site.Id == Guid.Parse("20000000-0000-0000-0000-000000000002")) ??
+            sites.FirstOrDefault(site => site.Name == "Bassin du parc");
+        if (parkSite is not null) parkSite.SetSector(parkSector.Id);
 
         var northNeighborhoods = new[] { "Vimont", "Fabreville", "Sainte-Rose", "Auteuil" };
         foreach (var site in sites.Where(site => site.IsMunicipal && northNeighborhoods.Contains(site.Neighborhood, StringComparer.OrdinalIgnoreCase)))
