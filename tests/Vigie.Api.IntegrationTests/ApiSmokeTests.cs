@@ -138,6 +138,41 @@ public sealed class ApiSmokeTests : IClassFixture<WebApplicationFactory<Program>
     }
 
     [Fact]
+    public async Task Registration_creates_an_isolated_organization()
+    {
+        var organizationName = $"Centre {Guid.NewGuid():N}";
+        var email = $"coordonnateur-{Guid.NewGuid():N}@exemple.test";
+        var response = await client.PostAsJsonAsync("/api/v1/auth/register", new
+        {
+            organizationName,
+            name = "Coordonnateur du centre",
+            email,
+            password = "mot-de-passe-commercial"
+        });
+        var payload = await response.Content.ReadFromJsonAsync<RegistrationPayload>();
+
+        Assert.Equal(HttpStatusCode.Created, response.StatusCode);
+        Assert.NotNull(payload?.Login.Token);
+        Assert.Equal(organizationName, payload?.Organization.Name);
+        Assert.Equal(payload?.Organization.Id, payload?.Login.User.OrganizationId);
+
+        client.DefaultRequestHeaders.Authorization = new System.Net.Http.Headers.AuthenticationHeaderValue("Bearer", payload!.Login.Token);
+        var organization = await client.GetFromJsonAsync<OrganizationPayload>("/api/v1/organization");
+        var sites = await client.GetFromJsonAsync<SitePayload[]>("/api/v1/sites");
+        var crossOrganizationShift = await client.PostAsJsonAsync("/api/v1/shifts", new
+        {
+            siteId = Guid.Parse("20000000-0000-0000-0000-000000000001"),
+            startUtc = "2026-09-20T14:00:00Z",
+            endUtc = "2026-09-20T22:00:00Z",
+            requiredLifeguards = 2
+        });
+
+        Assert.Equal(payload.Organization.Id, organization?.Id);
+        Assert.Empty(sites!);
+        Assert.Equal(HttpStatusCode.NotFound, crossOrganizationShift.StatusCode);
+    }
+
+    [Fact]
     public void Ef_model_maps_the_opening_season_without_a_database()
     {
         var options = new DbContextOptionsBuilder<VigieDbContext>()
@@ -154,7 +189,10 @@ public sealed class ApiSmokeTests : IClassFixture<WebApplicationFactory<Program>
     }
 
     private sealed record LoginPayload(string Token, UserPayload User);
-    private sealed record UserPayload(Guid Id, string Name, string Email, string Role);
+    private sealed record UserPayload(Guid Id, string Name, string Email, string Role, Guid OrganizationId, bool IsDemoAccount);
+    private sealed record RegistrationPayload(LoginPayload Login, OrganizationPayload Organization);
+    private sealed record OrganizationPayload(Guid Id, string Name, string Slug, DateTimeOffset CreatedAtUtc);
+    private sealed record SitePayload(Guid Id);
     private sealed record ShiftPayload(Guid Id);
     private sealed record AssignmentPayload(Guid Id, Guid ShiftId, Guid EmployeeId, string EmployeeName);
     private sealed record SwapPayload(Guid Id);

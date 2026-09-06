@@ -4,7 +4,10 @@ namespace Vigie.Api.Contracts;
 
 public sealed record LoginRequest(string Email, string Password);
 public sealed record LoginResponse(string Token, DateTimeOffset ExpiresAtUtc, UserSummary User);
-public sealed record UserSummary(Guid Id, string Name, string Email, string Role);
+public sealed record RegisterOrganizationRequest(string OrganizationName, string Name, string Email, string Password);
+public sealed record OrganizationResponse(Guid Id, string Name, string Slug, DateTimeOffset CreatedAtUtc);
+public sealed record RegistrationResponse(LoginResponse Login, OrganizationResponse Organization);
+public sealed record UserSummary(Guid Id, string Name, string Email, string Role, Guid OrganizationId, bool IsDemoAccount);
 public sealed record SiteResponse(Guid Id, string Name, string Type, string TimeZoneId, OpeningSeason OpeningSeason);
 public sealed record ShiftResponse(Guid Id, Guid SiteId, string SiteName, string SiteType, DateTimeOffset StartUtc, DateTimeOffset EndUtc, int RequiredLifeguards, IReadOnlyCollection<AssignmentResponse> Assignments);
 public sealed record AssignmentResponse(Guid Id, Guid ShiftId, Guid EmployeeId, string EmployeeName);

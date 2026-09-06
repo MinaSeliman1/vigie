@@ -33,6 +33,7 @@ Les limites calendaires (jour d’expiration, début de semaine, quarts de nuit 
 - Calendrier hebdomadaire personnel et d’équipe.
 - Demandes de remplacement, approbation et refus.
 - Suivi des certifications et alertes à 90 et 30 jours de l’échéance.
+- Création d’un espace d’organisation avec coordonnateur et isolation des sites et des équipes.
 
 La génération automatique d’horaires, les courriels/SMS, les exports et l’application mobile sont hors du périmètre initial.
 
@@ -103,14 +104,15 @@ L’interface est en français et permet de basculer entre les profils sauveteur
 ## Ce qui est déjà vérifiable
 
 - Les cinq règles métier sont testées dans `tests/Vigie.Domain.Tests` sans serveur ni base de données.
-- L’API JWT expose les routes de calendrier, d’assignation, d’échange et de certification ; neuf tests d’intégration couvrent l’authentification, les autorisations, les règles de saison, les décisions répétées et le modèle EF.
+- L’API JWT expose les routes de calendrier, d’assignation, d’échange et de certification ; les tests d’intégration couvrent l’authentification, l’inscription d’organisation, l’isolation entre organisations, les autorisations, les règles de saison, les décisions répétées et le modèle EF.
 - La démo UI publique est construite automatiquement par GitHub Actions et publiée sur GitHub Pages à chaque mise à jour de `main`.
 - Le conteneur de l’API est construit dans la CI pour détecter les erreurs de packaging avant un déploiement.
 - `render.yaml` décrit le déploiement gratuit de l’API, son health check et les secrets attendus sans jamais les stocker dans Git.
 - Le frontend React affiche un calendrier responsive et exécute les parcours création → assignation de quart et demande d’échange → approbation avec les profils de démonstration.
 - La vue `Disponibilités` permet à un sauveteur de déclarer ses jours ouverts ou indisponibles et persiste ce choix via l’API.
 - EF Core et PostgreSQL sont branchés derrière `IVigieStore`; le mode mémoire reste le défaut local pour garder le démarrage reproductible.
-- Une migration `InitialCreate` et un seed idempotent s’exécutent automatiquement lorsqu’une chaîne `ConnectionStrings__Vigie` est configurée ; les mots de passe sont stockés sous forme de hachages PBKDF2 et jamais en clair.
+- Les routes publiques `/api/v1/auth/register` et `/api/v1/auth/login` créent ou ouvrent un espace d’organisation ; les mots de passe sont stockés sous forme de hachages PBKDF2 et jamais en clair.
+- Une migration `InitialCreate` et un seed idempotent s’exécutent automatiquement lorsqu’une chaîne `ConnectionStrings__Vigie` est configurée.
 
 ## Examiner le projet
 

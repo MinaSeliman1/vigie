@@ -1,4 +1,4 @@
-import type { ApiProblem, AssignmentResponse, AvailabilityResponse, CertificationResponse, CreateShiftInput, LoginResponse, ShiftResponse, SiteResponse, SwapRequestResponse, UserSummary } from './types'
+import type { ApiProblem, AssignmentResponse, AvailabilityResponse, CertificationResponse, CreateShiftInput, LoginResponse, RegistrationResponse, ShiftResponse, SiteResponse, SwapRequestResponse, UserSummary } from './types'
 
 export const apiConfigured = Boolean(import.meta.env.VITE_API_URL)
 const baseUrl = (import.meta.env.VITE_API_URL as string | undefined)?.replace(/\/$/, '') ?? 'http://localhost:5187'
@@ -22,6 +22,7 @@ async function request<T>(path: string, init: RequestInit = {}): Promise<T> {
 
 export const vigieApi = {
   login: (email: string, password: string) => request<LoginResponse>('/api/v1/auth/login', { method: 'POST', body: JSON.stringify({ email, password }) }),
+  register: (organizationName: string, name: string, email: string, password: string) => request<RegistrationResponse>('/api/v1/auth/register', { method: 'POST', body: JSON.stringify({ organizationName, name, email, password }) }),
   shifts: (from?: string, to?: string) => {
     const query = new URLSearchParams()
     if (from) query.set('from', from)

@@ -17,7 +17,8 @@ public sealed class JwtTokenService(string key)
             new Claim(JwtRegisteredClaimNames.Sub, employee.Id.ToString()),
             new Claim(JwtRegisteredClaimNames.Email, employee.Email),
             new Claim(ClaimTypes.Name, employee.Name),
-            new Claim(ClaimTypes.Role, employee.Role.ToString())
+            new Claim(ClaimTypes.Role, employee.Role.ToString()),
+            new Claim("organization_id", employee.OrganizationId.ToString())
         };
         var token = new JwtSecurityToken(claims: claims, expires: expires.UtcDateTime, signingCredentials: credentials);
         return (new JwtSecurityTokenHandler().WriteToken(token), expires);

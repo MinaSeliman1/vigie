@@ -7,16 +7,16 @@ import './App.css'
 
 type Role = 'Lifeguard' | 'Coordinator'
 type View = 'calendar' | 'swaps' | 'certifications' | 'team' | 'availability'
-type DemoUser = { id: string; apiId?: string; name: string; email: string; role: Role; initials: string }
+type DemoUser = { id: string; apiId?: string; name: string; email: string; role: Role; initials: string; organizationId?: string; isDemoAccount: boolean }
 type Shift = { id: string; assignmentId?: string; day: string; date: number; start: string; end: string; site: string; siteKind: string; status: 'assigné' | 'disponible'; colleagues: string[]; requiredLifeguards: number; assignments?: Array<{ id: string; employeeId: string; employeeName: string }> }
 type Swap = { id: string; shiftId: string; requester: string; receiver: string; shiftLabel: string; status: 'En attente' | 'Approuvé' | 'Refusé'; requestedAt?: string }
 type CertificationRow = { id: string; initials: string; name: string; email: string; type: string; expiry: string; detail: string; warning: boolean }
 
 const demoUsers: DemoUser[] = [
-  { id: 'amelie', name: 'Amélie Roy', email: 'amelie@vigie.demo', role: 'Lifeguard', initials: 'AR' },
-  { id: 'noah', name: 'Noah Tremblay', email: 'noah@vigie.demo', role: 'Lifeguard', initials: 'NT' },
-  { id: 'sofia', name: 'Sofia Nguyen', email: 'sofia@vigie.demo', role: 'Lifeguard', initials: 'SN' },
-  { id: 'camille', name: 'Camille Gagnon', email: 'coordonnateur@vigie.demo', role: 'Coordinator', initials: 'CG' },
+  { id: 'amelie', name: 'Amélie Roy', email: 'amelie@vigie.demo', role: 'Lifeguard', initials: 'AR', isDemoAccount: true },
+  { id: 'noah', name: 'Noah Tremblay', email: 'noah@vigie.demo', role: 'Lifeguard', initials: 'NT', isDemoAccount: true },
+  { id: 'sofia', name: 'Sofia Nguyen', email: 'sofia@vigie.demo', role: 'Lifeguard', initials: 'SN', isDemoAccount: true },
+  { id: 'camille', name: 'Camille Gagnon', email: 'coordonnateur@vigie.demo', role: 'Coordinator', initials: 'CG', isDemoAccount: true },
 ]
 const demoSites: SiteResponse[] = [
   { id: '20000000-0000-0000-0000-000000000001', name: 'Piscine du Nord', type: 'Indoor', timeZoneId: 'Eastern Standard Time', openingSeason: { startMonth: 1, startDay: 1, endMonth: 12, endDay: 31 } },
@@ -114,6 +114,10 @@ function Icon({ name }: { name: 'calendar' | 'users' | 'swap' | 'shield' | 'plus
 
 function App() {
   const [currentUser, setCurrentUser] = useState<DemoUser>(demoUsers[0])
+  const [authModal, setAuthModal] = useState<'login' | 'register' | null>(null)
+  const [authSubmitting, setAuthSubmitting] = useState(false)
+  const [authError, setAuthError] = useState('')
+  const [authForm, setAuthForm] = useState({ organizationName: '', name: '', email: '', password: '' })
   const [view, setView] = useState<View>('calendar')
   const [mobileNavOpen, setMobileNavOpen] = useState(false)
   const [selectedShift, setSelectedShift] = useState<Shift | null>(null)
@@ -142,24 +146,33 @@ function App() {
   const isCoordinator = currentUser.role === 'Coordinator'
   const pendingSwaps = swaps.filter((swap) => swap.status === 'En attente')
   const assigned = shifts.filter((shift) => shift.status === 'assigné')
-  const availableSites = sites.length > 0 ? sites : demoSites
+  const availableSites = sites.length > 0 ? sites : currentUser.isDemoAccount ? demoSites : []
   const allVisibleSwaps = useMemo(() => isCoordinator ? swaps : swaps.filter((swap) => swap.requester === currentUser.name || swap.receiver === currentUser.name), [currentUser.name, isCoordinator, swaps])
   const visibleSwaps = useMemo(() => filterSwaps(allVisibleSwaps, swapFilter), [allVisibleSwaps, swapFilter])
-  const teamMembers = employees ?? demoUsers.map(({ id, name, email, role }) => ({ id, name, email, role }))
+  const teamMembers = employees ?? (currentUser.isDemoAccount ? demoUsers.map(({ id, name, email, role }) => ({ id, name, email, role })) : [])
+  const currentUserId = currentUser.id
+  const currentUserEmail = currentUser.email
+  const currentUserName = currentUser.name
+  const currentUserRole = currentUser.role
+  const currentUserOrganizationId = currentUser.organizationId
+  const currentUserIsDemo = currentUser.isDemoAccount
 
   useEffect(() => {
     if (!apiConfigured) return
     let active = true
     async function syncApi() {
       try {
-        const login = await vigieApi.login(currentUser.email, 'vigie-demo')
-        localStorage.setItem('vigie.token', login.token)
+        const login = currentUserIsDemo
+          ? await vigieApi.login(currentUserEmail, 'vigie-demo')
+          : null
+        if (login) localStorage.setItem('vigie.token', login.token)
         const [apiShifts, apiSwaps, employees, apiCertifications, apiSites, apiAvailabilities] = await Promise.all([vigieApi.shifts(), vigieApi.swaps(), vigieApi.employees(), vigieApi.certifications(), vigieApi.sites(), vigieApi.availability()])
         if (!active) return
         setApiEmployeeIds(Object.fromEntries(employees.map((employee) => [employee.email, employee.id])))
         setEmployees(employees)
-        setCurrentUser((user) => ({ ...user, apiId: login.user.id, name: login.user.name, role: login.user.role }))
-        setShifts(apiShifts.map((shift) => toUiShift(shift, login.user.id)))
+        const apiUser = login?.user ?? { id: currentUserId, name: currentUserName, email: currentUserEmail, role: currentUserRole, organizationId: currentUserOrganizationId ?? '', isDemoAccount: currentUserIsDemo }
+        setCurrentUser((user) => ({ ...user, apiId: apiUser.id, name: apiUser.name, role: apiUser.role, organizationId: apiUser.organizationId, isDemoAccount: apiUser.isDemoAccount }))
+        setShifts(apiShifts.map((shift) => toUiShift(shift, apiUser.id)))
         setSwaps(apiSwaps.map(toUiSwap))
         setCertifications(apiCertifications)
         setSites(apiSites)
@@ -174,10 +187,27 @@ function App() {
     }
     void syncApi()
     return () => { active = false }
-  }, [currentUser.email, currentUser.id])
+  }, [currentUserEmail, currentUserId, currentUserIsDemo, currentUserName, currentUserOrganizationId, currentUserRole])
 
   function flash(message: string) { setToast(message); window.setTimeout(() => setToast(''), 2800) }
-  function selectUser(id: string) { const user = demoUsers.find((candidate) => candidate.id === id); if (user) { if (apiConfigured) setApiState('loading'); setCurrentUser(user); setView('calendar'); flash(`Profil de démonstration : ${user.name}`) } }
+  function selectUser(id: string) { const user = demoUsers.find((candidate) => candidate.id === id); if (user) { localStorage.removeItem('vigie.token'); if (apiConfigured) setApiState('loading'); setCurrentUser(user); setView('calendar'); flash(`Profil de démonstration : ${user.name}`) } }
+  function openAuth(mode: 'login' | 'register') { setAuthError(''); setAuthForm({ organizationName: '', name: '', email: '', password: '' }); setAuthModal(mode) }
+  function closeAuth() { if (!authSubmitting) { setAuthModal(null); setAuthError('') } }
+  async function submitAuth(event: FormEvent<HTMLFormElement>) {
+    event.preventDefault()
+    if (!apiConfigured || authSubmitting) return
+    setAuthSubmitting(true); setAuthError('')
+    try {
+      const result = authModal === 'register'
+        ? (await vigieApi.register(authForm.organizationName, authForm.name, authForm.email, authForm.password)).login
+        : await vigieApi.login(authForm.email, authForm.password)
+      localStorage.setItem('vigie.token', result.token)
+      setCurrentUser({ id: result.user.id, apiId: result.user.id, name: result.user.name, email: result.user.email, role: result.user.role, initials: initials(result.user.name), organizationId: result.user.organizationId, isDemoAccount: result.user.isDemoAccount })
+      setAuthModal(null); setView('calendar'); setApiState('loading'); flash(authModal === 'register' ? 'Votre espace Vigie est prêt.' : 'Connexion réussie.')
+    } catch (error) { setAuthError(error instanceof Error ? error.message : 'La connexion ne peut pas être établie.') }
+    finally { setAuthSubmitting(false) }
+  }
+  function logout() { localStorage.removeItem('vigie.token'); setCurrentUser(demoUsers[0]); setView('calendar'); setApiState(apiConfigured ? 'loading' : 'inactive'); flash('Session fermée') }
   function openCreateShift() {
     if (!isCoordinator) { flash('La création de quart est réservée au coordonnateur.'); return }
     setCreateShiftErrors({})
@@ -284,7 +314,7 @@ function App() {
   }
   async function createSwap(receiver: string) {
     if (!selectedShift) return
-    const receiverUser = demoUsers.find((user) => user.name === receiver)
+    const receiverUser = teamMembers.find((user) => user.name === receiver)
     if (apiConfigured && apiState === 'ready' && selectedShift.assignmentId && receiverUser) {
       const receiverId = apiEmployeeIds[receiverUser.email]
       if (!receiverId) { flash('Le receveur est introuvable dans l’équipe'); return }
@@ -348,7 +378,7 @@ function App() {
       <div className="sidebar-bottom"><div className="status-line"><span className="status-pulse" />{apiState === 'ready' ? 'API connectée' : apiState === 'loading' ? 'Connexion à l’API…' : apiState === 'error' ? 'Mode démo local' : 'Système opérationnel'}</div><div className="version">Vigie MVP · v0.1.0</div></div>
     </aside>
     <main className="main-content">
-      <header className="topbar"><button className="mobile-menu" onClick={() => setMobileNavOpen((open) => !open)} aria-label="Ouvrir le menu"><Icon name="menu" /></button><div className="breadcrumbs"><span>Vigie</span><span className="crumb-separator">/</span><strong>{view === 'calendar' ? 'Mon calendrier' : view === 'swaps' ? 'Échanges' : view === 'certifications' ? 'Certifications' : view === 'team' ? 'Équipe' : 'Disponibilités'}</strong></div><div className="topbar-actions"><button className="icon-button" aria-label="Notifications"><Icon name="bell" /><span className="notification-dot" /></button><div className="profile-switcher"><span className="avatar">{currentUser.initials}</span><select aria-label="Profil de démonstration" value={currentUser.id} onChange={(event) => selectUser(event.target.value)}>{demoUsers.map((user) => <option key={user.id} value={user.id}>{user.name} · {user.role === 'Coordinator' ? 'coord.' : 'sauv.'}</option>)}</select></div></div></header>
+      <header className="topbar"><button className="mobile-menu" onClick={() => setMobileNavOpen((open) => !open)} aria-label="Ouvrir le menu"><Icon name="menu" /></button><div className="breadcrumbs"><span>Vigie</span><span className="crumb-separator">/</span><strong>{view === 'calendar' ? 'Mon calendrier' : view === 'swaps' ? 'Échanges' : view === 'certifications' ? 'Certifications' : view === 'team' ? 'Équipe' : 'Disponibilités'}</strong></div><div className="topbar-actions"><button className="icon-button" aria-label="Notifications"><Icon name="bell" /><span className="notification-dot" /></button>{currentUser.isDemoAccount ? <div className="profile-switcher"><span className="avatar">{currentUser.initials}</span><select aria-label="Profil de démonstration" value={currentUser.id} onChange={(event) => selectUser(event.target.value)}>{demoUsers.map((user) => <option key={user.id} value={user.id}>{user.name} · {user.role === 'Coordinator' ? 'coord.' : 'sauv.'}</option>)}</select><button className="account-link" onClick={() => openAuth('login')}>Se connecter</button></div> : <div className="profile-switcher"><span className="avatar">{currentUser.initials}</span><span className="account-name">{currentUser.name}</span><button className="account-link" onClick={logout}>Déconnexion</button></div>}</div></header>
       <div className="content-wrap">
         <div className="page-heading"><div><p className="eyebrow">SEMAINE DU 7 AU 13 SEPTEMBRE 2026</p><h1>{view === 'calendar' ? (isCoordinator ? 'Vue équipe' : 'Bonjour, Amélie') : view === 'swaps' ? 'Demandes d’échange' : view === 'certifications' ? 'Certifications' : view === 'team' ? 'Équipe' : 'Disponibilités'}</h1><p className="page-subtitle">{view === 'calendar' ? (isCoordinator ? 'Gardez une vue claire sur les quarts et les remplacements.' : 'Voici vos quarts et les disponibilités de votre équipe.') : view === 'swaps' ? 'Chaque remplacement reste sous contrôle jusqu’à votre approbation.' : view === 'certifications' ? 'La bonne certification, au bon moment, pour chaque quart.' : view === 'team' ? 'Les personnes autorisées et leur état de préparation pour les quarts.' : 'Indiquez les jours où vous pouvez prendre un quart.'}</p></div>{view === 'calendar' && isCoordinator && <button className="primary-button" onClick={openCreateShift}><Icon name="plus" />Créer un quart</button>}</div>
         {view === 'calendar' && <><section className="alert-banner"><div className="alert-icon"><Icon name="shield" /></div><div><strong>Certification à surveiller</strong><span>La certification Premiers soins de {currentUser.id === 'sofia' ? 'Sofia Nguyen' : 'votre dossier'} expire dans {currentUser.id === 'sofia' ? 20 : 75} jours.</span></div><button onClick={() => setView('certifications')}>Voir les détails <Icon name="arrow" /></button></section><div className="metric-row"><div className="metric"><span className="metric-label">QUARTS CETTE SEMAINE</span><strong>{assigned.length + 1}</strong><span className="metric-meta positive">↑ 1 vs. semaine dernière</span></div><div className="metric"><span className="metric-label">HEURES PLANIFIÉES</span><strong>24<span className="metric-unit">h</span></strong><span className="metric-meta">Quota : {isCoordinator ? '40' : '24'} h</span></div><div className="metric"><span className="metric-label">ÉCHANGES EN ATTENTE</span><strong>{pendingSwaps.length}</strong><span className="metric-meta">Dernière mise à jour il y a 8 min</span></div></div><section className="calendar-section"><div className="section-header"><div><h2>Cette semaine</h2><p>Votre planning du lundi 7 au dimanche 13 septembre</p></div><div className="week-controls"><button aria-label="Semaine précédente">←</button><button className="today-button">Aujourd’hui</button><button aria-label="Semaine suivante">→</button></div></div><div className="calendar-grid"><div className="time-column"><span /><span>08:00</span><span>12:00</span><span>16:00</span><span>20:00</span></div>{['LUN','MAR','MER','JEU','VEN','SAM','DIM'].map((day) => <div className={`day-column ${day === 'MAR' ? 'today' : ''}`} key={day}><div className="day-header"><span>{day}</span><strong>{day === 'MAR' ? '8' : day === 'MER' ? '9' : day === 'VEN' ? '11' : day === 'SAM' ? '12' : '•'}</strong></div><div className="day-body">{shifts.filter((shift) => shift.day === day).map((shift) => <button className={`shift-block ${shift.status}`} key={shift.id} onClick={() => setSelectedShift(shift)}><span className="shift-time">{shift.start} – {shift.end}</span><strong>{shift.site}</strong><small>{shift.siteKind}</small><span className="shift-people">{shift.colleagues.map((colleague) => <i key={colleague}>{colleague}</i>)}</span></button>)}</div></div>)}</div></section><div className="lower-grid"><section className="list-section"><div className="section-header compact"><div><h2>Échanges en attente</h2><p>Les demandes à traiter</p></div><button className="text-button" onClick={() => setView('swaps')}>Tout voir <Icon name="arrow" /></button></div>{pendingSwaps.length === 0 ? <div className="empty-state">Aucune demande en attente.</div> : pendingSwaps.map((swap) => <div className="swap-row" key={swap.id}><div className="mini-avatar">{swap.requester.split(' ').map((part) => part[0]).join('')}</div><div className="swap-copy"><strong>{swap.requester} <span>→</span> {swap.receiver}</strong><span>{swap.shiftLabel}</span></div><span className="pending-label">En attente</span></div>)}</section><section className="list-section"><div className="section-header compact"><div><h2>À venir</h2><p>Prochains quarts assignés</p></div></div>{shifts.slice(0, 2).map((shift) => <div className="upcoming-row" key={shift.id}><div className="date-block"><strong>{shift.date}</strong><span>{shift.day}</span></div><div><strong>{shift.site}</strong><span>{shift.start} – {shift.end}</span></div><span className="assigned-mark"><Icon name="check" /></span></div>)}</section></div></>}
@@ -381,7 +411,9 @@ function App() {
     </form></div>}
     {selectedShift && <div className="drawer-backdrop" onClick={() => setSelectedShift(null)}><aside className="shift-drawer" onClick={(event) => event.stopPropagation()}><button className="drawer-close" onClick={() => setSelectedShift(null)} aria-label="Fermer"><Icon name="close" /></button><span className="drawer-kicker">DÉTAIL DU QUART</span><h2>{selectedShift.site}</h2><p className="drawer-site">{selectedShift.siteKind} · Période d’ouverture valide</p><div className="drawer-time"><strong>{selectedShift.day} {selectedShift.date} septembre</strong><span>{selectedShift.start} – {selectedShift.end}</span></div><div className="drawer-rule" /><div className="drawer-detail"><span>Équipe assignée</span><div className="avatar-stack">{selectedShift.colleagues.length === 0 ? <em className="empty-assignment">Aucune</em> : selectedShift.colleagues.map((person) => <i key={person}>{person}</i>)}</div></div><div className="drawer-detail"><span>Statut</span><b className={isCoordinator ? ((selectedShift.assignments?.length ?? selectedShift.colleagues.length) >= selectedShift.requiredLifeguards ? 'status-tag approved' : 'status-tag pending') : selectedShift.status === 'assigné' ? 'status-tag approved' : 'status-tag pending'}>{isCoordinator ? `${selectedShift.assignments?.length ?? selectedShift.colleagues.length}/${selectedShift.requiredLifeguards} assignés` : selectedShift.status === 'assigné' ? 'Assigné' : 'Disponible'}</b></div>{isCoordinator && <button className="primary-button full" onClick={() => openAssignmentModal(selectedShift)}><Icon name="users" />Gérer les assignations</button>}{selectedShift.status === 'assigné' && !isCoordinator && <button className="primary-button full" onClick={() => setSwapModalOpen(true)}><Icon name="swap" />Demander un échange</button>}{selectedShift.status === 'disponible' && !isCoordinator && <button className="primary-button full" onClick={() => flash('Votre intérêt a été communiqué au coordonnateur')}><Icon name="check" />Me proposer sur ce quart</button>}</aside></div>}
     {assignmentModalOpen && selectedShift && <div className="modal-backdrop" onClick={closeAssignmentModal}><div className="swap-modal assignment-modal" onClick={(event) => event.stopPropagation()}><button className="drawer-close" onClick={closeAssignmentModal} aria-label="Fermer"><Icon name="close" /></button><span className="drawer-kicker">ASSIGNATION</span><h2>Ajouter un sauveteur</h2><p>Vigie rejouera les règles de certification, de chevauchement et de quota avant l’enregistrement.</p><div className="modal-shift"><strong>{selectedShift.site}</strong><span>{selectedShift.day} {selectedShift.date} septembre · {selectedShift.start} – {selectedShift.end}</span></div><label className="assignment-select-label">Sauveteur<select value={assignmentEmployeeId} onChange={(event) => setAssignmentEmployeeId(event.target.value)}><option value="">Choisir un sauveteur</option>{teamMembers.filter((member) => member.role === 'Lifeguard' && !(selectedShift.assignments ?? []).some((assignment) => assignment.employeeId === member.id)).map((member) => <option key={member.id} value={member.id}>{member.name}</option>)}</select></label>{assignmentError && <p className="form-error" role="alert">{assignmentError}</p>}<div className="modal-actions"><button className="secondary-button" type="button" onClick={closeAssignmentModal}>Annuler</button><button className="primary-button" type="button" disabled={!assignmentEmployeeId || assignmentSubmitting} onClick={() => { void submitAssignment() }}>{assignmentSubmitting ? 'Validation…' : 'Assigner'}</button></div></div></div>}
-    {swapModalOpen && <div className="modal-backdrop"><div className="swap-modal"><button className="drawer-close" onClick={() => setSwapModalOpen(false)} aria-label="Fermer"><Icon name="close" /></button><span className="drawer-kicker">NOUVEL ÉCHANGE</span><h2>Choisir un receveur</h2><p>Votre demande restera en attente jusqu’à l’approbation du coordonnateur.</p><div className="modal-shift"><strong>{selectedShift?.site}</strong><span>{selectedShift?.day} {selectedShift?.date} septembre · {selectedShift?.start} – {selectedShift?.end}</span></div><div className="receiver-list">{demoUsers.filter((user) => user.id !== currentUser.id && user.role === 'Lifeguard').map((user) => <button key={user.id} onClick={() => createSwap(user.name)}><span className="mini-avatar">{user.initials}</span><span><strong>{user.name}</strong><small>Disponible · certifications à jour</small></span><Icon name="arrow" /></button>)}</div></div></div>}
+    {swapModalOpen && <div className="modal-backdrop"><div className="swap-modal"><button className="drawer-close" onClick={() => setSwapModalOpen(false)} aria-label="Fermer"><Icon name="close" /></button><span className="drawer-kicker">NOUVEL ÉCHANGE</span><h2>Choisir un receveur</h2><p>Votre demande restera en attente jusqu’à l’approbation du coordonnateur.</p><div className="modal-shift"><strong>{selectedShift?.site}</strong><span>{selectedShift?.day} {selectedShift?.date} septembre · {selectedShift?.start} – {selectedShift?.end}</span></div><div className="receiver-list">{teamMembers.filter((user) => user.id !== currentUser.apiId && user.role === 'Lifeguard').map((user) => <button key={user.id} onClick={() => createSwap(user.name)}><span className="mini-avatar">{initials(user.name)}</span><span><strong>{user.name}</strong><small>Disponible · certifications à jour</small></span><Icon name="arrow" /></button>)}</div></div></div>}
+    {currentUser.isDemoAccount && <div className="commercial-cta"><span><strong>Vous gérez un vrai centre aquatique ?</strong><small>Créez un espace isolé pour votre équipe et vos données.</small></span><button className="primary-button" onClick={() => openAuth('register')}>Créer mon espace</button></div>}
+    {authModal && <div className="modal-backdrop" onClick={closeAuth}><form className="auth-modal" onClick={(event) => event.stopPropagation()} onSubmit={submitAuth} noValidate><button className="drawer-close" type="button" onClick={closeAuth} aria-label="Fermer"><Icon name="close" /></button><span className="drawer-kicker">{authModal === 'register' ? 'NOUVEL ESPACE' : 'ACCÈS SÉCURISÉ'}</span><h2>{authModal === 'register' ? 'Créer votre espace Vigie' : 'Se connecter à Vigie'}</h2><p>{authModal === 'register' ? 'Votre centre aura son espace isolé, son coordonnateur et ses données privées.' : 'Retrouvez le calendrier et les opérations de votre organisation.'}</p>{authModal === 'register' && <><label className="auth-field">Nom de l’organisation<input required value={authForm.organizationName} onChange={(event) => setAuthForm((form) => ({ ...form, organizationName: event.target.value }))} placeholder="Centre aquatique Laval" /></label><label className="auth-field">Votre nom<input required value={authForm.name} onChange={(event) => setAuthForm((form) => ({ ...form, name: event.target.value }))} placeholder="Marie Tremblay" /></label></>}<label className="auth-field">Courriel<input required type="email" value={authForm.email} onChange={(event) => setAuthForm((form) => ({ ...form, email: event.target.value }))} placeholder="vous@centre.ca" /></label><label className="auth-field">Mot de passe<input required type="password" minLength={12} value={authForm.password} onChange={(event) => setAuthForm((form) => ({ ...form, password: event.target.value }))} placeholder="12 caractères ou plus" /></label>{authError && <p className="form-error" role="alert">{authError}</p>}<button className="primary-button full" type="submit" disabled={authSubmitting}>{authSubmitting ? 'Vérification…' : authModal === 'register' ? 'Créer mon espace' : 'Se connecter'}</button><button className="auth-switch" type="button" onClick={() => openAuth(authModal === 'register' ? 'login' : 'register')}>{authModal === 'register' ? 'J’ai déjà un compte' : 'Créer un nouvel espace'}</button></form></div>}
     {selectedSwap && <div className="modal-backdrop" onClick={() => setSelectedSwap(null)}><aside className="swap-detail-modal" onClick={(event) => event.stopPropagation()}><button className="drawer-close" onClick={() => setSelectedSwap(null)} aria-label="Fermer"><Icon name="close" /></button><span className="drawer-kicker">DÉTAIL DE L’ÉCHANGE</span><h2>{selectedSwap.requester} <span className="swap-arrow">→</span> {selectedSwap.receiver}</h2><p className="swap-detail-status"><span className={`status-tag ${selectedSwap.status.toLowerCase().replace('é', 'e')}`}>{selectedSwap.status}</span></p><div className="detail-list"><div><span>Quart concerné</span><strong>{selectedSwap.shiftLabel}</strong></div><div><span>Demande reçue</span><strong>{formatSwapDate(selectedSwap.requestedAt)}</strong></div><div><span>Identifiant</span><strong>{selectedSwap.id}</strong></div></div>{isCoordinator && selectedSwap.status === 'En attente' && <div className="modal-actions"><button className="reject-button" disabled={decidingSwapId === selectedSwap.id} onClick={() => { void decideSwap(selectedSwap.id, 'Refusé'); setSelectedSwap(null) }}>Refuser</button><button className="primary-button" disabled={decidingSwapId === selectedSwap.id} onClick={() => { void decideSwap(selectedSwap.id, 'Approuvé'); setSelectedSwap(null) }}>Approuver</button></div>}</aside></div>}
     {toast && <div className="toast"><span className="toast-check"><Icon name="check" /></span>{toast}</div>}
   </div>

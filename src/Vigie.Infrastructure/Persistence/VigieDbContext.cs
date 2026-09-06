@@ -5,6 +5,7 @@ namespace Vigie.Infrastructure.Persistence;
 
 public sealed class VigieDbContext(DbContextOptions<VigieDbContext> options) : DbContext(options)
 {
+    public DbSet<Organization> Organizations => Set<Organization>();
     public DbSet<Employee> Employees => Set<Employee>();
     public DbSet<Site> Sites => Set<Site>();
     public DbSet<CertificationType> CertificationTypes => Set<CertificationType>();
@@ -17,19 +18,34 @@ public sealed class VigieDbContext(DbContextOptions<VigieDbContext> options) : D
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
+        modelBuilder.Entity<Organization>(entity =>
+        {
+            entity.HasKey(x => x.Id);
+            entity.Property(x => x.Name).HasMaxLength(160).IsRequired();
+            entity.Property(x => x.Slug).HasMaxLength(80).IsRequired();
+            entity.HasIndex(x => x.Slug).IsUnique();
+            entity.Property(x => x.CreatedAtUtc).IsRequired();
+        });
         modelBuilder.Entity<Employee>(entity =>
         {
             entity.HasKey(x => x.Id);
+            entity.Property(x => x.OrganizationId).IsRequired();
+            entity.HasIndex(x => x.OrganizationId);
+            entity.HasOne<Organization>().WithMany().HasForeignKey(x => x.OrganizationId).OnDelete(DeleteBehavior.Restrict);
             entity.Property(x => x.Name).HasMaxLength(120).IsRequired();
             entity.Property(x => x.Email).HasMaxLength(180).IsRequired();
             entity.HasIndex(x => x.Email).IsUnique();
             entity.Property(x => x.Role).HasConversion<string>().HasMaxLength(24);
             entity.Property(x => x.WeeklyQuotaHours).HasPrecision(5, 2);
             entity.Property(x => x.PasswordHash).HasMaxLength(256).IsRequired();
+            entity.Property(x => x.IsDemoAccount).IsRequired();
         });
         modelBuilder.Entity<Site>(entity =>
         {
             entity.HasKey(x => x.Id);
+            entity.Property(x => x.OrganizationId).IsRequired();
+            entity.HasIndex(x => x.OrganizationId);
+            entity.HasOne<Organization>().WithMany().HasForeignKey(x => x.OrganizationId).OnDelete(DeleteBehavior.Restrict);
             entity.Property(x => x.Name).HasMaxLength(120).IsRequired();
             entity.Property(x => x.TimeZoneId).HasMaxLength(80).IsRequired();
             entity.Property(x => x.Type).HasConversion<string>().HasMaxLength(24);

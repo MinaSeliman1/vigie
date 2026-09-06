@@ -2,6 +2,7 @@
 using System;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Infrastructure;
+using Microsoft.EntityFrameworkCore.Migrations;
 using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 using Npgsql.EntityFrameworkCore.PostgreSQL.Metadata;
 using Vigie.Infrastructure.Persistence;
@@ -11,9 +12,11 @@ using Vigie.Infrastructure.Persistence;
 namespace Vigie.Infrastructure.Persistence.Migrations
 {
     [DbContext(typeof(VigieDbContext))]
-    partial class VigieDbContextModelSnapshot : ModelSnapshot
+    [Migration("20260905235701_AddOrganizations")]
+    partial class AddOrganizations
     {
-        protected override void BuildModel(ModelBuilder modelBuilder)
+        /// <inheritdoc />
+        protected override void BuildTargetModel(ModelBuilder modelBuilder)
         {
 #pragma warning disable 612, 618
             modelBuilder

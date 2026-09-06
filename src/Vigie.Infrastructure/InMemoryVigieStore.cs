@@ -13,6 +13,7 @@ public sealed class InMemoryVigieStore :
     IVigieStore
 {
     private readonly object sync = new();
+    private readonly Dictionary<Guid, Organization> organizations = [];
     private readonly Dictionary<Guid, Employee> employees = [];
     private readonly Dictionary<Guid, Site> sites = [];
     private readonly Dictionary<Guid, Shift> shifts = [];
@@ -28,6 +29,7 @@ public sealed class InMemoryVigieStore :
         Seed();
     }
 
+    public IReadOnlyCollection<Organization> Organizations => organizations.Values.ToArray();
     public IReadOnlyCollection<Employee> Employees => employees.Values.ToArray();
     public IReadOnlyCollection<Site> Sites => sites.Values.ToArray();
     public IReadOnlyCollection<Shift> Shifts => shifts.Values.ToArray();
@@ -89,6 +91,8 @@ public sealed class InMemoryVigieStore :
     Task ISwapRequestRepository.SaveAsync(SwapRequest request, CancellationToken cancellationToken) => Task.CompletedTask;
     Task IUnitOfWork.SaveChangesAsync(CancellationToken cancellationToken) => Task.CompletedTask;
 
+    public void AddOrganization(Organization organization) => organizations[organization.Id] = organization;
+    public void AddEmployee(Employee employee) => employees[employee.Id] = employee;
     public void AddSite(Site site) => sites[site.Id] = site;
     public void AddShift(Shift shift) => shifts[shift.Id] = shift;
     public void AddCertification(Certification certification) => certifications[certification.Id] = certification;
@@ -105,15 +109,17 @@ public sealed class InMemoryVigieStore :
 
     private void Seed()
     {
-        var coord = Employee.Create(Guid.Parse("10000000-0000-0000-0000-000000000001"), "Camille Gagnon", "coordonnateur@vigie.demo", EmployeeRole.Coordinator, 40);
-        var amelie = Employee.Create(Guid.Parse("10000000-0000-0000-0000-000000000002"), "Amélie Roy", "amelie@vigie.demo", EmployeeRole.Lifeguard, 24);
-        var noah = Employee.Create(Guid.Parse("10000000-0000-0000-0000-000000000003"), "Noah Tremblay", "noah@vigie.demo", EmployeeRole.Lifeguard, 32);
-        var sofia = Employee.Create(Guid.Parse("10000000-0000-0000-0000-000000000004"), "Sofia Nguyen", "sofia@vigie.demo", EmployeeRole.Lifeguard, 20);
+        var organization = Organization.Create(Guid.Parse("00000000-0000-0000-0000-000000000001"), "Vigie — démonstration", "vigie-demo");
+        organizations[organization.Id] = organization;
+        var coord = Employee.Create(Guid.Parse("10000000-0000-0000-0000-000000000001"), "Camille Gagnon", "coordonnateur@vigie.demo", EmployeeRole.Coordinator, 40, organization.Id, true);
+        var amelie = Employee.Create(Guid.Parse("10000000-0000-0000-0000-000000000002"), "Amélie Roy", "amelie@vigie.demo", EmployeeRole.Lifeguard, 24, organization.Id, true);
+        var noah = Employee.Create(Guid.Parse("10000000-0000-0000-0000-000000000003"), "Noah Tremblay", "noah@vigie.demo", EmployeeRole.Lifeguard, 32, organization.Id, true);
+        var sofia = Employee.Create(Guid.Parse("10000000-0000-0000-0000-000000000004"), "Sofia Nguyen", "sofia@vigie.demo", EmployeeRole.Lifeguard, 20, organization.Id, true);
         foreach (var demoEmployee in new[] { coord, amelie, noah, sofia }) demoEmployee.SetPasswordHash(PasswordHasher.Hash("vigie-demo"));
         foreach (var employee in new[] { coord, amelie, noah, sofia }) employees[employee.Id] = employee;
 
-        var nord = Site.Create(Guid.Parse("20000000-0000-0000-0000-000000000001"), "Piscine du Nord", "Eastern Standard Time", OpeningSeason.AllYear, SiteType.Indoor);
-        var parc = Site.Create(Guid.Parse("20000000-0000-0000-0000-000000000002"), "Bassin du parc", "Eastern Standard Time", new OpeningSeason(5, 15, 9, 15), SiteType.Outdoor);
+        var nord = Site.Create(Guid.Parse("20000000-0000-0000-0000-000000000001"), "Piscine du Nord", "Eastern Standard Time", OpeningSeason.AllYear, SiteType.Indoor, organization.Id);
+        var parc = Site.Create(Guid.Parse("20000000-0000-0000-0000-000000000002"), "Bassin du parc", "Eastern Standard Time", new OpeningSeason(5, 15, 9, 15), SiteType.Outdoor, organization.Id);
         sites[nord.Id] = nord; sites[parc.Id] = parc;
 
         var firstAid = CertificationType.Create(Guid.Parse("30000000-0000-0000-0000-000000000001"), "Premiers soins", true);

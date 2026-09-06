@@ -1,4 +1,5 @@
 using System.IdentityModel.Tokens.Jwt;
+using System.Globalization;
 using System.Security.Claims;
 using System.Security.Cryptography;
 using System.Text;
@@ -96,6 +97,41 @@ app.MapPost("/api/v1/auth/login", (LoginRequest request, IVigieStore store, JwtT
     return Results.Ok(new LoginResponse(token, expires, User(employee)));
 }).AllowAnonymous().WithTags("Authentification");
 
+app.MapPost("/api/v1/auth/register", async (RegisterOrganizationRequest request, IVigieStore store, IUnitOfWork unitOfWork, JwtTokenService tokens, CancellationToken ct) =>
+{
+    if (string.IsNullOrWhiteSpace(request.OrganizationName) || string.IsNullOrWhiteSpace(request.Name) || string.IsNullOrWhiteSpace(request.Email))
+        return Problem("INVALID_REGISTRATION", "Le nom de l'organisation, votre nom et le courriel sont obligatoires.");
+    if (string.IsNullOrWhiteSpace(request.Password) || request.Password.Length < 12)
+        return Problem("WEAK_PASSWORD", "Le mot de passe doit contenir au moins 12 caractères.");
+
+    var email = request.Email.Trim().ToLowerInvariant();
+    if (store.Employees.Any(employee => string.Equals(employee.Email, email, StringComparison.OrdinalIgnoreCase)))
+        return Problem("ACCOUNT_EXISTS", "Impossible de créer ce compte avec ces informations.", StatusCodes.Status409Conflict);
+
+    var slug = Slugify(request.OrganizationName);
+    if (store.Organizations.Any(organization => string.Equals(organization.Slug, slug, StringComparison.OrdinalIgnoreCase)))
+        return Problem("ORGANIZATION_EXISTS", "Une organisation utilise déjà ce nom. Choisissez un autre nom.", StatusCodes.Status409Conflict);
+
+    try
+    {
+        var organization = Organization.Create(Guid.NewGuid(), request.OrganizationName, slug);
+        var employee = Employee.Create(Guid.NewGuid(), request.Name, email, EmployeeRole.Coordinator, 40, organization.Id);
+        employee.SetPasswordHash(PasswordHasher.Hash(request.Password));
+        store.AddOrganization(organization);
+        store.AddEmployee(employee);
+        await unitOfWork.SaveChangesAsync(ct);
+        var (token, expires) = tokens.Create(employee);
+        return Results.Created($"/api/v1/organizations/{organization.Id}", new RegistrationResponse(new LoginResponse(token, expires, User(employee)), ToOrganization(organization)));
+    }
+    catch (DomainException ex) { return Problem("INVALID_REGISTRATION", ex.Message); }
+}).AllowAnonymous().WithTags("Authentification");
+
+app.MapGet("/api/v1/organization", (ClaimsPrincipal user, IVigieStore store) =>
+{
+    var organization = store.Organizations.SingleOrDefault(item => item.Id == OrganizationId(user));
+    return organization is null ? Problem("NOT_FOUND", "L'organisation est introuvable.", StatusCodes.Status404NotFound) : Results.Ok(ToOrganization(organization));
+}).RequireAuthorization().WithTags("Organisation");
+
 app.MapGet("/api/v1/dashboard", (ClaimsPrincipal user, IVigieStore store) =>
 {
     var employeeId = UserId(user);
@@ -109,13 +145,13 @@ app.MapGet("/api/v1/dashboard", (ClaimsPrincipal user, IVigieStore store) =>
     return Results.Ok(new DashboardResponse(upcoming, pending, warnings.Length, warnings));
 }).RequireAuthorization().WithTags("Tableau de bord");
 
-app.MapGet("/api/v1/sites", (IVigieStore store) => Results.Ok(store.Sites.Select(ToSite).ToArray())).RequireAuthorization().WithTags("Sites");
-app.MapPost("/api/v1/sites", async (CreateSiteRequest request, IVigieStore store, IUnitOfWork unitOfWork, CancellationToken ct) =>
+app.MapGet("/api/v1/sites", (ClaimsPrincipal user, IVigieStore store) => Results.Ok(store.Sites.Where(site => site.OrganizationId == OrganizationId(user)).Select(ToSite).ToArray())).RequireAuthorization().WithTags("Sites");
+app.MapPost("/api/v1/sites", async (ClaimsPrincipal user, CreateSiteRequest request, IVigieStore store, IUnitOfWork unitOfWork, CancellationToken ct) =>
 {
     if (!Enum.TryParse<SiteType>(request.Type, true, out var type)) return Problem("INVALID_SITE_TYPE", "Le type de site est invalide.");
     try
     {
-        var site = Site.Create(Guid.NewGuid(), request.Name, request.TimeZoneId, new OpeningSeason(request.StartMonth, request.StartDay, request.EndMonth, request.EndDay), type);
+        var site = Site.Create(Guid.NewGuid(), request.Name, request.TimeZoneId, new OpeningSeason(request.StartMonth, request.StartDay, request.EndMonth, request.EndDay), type, OrganizationId(user));
         store.AddSite(site);
         await unitOfWork.SaveChangesAsync(ct);
         return Results.Created($"/api/v1/sites/{site.Id}", ToSite(site));
@@ -123,20 +159,21 @@ app.MapPost("/api/v1/sites", async (CreateSiteRequest request, IVigieStore store
     catch (DomainException ex) { return Problem("INVALID_SITE", ex.Message); }
 }).RequireAuthorization(new AuthorizeAttribute { Roles = nameof(EmployeeRole.Coordinator) }).WithTags("Sites");
 
-app.MapGet("/api/v1/shifts", (DateTimeOffset? from, DateTimeOffset? to, IVigieStore store) =>
+app.MapGet("/api/v1/shifts", (ClaimsPrincipal user, DateTimeOffset? from, DateTimeOffset? to, IVigieStore store) =>
 {
     var start = from ?? DateTimeOffset.UtcNow.AddDays(-1);
     var end = to ?? DateTimeOffset.UtcNow.AddDays(14);
-    var result = store.Shifts.Where(s => s.StartUtc < end && s.EndUtc > start).OrderBy(s => s.StartUtc).Select(s => ToShift(s, store)).ToArray();
+    var organizationId = OrganizationId(user);
+    var result = store.Shifts.Where(s => s.StartUtc < end && s.EndUtc > start && store.Sites.Any(site => site.Id == s.SiteId && site.OrganizationId == organizationId)).OrderBy(s => s.StartUtc).Select(s => ToShift(s, store)).ToArray();
     return Results.Ok(result);
 }).RequireAuthorization().WithTags("Quarts");
 
-app.MapPost("/api/v1/shifts", async (CreateShiftRequest request, IVigieStore store, IUnitOfWork unitOfWork, CancellationToken ct) =>
+app.MapPost("/api/v1/shifts", async (ClaimsPrincipal user, CreateShiftRequest request, IVigieStore store, IUnitOfWork unitOfWork, CancellationToken ct) =>
 {
     try
     {
         var site = store.Sites.SingleOrDefault(s => s.Id == request.SiteId);
-        if (site is null) return Problem("NOT_FOUND", "Le site du quart est introuvable.", StatusCodes.Status404NotFound);
+        if (site is null || site.OrganizationId != OrganizationId(user)) return Problem("NOT_FOUND", "Le site du quart est introuvable.", StatusCodes.Status404NotFound);
         if (!site.IsOpen(request.StartUtc, request.EndUtc)) return Problem("SITE_CLOSED", "Le quart se trouve en dehors de la saison d’ouverture du site.");
         var shift = Shift.Create(Guid.NewGuid(), request.SiteId, request.StartUtc, request.EndUtc, request.RequiredLifeguards);
         store.AddShift(shift);
@@ -146,11 +183,21 @@ app.MapPost("/api/v1/shifts", async (CreateShiftRequest request, IVigieStore sto
     catch (DomainException ex) { return Problem("INVALID_SHIFT", ex.Message); }
 }).RequireAuthorization(new AuthorizeAttribute { Roles = nameof(EmployeeRole.Coordinator) }).WithTags("Quarts");
 
-app.MapPost("/api/v1/shifts/{shiftId:guid}/assignments", async (Guid shiftId, AssignShiftRequest request, AssignShiftService service, CancellationToken ct) =>
-    (await service.ExecuteAsync(request.EmployeeId, shiftId, ct)).ToHttpResult(assignment => Results.Ok(assignment))).RequireAuthorization(new AuthorizeAttribute { Roles = nameof(EmployeeRole.Coordinator) }).WithTags("Assignations");
-
-app.MapDelete("/api/v1/assignments/{assignmentId:guid}", async (Guid assignmentId, IAssignmentRepository assignments, IUnitOfWork unitOfWork, CancellationToken ct) =>
+app.MapPost("/api/v1/shifts/{shiftId:guid}/assignments", async (ClaimsPrincipal user, Guid shiftId, AssignShiftRequest request, IVigieStore store, AssignShiftService service, CancellationToken ct) =>
 {
+    var organizationId = OrganizationId(user);
+    var shift = store.Shifts.SingleOrDefault(item => item.Id == shiftId);
+    var employee = store.Employees.SingleOrDefault(item => item.Id == request.EmployeeId);
+    if (shift is null || employee is null || store.Sites.SingleOrDefault(site => site.Id == shift.SiteId)?.OrganizationId != organizationId || employee.OrganizationId != organizationId)
+        return Problem("NOT_FOUND", "Le quart ou l'employé est introuvable.", StatusCodes.Status404NotFound);
+    return (await service.ExecuteAsync(request.EmployeeId, shiftId, ct)).ToHttpResult(assignment => Results.Ok(assignment));
+}).RequireAuthorization(new AuthorizeAttribute { Roles = nameof(EmployeeRole.Coordinator) }).WithTags("Assignations");
+
+app.MapDelete("/api/v1/assignments/{assignmentId:guid}", async (ClaimsPrincipal user, Guid assignmentId, IVigieStore store, IAssignmentRepository assignments, IUnitOfWork unitOfWork, CancellationToken ct) =>
+{
+    var assignment = store.Assignments.SingleOrDefault(item => item.Id == assignmentId);
+    var shift = assignment is null ? null : store.Shifts.SingleOrDefault(item => item.Id == assignment.ShiftId);
+    if (shift is null || store.Sites.SingleOrDefault(site => site.Id == shift.SiteId)?.OrganizationId != OrganizationId(user)) return Problem("NOT_FOUND", "L'assignation est introuvable.", StatusCodes.Status404NotFound);
     await assignments.RemoveAsync(assignmentId, ct); await unitOfWork.SaveChangesAsync(ct); return Results.NoContent();
 }).RequireAuthorization(new AuthorizeAttribute { Roles = nameof(EmployeeRole.Coordinator) }).WithTags("Assignations");
 
@@ -158,7 +205,8 @@ app.MapGet("/api/v1/certifications", (ClaimsPrincipal user, IVigieStore store) =
 {
     var isCoordinator = user.IsInRole(nameof(EmployeeRole.Coordinator));
     var employeeId = UserId(user);
-    var result = store.Certifications.Where(c => isCoordinator || c.EmployeeId == employeeId).Select(c =>
+    var organizationId = OrganizationId(user);
+    var result = store.Certifications.Where(c => (isCoordinator && store.Employees.Any(employee => employee.Id == c.EmployeeId && employee.OrganizationId == organizationId)) || (!isCoordinator && c.EmployeeId == employeeId)).Select(c =>
     {
         var employee = store.Employees.Single(e => e.Id == c.EmployeeId); var type = store.CertificationTypes.Single(t => t.Id == c.CertificationTypeId);
         return new CertificationResponse(c.Id, c.EmployeeId, employee.Name, type.Name, c.ExpiresOn, c.ExpiresOn.DayNumber - DateOnly.FromDateTime(DateTime.UtcNow).DayNumber);
@@ -166,22 +214,38 @@ app.MapGet("/api/v1/certifications", (ClaimsPrincipal user, IVigieStore store) =
     return Results.Ok(result);
 }).RequireAuthorization().WithTags("Certifications");
 
-app.MapGet("/api/v1/employees", (IVigieStore store) => Results.Ok(store.Employees.Select(User).ToArray())).RequireAuthorization().WithTags("Employés");
+app.MapGet("/api/v1/employees", (ClaimsPrincipal user, IVigieStore store) => Results.Ok(store.Employees.Where(employee => employee.OrganizationId == OrganizationId(user)).Select(User).ToArray())).RequireAuthorization().WithTags("Employés");
 
 app.MapPost("/api/v1/swap-requests", async (ClaimsPrincipal user, CreateSwapRequest request, RequestSwapService service, IVigieStore store, CancellationToken ct) =>
-    (await service.ExecuteAsync(UserId(user), request.AssignmentId, request.ReceiverId, ct)).ToHttpResult(result => Results.Ok(ToSwap(result, store)))).RequireAuthorization().WithTags("Échanges");
+{
+    var organizationId = OrganizationId(user);
+    var assignment = store.Assignments.SingleOrDefault(item => item.Id == request.AssignmentId);
+    var shift = assignment is null ? null : store.Shifts.SingleOrDefault(item => item.Id == assignment.ShiftId);
+    var receiver = store.Employees.SingleOrDefault(item => item.Id == request.ReceiverId);
+    if (shift is null || receiver is null || store.Sites.SingleOrDefault(site => site.Id == shift.SiteId)?.OrganizationId != organizationId || receiver.OrganizationId != organizationId)
+        return Problem("NOT_FOUND", "L'assignation ou le receveur est introuvable.", StatusCodes.Status404NotFound);
+    return (await service.ExecuteAsync(UserId(user), request.AssignmentId, request.ReceiverId, ct)).ToHttpResult(result => Results.Ok(ToSwap(result, store)));
+}).RequireAuthorization().WithTags("Échanges");
 
 app.MapGet("/api/v1/swap-requests", (ClaimsPrincipal user, IVigieStore store) =>
 {
-    var coordinator = user.IsInRole(nameof(EmployeeRole.Coordinator)); var id = UserId(user);
-    var requests = store.SwapRequests.Where(r => coordinator || r.ReceiverId == id || store.Assignments.Single(a => a.Id == r.AssignmentId).EmployeeId == id).Select(r => ToSwap(r, store)).OrderBy(r => r.Status).ThenBy(r => r.RequestedAtUtc).ToArray();
+    var coordinator = user.IsInRole(nameof(EmployeeRole.Coordinator)); var id = UserId(user); var organizationId = OrganizationId(user);
+    var requests = store.SwapRequests.Where(r =>
+        store.Assignments.Any(assignment => assignment.Id == r.AssignmentId && store.Shifts.Any(shift => shift.Id == assignment.ShiftId && store.Sites.Any(site => site.Id == shift.SiteId && site.OrganizationId == organizationId))) &&
+        (coordinator || r.ReceiverId == id || store.Assignments.Single(a => a.Id == r.AssignmentId).EmployeeId == id)).Select(r => ToSwap(r, store)).OrderBy(r => r.Status).ThenBy(r => r.RequestedAtUtc).ToArray();
     return Results.Ok(requests);
 }).RequireAuthorization().WithTags("Échanges");
 
 app.MapPost("/api/v1/swap-requests/{requestId:guid}/approve", async (ClaimsPrincipal user, Guid requestId, ApproveSwapService service, IVigieStore store, CancellationToken ct) =>
-    (await service.ExecuteAsync(UserId(user), requestId, ct)).ToHttpResult(result => Results.Ok(ToSwap(result, store)))).RequireAuthorization(new AuthorizeAttribute { Roles = nameof(EmployeeRole.Coordinator) }).WithTags("Échanges");
+{
+    if (!SwapBelongsToOrganization(requestId, OrganizationId(user), store)) return Problem("NOT_FOUND", "La demande d'échange est introuvable.", StatusCodes.Status404NotFound);
+    return (await service.ExecuteAsync(UserId(user), requestId, ct)).ToHttpResult(result => Results.Ok(ToSwap(result, store)));
+}).RequireAuthorization(new AuthorizeAttribute { Roles = nameof(EmployeeRole.Coordinator) }).WithTags("Échanges");
 app.MapPost("/api/v1/swap-requests/{requestId:guid}/reject", async (ClaimsPrincipal user, Guid requestId, RejectSwapService service, IVigieStore store, CancellationToken ct) =>
-    (await service.ExecuteAsync(UserId(user), requestId, ct)).ToHttpResult(result => Results.Ok(ToSwap(result, store)))).RequireAuthorization(new AuthorizeAttribute { Roles = nameof(EmployeeRole.Coordinator) }).WithTags("Échanges");
+{
+    if (!SwapBelongsToOrganization(requestId, OrganizationId(user), store)) return Problem("NOT_FOUND", "La demande d'échange est introuvable.", StatusCodes.Status404NotFound);
+    return (await service.ExecuteAsync(UserId(user), requestId, ct)).ToHttpResult(result => Results.Ok(ToSwap(result, store)));
+}).RequireAuthorization(new AuthorizeAttribute { Roles = nameof(EmployeeRole.Coordinator) }).WithTags("Échanges");
 
 app.MapGet("/api/v1/availability", (ClaimsPrincipal user, IVigieStore store) => Results.Ok(store.Availabilities.Where(a => a.EmployeeId == UserId(user)).OrderBy(a => a.Date).Select(a => new AvailabilityResponse(a.Id, a.EmployeeId, a.Date, a.IsAvailable, a.Note)).ToArray())).RequireAuthorization().WithTags("Disponibilités");
 app.MapPut("/api/v1/availability", async (ClaimsPrincipal user, AvailabilityRequest request, IVigieStore store, IUnitOfWork unitOfWork, CancellationToken ct) =>
@@ -194,7 +258,16 @@ app.MapPut("/api/v1/availability", async (ClaimsPrincipal user, AvailabilityRequ
 app.Run();
 
 static Guid UserId(ClaimsPrincipal principal) => Guid.Parse(principal.FindFirstValue(JwtRegisteredClaimNames.Sub) ?? principal.FindFirstValue(ClaimTypes.NameIdentifier) ?? throw new InvalidOperationException("Identité absente."));
-static UserSummary User(Employee employee) => new(employee.Id, employee.Name, employee.Email, employee.Role.ToString());
+static Guid OrganizationId(ClaimsPrincipal principal) => Guid.Parse(principal.FindFirstValue("organization_id") ?? throw new InvalidOperationException("Organisation absente."));
+static UserSummary User(Employee employee) => new(employee.Id, employee.Name, employee.Email, employee.Role.ToString(), employee.OrganizationId, employee.IsDemoAccount);
+static OrganizationResponse ToOrganization(Organization organization) => new(organization.Id, organization.Name, organization.Slug, organization.CreatedAtUtc);
+static bool SwapBelongsToOrganization(Guid requestId, Guid organizationId, IVigieStore store)
+{
+    var request = store.SwapRequests.SingleOrDefault(item => item.Id == requestId);
+    var assignment = request is null ? null : store.Assignments.SingleOrDefault(item => item.Id == request.AssignmentId);
+    var shift = assignment is null ? null : store.Shifts.SingleOrDefault(item => item.Id == assignment.ShiftId);
+    return shift is not null && store.Sites.Any(site => site.Id == shift.SiteId && site.OrganizationId == organizationId);
+}
 static SiteResponse ToSite(Site site) => new(site.Id, site.Name, site.Type.ToString(), site.TimeZoneId, site.OpeningSeason);
 static ShiftResponse ToShift(Shift shift, IVigieStore store)
 {
@@ -207,6 +280,16 @@ static SwapRequestResponse ToSwap(SwapRequest request, IVigieStore store)
     return new SwapRequestResponse(request.Id, request.AssignmentId, requester.Id, requester.Name, request.ReceiverId, receiver.Name, $"{shift.StartUtc:ddd d MMM HH:mm} · {store.Sites.Single(s => s.Id == shift.SiteId).Name}", request.Status.ToString(), request.RequestedAtUtc);
 }
 static IResult Problem(string code, string message, int status = StatusCodes.Status400BadRequest) => Results.Problem(statusCode: status, title: "La demande ne peut pas être traitée", detail: message, extensions: new Dictionary<string, object?> { ["code"] = code, ["message"] = message });
+
+static string Slugify(string value)
+{
+    var normalized = value.Trim().Normalize(NormalizationForm.FormD);
+    var chars = normalized.Where(character => CharUnicodeInfo.GetUnicodeCategory(character) != UnicodeCategory.NonSpacingMark).ToArray();
+    var slug = new string(chars).ToLowerInvariant();
+    slug = new string(slug.Select(character => char.IsLetterOrDigit(character) ? character : '-').ToArray());
+    while (slug.Contains("--", StringComparison.Ordinal)) slug = slug.Replace("--", "-", StringComparison.Ordinal);
+    return slug.Trim('-') is { Length: > 0 } clean ? clean[..Math.Min(clean.Length, 70)] : $"organisation-{Guid.NewGuid():N}"[..24];
+}
 
 public static class OperationResultHttpExtensions
 {

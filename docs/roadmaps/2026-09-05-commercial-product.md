@@ -18,7 +18,8 @@ Transformer la démonstration Vigie en un logiciel que plusieurs centres aquatiq
 
 ### 1. Fondation sécurité et comptes
 
-- Remplacer le mot de passe codé en dur par des mots de passe hachés PBKDF2 et des comptes explicitement marqués démonstration.
+- ✅ Remplacer le mot de passe codé en dur par des mots de passe hachés PBKDF2 et des comptes explicitement marqués démonstration.
+- ✅ Créer un espace d’organisation avec un coordonnateur propriétaire et vérifier l’isolation des sites et des équipes côté API.
 - Ajouter rotation de clé JWT, expiration courte, révocation et limitation des tentatives de connexion.
 - Ajouter inscription d’organisation, invitation d’équipe, récupération de mot de passe et session persistante côté interface.
 - Couvrir les erreurs d’authentification sans révéler si une adresse existe.
@@ -53,4 +54,4 @@ Transformer la démonstration Vigie en un logiciel que plusieurs centres aquatiq
 
 ## Décision actuelle
 
-Le MVP/V1 public couvre le domaine et les opérations principales avec des comptes de démonstration. La prochaine tranche implémente la fondation des comptes réels sans retirer le parcours public existant.
+Le MVP/V1 public couvre le domaine et les opérations principales avec des comptes de démonstration. La fondation des comptes réels et de l’isolation organisationnelle est maintenant en place sans retirer le parcours public existant ; la prochaine tranche ajoute les invitations d’équipe et la gestion des membres.

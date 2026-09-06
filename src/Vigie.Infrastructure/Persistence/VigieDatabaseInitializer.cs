@@ -26,6 +26,7 @@ public static class VigieDatabaseInitializer
         }
 
         var source = new InMemoryVigieStore();
+        if (!await context.Organizations.AnyAsync(cancellationToken)) context.Organizations.AddRange(source.Organizations);
         context.Employees.AddRange(source.Employees);
         context.Sites.AddRange(source.Sites);
         context.CertificationTypes.AddRange(source.CertificationTypes);

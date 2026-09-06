@@ -18,6 +18,7 @@ public interface IVigieStore :
     ISwapRequestRepository,
     IUnitOfWork
 {
+    IReadOnlyCollection<Organization> Organizations { get; }
     IReadOnlyCollection<Employee> Employees { get; }
     IReadOnlyCollection<Site> Sites { get; }
     IReadOnlyCollection<Shift> Shifts { get; }
@@ -27,6 +28,8 @@ public interface IVigieStore :
     IReadOnlyCollection<SwapRequest> SwapRequests { get; }
     IReadOnlyCollection<Availability> Availabilities { get; }
 
+    void AddOrganization(Organization organization);
+    void AddEmployee(Employee employee);
     void AddSite(Site site);
     void AddShift(Shift shift);
     Availability UpsertAvailability(Guid employeeId, DateOnly onDate, bool isAvailable, string? note);
