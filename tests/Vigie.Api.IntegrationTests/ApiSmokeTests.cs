@@ -524,7 +524,7 @@ public sealed class ApiSmokeTests : IClassFixture<WebApplicationFactory<Program>
         Assert.Equal("AquaticDirector", payload.User.Role);
         Assert.True(sites!.Count(site => site.IsMunicipal) >= 27);
         Assert.Contains(sites!, site => site.Name == "Piscine Val-des-Arbres" && site.Neighborhood == "Vimont");
-        Assert.Contains(sites!, site => site.Name == "Piscine Val-des-Arbres" && site.SectorName == "Secteur Est");
+        Assert.Contains(sites!, site => site.Name == "Piscine Val-des-Arbres" && site.SectorName == "Secteur Nord");
         Assert.Equal(5, sectors!.Length);
         Assert.Contains(sectors, sector => sector.Code == "NORD");
         Assert.Contains(sectors, sector => sector.Code == "CENTRE");
