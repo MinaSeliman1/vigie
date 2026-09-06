@@ -121,6 +121,7 @@ L’interface est en français et permet de basculer entre six profils de démon
 - L’API JWT expose les routes de calendrier, d’assignation, d’échange, de certification, de secteurs et de memberships; les tests d’intégration couvrent l’authentification, l’inscription d’organisation, l’isolation entre organisations, les quatre rôles, les règles de saison, les décisions répétées, le catalogue Laval et le modèle EF.
 - La démo UI publique est construite automatiquement par GitHub Actions et publiée sur GitHub Pages à chaque mise à jour de `main`.
 - Le conteneur de l’API est construit dans la CI pour détecter les erreurs de packaging avant un déploiement.
+- Chaque réponse API expose un `X-Request-Id` corrélable avec les logs structurés, sans journaliser de secret ni de contenu sensible.
 - `render.yaml` décrit le déploiement gratuit de l’API, son health check et les secrets attendus sans jamais les stocker dans Git.
 - Le frontend React affiche un calendrier responsive et exécute les parcours création → assignation de quart et demande d’échange → approbation avec les profils de démonstration.
 - La vue `Disponibilités` permet à un sauveteur de déclarer ses jours ouverts ou indisponibles et persiste ce choix via l’API.

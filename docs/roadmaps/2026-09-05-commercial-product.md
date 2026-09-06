@@ -52,7 +52,7 @@ Transformer la démonstration Vigie en un logiciel que plusieurs centres aquatiq
 ### 5. Mise en production
 
 - Environnements séparés, migrations contrôlées, sauvegardes et vérification de restauration.
-- Logs structurés, corrélation, métriques d’erreur et alertes de disponibilité.
+- ✅ Logs structurés et corrélation par requête; métriques d’erreur et alertes de disponibilité restent à brancher au fournisseur d’observabilité choisi.
 - Tests de contrat API, tests navigateur des parcours critiques et analyse de dépendances.
 - Conditions d’utilisation, politique de confidentialité, suppression de compte et procédure de support.
 

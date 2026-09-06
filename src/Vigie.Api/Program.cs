@@ -10,6 +10,7 @@ using Microsoft.AspNetCore.RateLimiting;
 using Microsoft.IdentityModel.Tokens;
 using Vigie.Api.Auth;
 using Vigie.Api.Contracts;
+using Vigie.Api.Infrastructure;
 using Vigie.Application;
 using Vigie.Application.Auth;
 using Vigie.Domain;
@@ -124,6 +125,7 @@ if (!string.IsNullOrWhiteSpace(builder.Configuration.GetConnectionString("Vigie"
 
 app.UseCors();
 app.UseRateLimiter();
+app.UseMiddleware<RequestCorrelationMiddleware>();
 app.UseAuthentication();
 app.UseAuthorization();
 app.MapOpenApi();

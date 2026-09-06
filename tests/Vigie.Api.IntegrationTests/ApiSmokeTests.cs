@@ -23,6 +23,17 @@ public sealed class ApiSmokeTests : IClassFixture<WebApplicationFactory<Program>
     }
 
     [Fact]
+    public async Task Health_returns_and_preserves_a_request_id()
+    {
+        client.DefaultRequestHeaders.Add("X-Request-Id", "support-check-42");
+        var response = await client.GetAsync("/health");
+
+        Assert.Equal(HttpStatusCode.OK, response.StatusCode);
+        Assert.True(response.Headers.TryGetValues("X-Request-Id", out var values));
+        Assert.Equal("support-check-42", values.Single());
+    }
+
+    [Fact]
     public async Task Demo_coordinator_can_login_and_read_shifts()
     {
         var login = await client.PostAsJsonAsync("/api/v1/auth/login", new { email = "coordonnateur@vigie.demo", password = "vigie-demo" });
