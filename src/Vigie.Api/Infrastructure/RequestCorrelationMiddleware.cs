@@ -3,7 +3,7 @@ using System.Text.RegularExpressions;
 
 namespace Vigie.Api.Infrastructure;
 
-public sealed partial class RequestCorrelationMiddleware(RequestDelegate next, ILogger<RequestCorrelationMiddleware> logger)
+public sealed partial class RequestCorrelationMiddleware(RequestDelegate next, ILogger<RequestCorrelationMiddleware> logger, RequestMetrics metrics)
 {
     public async Task InvokeAsync(HttpContext context)
     {
@@ -21,6 +21,7 @@ public sealed partial class RequestCorrelationMiddleware(RequestDelegate next, I
         finally
         {
             stopwatch.Stop();
+            metrics.Record(context.Response.StatusCode, stopwatch.ElapsedMilliseconds);
             LogRequest(logger, context.Request.Method, context.Request.Path, context.Response.StatusCode, stopwatch.ElapsedMilliseconds, requestId);
         }
     }

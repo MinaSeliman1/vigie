@@ -25,7 +25,7 @@ Vigie applique automatiquement les migrations EF Core et charge les données fic
 
 Les invitations d’équipe et la récupération de compte sont prêtes pour Resend. Pour activer l’envoi réel des courriels transactionnels, ajouter ensuite dans les variables d’environnement du service `Resend__ApiKey` et `Resend__From` (avec un domaine expéditeur vérifié). Sans ces deux variables, l’API conserve un parcours sécurisé, affiche toujours le lien d’invitation ou de récupération et aucun courriel ne peut être remis.
 
-Le service doit répondre à `https://<nom-du-service>.onrender.com/health` avec un JSON contenant `"status":"ok"`. Render fournit une URL publique et exécute le health check `/health` à chaque déploiement. Les services Free se mettent en veille après 15 minutes sans trafic et peuvent prendre environ une minute à redémarrer; c’est attendu pour une offre à 0 $. Voir les [limites Render Free](https://render.com/docs/free).
+Le service doit répondre à `https://<nom-du-service>.onrender.com/health` avec un JSON contenant `"status":"ok"`. Render fournit une URL publique et exécute le health check `/health` à chaque déploiement. Pour un fournisseur d’observabilité, configurez aussi `/health/ready` comme sonde de disponibilité et `/metrics` comme source Prometheus; ces deux routes ne renvoient aucune donnée personnelle. Les services Free se mettent en veille après 15 minutes sans trafic et peuvent prendre environ une minute à redémarrer; c’est attendu pour une offre à 0 $. Voir les [limites Render Free](https://render.com/docs/free).
 
 ## 3. Relier la démo GitHub Pages
 

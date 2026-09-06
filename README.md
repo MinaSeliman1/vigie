@@ -40,7 +40,7 @@ Les limites calendaires (jour d’expiration, début de semaine, quarts de nuit 
 - Administration de l’équipe pour le coordonnateur : changement de rôle et de périmètre (piscine ou secteur), désactivation logique et protection contre les modifications concurrentes.
 - Journal d’audit organisationnel pour les créations, assignations, invitations et décisions d’échange, avec export CSV coordonnateur.
 
-La génération automatique d’horaires, les courriels/SMS, les exports et l’application mobile sont hors du périmètre initial.
+La génération automatique d’horaires, les SMS et l’application mobile restent hors du périmètre initial. Les courriels transactionnels et l’export CSV sont disponibles lorsque leur configuration est activée.
 
 ## Architecture livrée
 
@@ -122,6 +122,7 @@ L’interface est en français et permet de basculer entre six profils de démon
 - La démo UI publique est construite automatiquement par GitHub Actions et publiée sur GitHub Pages à chaque mise à jour de `main`.
 - Le conteneur de l’API est construit dans la CI pour détecter les erreurs de packaging avant un déploiement.
 - Chaque réponse API expose un `X-Request-Id` corrélable avec les logs structurés, sans journaliser de secret ni de contenu sensible.
+- `/health/ready` vérifie la disponibilité de PostgreSQL quand la persistance est activée, et `/metrics` expose des compteurs Prometheus sans donnée personnelle.
 - `render.yaml` décrit le déploiement gratuit de l’API, son health check et les secrets attendus sans jamais les stocker dans Git.
 - Le frontend React affiche un calendrier responsive et exécute les parcours création → assignation de quart et demande d’échange → approbation avec les profils de démonstration.
 - La vue `Disponibilités` permet à un sauveteur de déclarer ses jours ouverts ou indisponibles et persiste ce choix via l’API.

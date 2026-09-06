@@ -26,6 +26,7 @@ if (string.IsNullOrWhiteSpace(jwtKey))
 
 builder.Services.AddVigiePersistence(builder.Configuration);
 builder.Services.AddSingleton<IClock, SystemClock>();
+builder.Services.AddSingleton<RequestMetrics>();
 builder.Services.AddHttpClient<ITransactionalEmailSender, ResendTransactionalEmailSender>();
 var accessTokenMinutes = builder.Configuration.GetValue("Jwt:AccessTokenMinutes", 60);
 if (accessTokenMinutes is < 15 or > 240) throw new InvalidOperationException("Jwt:AccessTokenMinutes doit être compris entre 15 et 240.");
@@ -131,6 +132,27 @@ app.UseAuthorization();
 app.MapOpenApi();
 
 app.MapGet("/health", () => Results.Ok(new { status = "ok", service = "vigie-api" }));
+app.MapGet("/health/ready", async (IServiceProvider services, CancellationToken ct) =>
+{
+    var database = services.GetService<VigieDbContext>();
+    if (database is null) return Results.Ok(new { status = "ready", service = "vigie-api", persistence = "memory" });
+
+    try
+    {
+        if (!await database.Database.CanConnectAsync(ct))
+            return Problem("DATABASE_UNAVAILABLE", "La base de données n'est pas disponible.", StatusCodes.Status503ServiceUnavailable);
+        return Results.Ok(new { status = "ready", service = "vigie-api", persistence = "postgresql" });
+    }
+    catch (OperationCanceledException) when (ct.IsCancellationRequested)
+    {
+        throw;
+    }
+    catch (Exception)
+    {
+        return Problem("DATABASE_UNAVAILABLE", "La base de données n'est pas disponible.", StatusCodes.Status503ServiceUnavailable);
+    }
+});
+app.MapGet("/metrics", (RequestMetrics metrics) => Results.Text(metrics.ToPrometheus(), "text/plain; version=0.0.4"));
 
 app.MapGet("/api/v1/notifications", (ClaimsPrincipal user, IVigieStore store) =>
 {

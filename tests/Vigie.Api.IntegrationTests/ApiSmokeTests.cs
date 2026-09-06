@@ -34,6 +34,21 @@ public sealed class ApiSmokeTests : IClassFixture<WebApplicationFactory<Program>
     }
 
     [Fact]
+    public async Task Readiness_and_metrics_are_public_and_machine_readable()
+    {
+        var readiness = await client.GetAsync("/health/ready");
+        var metrics = await client.GetAsync("/metrics");
+        var metricsBody = await metrics.Content.ReadAsStringAsync();
+
+        Assert.Equal(HttpStatusCode.OK, readiness.StatusCode);
+        Assert.Equal(HttpStatusCode.OK, metrics.StatusCode);
+        Assert.Contains("vigie_http_requests_total", metricsBody);
+        Assert.Contains("vigie_http_responses_total", metricsBody);
+        Assert.Contains("vigie_http_request_duration_ms", metricsBody);
+        Assert.StartsWith("text/plain", metrics.Content.Headers.ContentType?.MediaType);
+    }
+
+    [Fact]
     public async Task Demo_coordinator_can_login_and_read_shifts()
     {
         var login = await client.PostAsJsonAsync("/api/v1/auth/login", new { email = "coordonnateur@vigie.demo", password = "vigie-demo" });
