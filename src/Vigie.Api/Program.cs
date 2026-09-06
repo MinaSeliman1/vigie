@@ -619,6 +619,7 @@ app.MapGet("/api/v1/shifts", (ClaimsPrincipal user, DateTimeOffset? from, DateTi
     if (scope is null) return Results.Unauthorized();
     var result = store.Shifts
         .Where(s => s.StartUtc < end && s.EndUtc > start)
+        .Where(s => scope.IsDirector || scope.IsSectorManager || scope.IsPoolChief || s.PublicationStatus == ShiftPublicationStatus.Published)
         .Where(s => store.Sites.Any(site => site.Id == s.SiteId && IsSiteVisible(site, scope, store)))
         .OrderBy(s => s.StartUtc).Select(s => ToShift(s, store)).ToArray();
     return Results.Ok(result);
@@ -638,6 +639,31 @@ app.MapPost("/api/v1/shifts", async (ClaimsPrincipal user, CreateShiftRequest re
         store.AddAuditEntry(Audit(OrganizationId(user), UserId(user), "shift.created", "Shift", shift.Id));
         await unitOfWork.SaveChangesAsync(ct);
         return Results.Created($"/api/v1/shifts/{shift.Id}", ToShift(shift, store));
+    }
+    catch (DomainException ex) { return Problem("INVALID_SHIFT", ex.Message); }
+}).RequireAuthorization().WithTags("Quarts");
+
+app.MapPost("/api/v1/shifts/{shiftId:guid}/publish", async (ClaimsPrincipal user, Guid shiftId, IVigieStore store, IUnitOfWork unitOfWork, CancellationToken ct) =>
+{
+    var scope = OrganizationScopeResolver.Resolve(user, store);
+    var shift = store.Shifts.SingleOrDefault(item => item.Id == shiftId);
+    var site = shift is null ? null : store.Sites.SingleOrDefault(item => item.Id == shift.SiteId);
+    if (scope is null) return Problem("SESSION_INVALID", "La session n'est plus valide.", StatusCodes.Status401Unauthorized);
+    if (shift is null || site is null || site.OrganizationId != scope.OrganizationId)
+        return Problem("NOT_FOUND", "Le quart demandé est introuvable.", StatusCodes.Status404NotFound);
+    if (!OrganizationScopeResolver.CanManageSite(scope, site, store)) return Results.StatusCode(StatusCodes.Status403Forbidden);
+    try
+    {
+        var wasAlreadyPublished = shift.PublicationStatus == ShiftPublicationStatus.Published;
+        shift.Publish();
+        if (!wasAlreadyPublished)
+        {
+            store.AddAuditEntry(Audit(scope.OrganizationId, scope.EmployeeId, "shift.published", "Shift", shift.Id));
+            foreach (var assignment in store.Assignments.Where(item => item.ShiftId == shift.Id))
+                AddNotification(store, scope.OrganizationId, assignment.EmployeeId, "assignment", "Quart publié", $"Le quart du {shift.StartUtc:ddd d MMM à HH:mm} à {site.Name} est maintenant publié.", "calendar");
+        }
+        await unitOfWork.SaveChangesAsync(ct);
+        return Results.Ok(ToShift(shift, store));
     }
     catch (DomainException ex) { return Problem("INVALID_SHIFT", ex.Message); }
 }).RequireAuthorization().WithTags("Quarts");
@@ -740,6 +766,8 @@ app.MapPost("/api/v1/swap-requests", async (ClaimsPrincipal user, CreateSwapRequ
     var receiver = store.Employees.SingleOrDefault(item => item.Id == request.ReceiverId);
     if (shift is null || receiver is null || store.Sites.SingleOrDefault(site => site.Id == shift.SiteId)?.OrganizationId != organizationId || receiver.OrganizationId != organizationId)
         return Problem("NOT_FOUND", "L'assignation ou le receveur est introuvable.", StatusCodes.Status404NotFound);
+    if (shift.PublicationStatus != ShiftPublicationStatus.Published)
+        return Problem("SHIFT_NOT_PUBLISHED", "Un quart en brouillon doit être publié avant de demander un échange.", StatusCodes.Status409Conflict);
     var result = await service.ExecuteAsync(UserId(user), request.AssignmentId, request.ReceiverId, ct);
     if (!result.IsSuccess) return result.ToHttpResult(swap => Results.Ok(ToSwap(swap, store)));
     store.AddAuditEntry(Audit(organizationId, UserId(user), "swap.created", "SwapRequest", result.Value!.Id, $"receveur={receiver.Name}"));
@@ -807,7 +835,8 @@ static bool IsSiteVisible(Site site, OrganizationScope scope, IVigieStore store)
     => site.OrganizationId == scope.OrganizationId &&
        (scope.IsDirector ||
         scope.IsSectorManager && scope.SectorId.HasValue && site.SectorId == scope.SectorId ||
-        scope.IsPoolChief && scope.SiteId == site.Id);
+        scope.IsPoolChief && scope.SiteId == site.Id ||
+        scope.Role == EmployeeRole.Lifeguard && scope.SiteId == site.Id);
 static bool IsInvitationVisible(Invitation invitation, OrganizationScope scope, IVigieStore store)
 {
     if (scope.IsDirector || scope.Role == EmployeeRole.Coordinator) return true;
@@ -892,7 +921,7 @@ static SiteResponse ToSite(Site site, IVigieStore store)
 static ShiftResponse ToShift(Shift shift, IVigieStore store)
 {
     var site = store.Sites.Single(s => s.Id == shift.SiteId);
-    return new ShiftResponse(shift.Id, shift.SiteId, site.Name, site.Type.ToString(), shift.StartUtc, shift.EndUtc, shift.RequiredLifeguards, store.Assignments.Where(a => a.ShiftId == shift.Id).Select(a => new AssignmentResponse(a.Id, a.ShiftId, a.EmployeeId, store.Employees.Single(e => e.Id == a.EmployeeId).Name)).ToArray(), shift.Status.ToString());
+    return new ShiftResponse(shift.Id, shift.SiteId, site.Name, site.Type.ToString(), shift.StartUtc, shift.EndUtc, shift.RequiredLifeguards, store.Assignments.Where(a => a.ShiftId == shift.Id).Select(a => new AssignmentResponse(a.Id, a.ShiftId, a.EmployeeId, store.Employees.Single(e => e.Id == a.EmployeeId).Name)).ToArray(), shift.Status.ToString(), shift.PublicationStatus.ToString());
 }
 static SwapRequestResponse ToSwap(SwapRequest request, IVigieStore store)
 {

@@ -49,6 +49,7 @@ export const vigieApi = {
   sites: () => request<SiteResponse[]>('/api/v1/sites'),
   createShift: (input: CreateShiftInput) => request<ShiftResponse>('/api/v1/shifts', { method: 'POST', body: JSON.stringify(input) }),
   updateShift: (shiftId: string, input: UpdateShiftInput) => request<ShiftResponse>(`/api/v1/shifts/${shiftId}`, { method: 'PATCH', body: JSON.stringify(input) }),
+  publishShift: (shiftId: string) => request<ShiftResponse>(`/api/v1/shifts/${shiftId}/publish`, { method: 'POST' }),
   cancelShift: (shiftId: string) => request<ShiftResponse>(`/api/v1/shifts/${shiftId}/cancel`, { method: 'POST' }),
   assignShift: (shiftId: string, employeeId: string) => request<AssignmentResponse>(`/api/v1/shifts/${shiftId}/assignments`, { method: 'POST', body: JSON.stringify({ employeeId }) }),
   removeAssignment: (assignmentId: string) => request<void>(`/api/v1/assignments/${assignmentId}`, { method: 'DELETE' }),

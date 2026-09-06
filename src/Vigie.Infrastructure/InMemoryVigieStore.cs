@@ -187,7 +187,11 @@ public sealed class InMemoryVigieStore :
             Shift.Create(Guid.Parse("40000000-0000-0000-0000-000000000003"), parc.Id, new DateTimeOffset(monday.AddDays(4).AddHours(14), TimeSpan.Zero), new DateTimeOffset(monday.AddDays(4).AddHours(22), TimeSpan.Zero), 2),
             Shift.Create(Guid.Parse("40000000-0000-0000-0000-000000000004"), nord.Id, new DateTimeOffset(monday.AddDays(5).AddHours(12), TimeSpan.Zero), new DateTimeOffset(monday.AddDays(5).AddHours(20), TimeSpan.Zero), 2)
         };
-        foreach (var shift in shiftsToAdd) shifts[shift.Id] = shift;
+        foreach (var shift in shiftsToAdd)
+        {
+            shift.Publish();
+            shifts[shift.Id] = shift;
+        }
         assignments[Guid.Parse("50000000-0000-0000-0000-000000000001")] = Assignment.Create(Guid.Parse("50000000-0000-0000-0000-000000000001"), shiftsToAdd[0].Id, amelie.Id);
         assignments[Guid.Parse("50000000-0000-0000-0000-000000000002")] = Assignment.Create(Guid.Parse("50000000-0000-0000-0000-000000000002"), shiftsToAdd[1].Id, noah.Id);
         var demoSwap = SwapRequest.Create(Guid.Parse("60000000-0000-0000-0000-000000000001"), Guid.Parse("50000000-0000-0000-0000-000000000001"), noah.Id);

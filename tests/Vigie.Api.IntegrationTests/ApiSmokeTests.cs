@@ -41,6 +41,72 @@ public sealed class ApiSmokeTests : IClassFixture<WebApplicationFactory<Program>
     }
 
     [Fact]
+    public async Task A_shift_must_be_published_before_a_lifeguard_can_see_it()
+    {
+        var directorEmail = $"publication-{Guid.NewGuid():N}@exemple.test";
+        var registration = await client.PostAsJsonAsync("/api/v1/auth/register", new
+        {
+            organizationName = "Centre publication",
+            name = "Direction publication",
+            email = directorEmail,
+            password = "Mot-de-passe1"
+        });
+        var director = await registration.Content.ReadFromJsonAsync<RegistrationPayload>();
+        client.DefaultRequestHeaders.Authorization = new System.Net.Http.Headers.AuthenticationHeaderValue("Bearer", director!.Login.Token);
+
+        var siteResponse = await client.PostAsJsonAsync("/api/v1/sites", new
+        {
+            name = "Piscine publication",
+            type = "Indoor",
+            timeZoneId = "Eastern Standard Time",
+            startMonth = 1,
+            startDay = 1,
+            endMonth = 12,
+            endDay = 31
+        });
+        var site = await siteResponse.Content.ReadFromJsonAsync<SitePayload>();
+        var inviteResponse = await client.PostAsJsonAsync("/api/v1/invitations", new
+        {
+            email = $"sauveteur-publication-{Guid.NewGuid():N}@exemple.test",
+            name = "Sauveteur publication",
+            role = "Lifeguard",
+            siteId = site!.Id
+        });
+        var invitation = await inviteResponse.Content.ReadFromJsonAsync<InvitationPayload>();
+        var tomorrow = new DateTimeOffset(DateTimeOffset.UtcNow.Date.AddDays(1), TimeSpan.Zero);
+        var shiftResponse = await client.PostAsJsonAsync("/api/v1/shifts", new
+        {
+            siteId = site.Id,
+            startUtc = tomorrow.AddHours(14),
+            endUtc = tomorrow.AddHours(22),
+            requiredLifeguards = 1
+        });
+        var draft = await shiftResponse.Content.ReadFromJsonAsync<ShiftPayload>();
+
+        client.DefaultRequestHeaders.Authorization = null;
+        var accept = await client.PostAsJsonAsync("/api/v1/invitations/accept", new { token = invitation!.InviteToken, password = "Mot-de-passe1" });
+        var lifeguard = await accept.Content.ReadFromJsonAsync<LoginPayload>();
+        client.DefaultRequestHeaders.Authorization = new System.Net.Http.Headers.AuthenticationHeaderValue("Bearer", lifeguard!.Token);
+        var hidden = await client.GetFromJsonAsync<ShiftPayload[]>("/api/v1/shifts");
+
+        client.DefaultRequestHeaders.Authorization = new System.Net.Http.Headers.AuthenticationHeaderValue("Bearer", director.Login.Token);
+        var publish = await client.PostAsync($"/api/v1/shifts/{draft!.Id}/publish", content: null);
+        var published = await publish.Content.ReadFromJsonAsync<ShiftPayload>();
+        var publishAgain = await client.PostAsync($"/api/v1/shifts/{draft.Id}/publish", content: null);
+
+        client.DefaultRequestHeaders.Authorization = new System.Net.Http.Headers.AuthenticationHeaderValue("Bearer", lifeguard.Token);
+        var visible = await client.GetFromJsonAsync<ShiftPayload[]>("/api/v1/shifts");
+
+        Assert.Equal(HttpStatusCode.Created, shiftResponse.StatusCode);
+        Assert.Equal("Draft", draft.PublicationStatus);
+        Assert.Empty(hidden!);
+        Assert.Equal(HttpStatusCode.OK, publish.StatusCode);
+        Assert.Equal(HttpStatusCode.OK, publishAgain.StatusCode);
+        Assert.Equal("Published", published?.PublicationStatus);
+        Assert.Contains(visible!, shift => shift.Id == draft.Id && shift.PublicationStatus == "Published");
+    }
+
+    [Fact]
     public async Task Authenticated_user_can_restore_their_session()
     {
         var login = await client.PostAsJsonAsync("/api/v1/auth/login", new { email = "amelie@vigie.demo", password = "vigie-demo" });
@@ -535,6 +601,7 @@ public sealed class ApiSmokeTests : IClassFixture<WebApplicationFactory<Program>
         var shift = await shiftResponse.Content.ReadFromJsonAsync<ShiftPayload>();
         var assignmentResponse = await client.PostAsJsonAsync($"/api/v1/shifts/{shift!.Id}/assignments", new { employeeId = Guid.Parse("10000000-0000-0000-0000-000000000002") });
         var assignment = await assignmentResponse.Content.ReadFromJsonAsync<AssignmentPayload>();
+        var publishResponse = await client.PostAsync($"/api/v1/shifts/{shift.Id}/publish", content: null);
 
         var lifeguardLogin = await client.PostAsJsonAsync("/api/v1/auth/login", new { email = "amelie@vigie.demo", password = "vigie-demo" });
         var lifeguard = await lifeguardLogin.Content.ReadFromJsonAsync<LoginPayload>();
@@ -554,6 +621,7 @@ public sealed class ApiSmokeTests : IClassFixture<WebApplicationFactory<Program>
 
         Assert.Equal(HttpStatusCode.Created, shiftResponse.StatusCode);
         Assert.Equal(HttpStatusCode.OK, assignmentResponse.StatusCode);
+        Assert.Equal(HttpStatusCode.OK, publishResponse.StatusCode);
         Assert.Equal(HttpStatusCode.OK, create.StatusCode);
         Assert.Equal(HttpStatusCode.OK, decision.StatusCode);
         Assert.Equal("Approved", decided?.Status);
@@ -632,6 +700,7 @@ public sealed class ApiSmokeTests : IClassFixture<WebApplicationFactory<Program>
         Assert.NotNull(site.FindProperty(nameof(Site.Neighborhood)));
         Assert.NotNull(site.FindProperty(nameof(Site.IsMunicipal)));
         Assert.NotNull(context.Model.FindEntityType(typeof(Employee))!.FindProperty(nameof(Employee.PasswordHash)));
+        Assert.NotNull(context.Model.FindEntityType(typeof(Shift))!.FindProperty(nameof(Shift.PublicationStatus)));
         Assert.NotNull(context.Model.FindEntityType(typeof(SiteCertificationRequirement)));
         var sector = context.Model.FindEntityType(typeof(Sector));
         Assert.NotNull(sector);
@@ -663,7 +732,7 @@ public sealed class ApiSmokeTests : IClassFixture<WebApplicationFactory<Program>
     private sealed record AuditPayload(Guid Id, string Action, string EntityType, Guid? EntityId, string? Details, string? ActorName, DateTimeOffset CreatedAtUtc);
     private sealed record SitePayload(Guid Id, string Name = "", string Type = "", string TimeZoneId = "", OpeningSeasonPayload? OpeningSeason = null, string Address = "", string Neighborhood = "", bool IsMunicipal = false, Guid? SectorId = null, string? SectorName = null);
     private sealed record OpeningSeasonPayload(int StartMonth, int StartDay, int EndMonth, int EndDay);
-    private sealed record ShiftPayload(Guid Id, string? Status = null);
+    private sealed record ShiftPayload(Guid Id, string? Status = null, string? PublicationStatus = null);
     private sealed record AssignmentPayload(Guid Id, Guid ShiftId, Guid EmployeeId, string EmployeeName);
     private sealed record SwapPayload(Guid Id, string? Status = null);
     private sealed record NotificationPayload(Guid Id, string Type, string Title, string Body, string? ActionUrl, DateTimeOffset CreatedAtUtc, bool IsRead, DateTimeOffset? ReadAtUtc);

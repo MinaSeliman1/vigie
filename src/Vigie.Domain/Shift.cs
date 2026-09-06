@@ -7,6 +7,16 @@ public enum ShiftStatus
     Cancelled
 }
 
+/// <summary>
+/// Visibilité opérationnelle d'un quart. Un brouillon reste réservé aux
+/// responsables tant qu'il n'a pas été relu et publié à l'équipe.
+/// </summary>
+public enum ShiftPublicationStatus
+{
+    Draft,
+    Published
+}
+
 public sealed class Shift
 {
     private Shift() { }
@@ -19,6 +29,7 @@ public sealed class Shift
         EndUtc = endUtc.ToUniversalTime();
         RequiredLifeguards = requiredLifeguards;
         Status = ShiftStatus.Open;
+        PublicationStatus = ShiftPublicationStatus.Draft;
     }
 
     public Guid Id { get; private set; }
@@ -27,7 +38,14 @@ public sealed class Shift
     public DateTimeOffset EndUtc { get; private set; }
     public int RequiredLifeguards { get; private set; }
     public ShiftStatus Status { get; private set; }
+    public ShiftPublicationStatus PublicationStatus { get; private set; }
     public TimeSpan Duration => EndUtc - StartUtc;
+
+    public void Publish()
+    {
+        if (Status == ShiftStatus.Cancelled) throw new DomainException("Un quart annulé ne peut pas être publié.");
+        PublicationStatus = ShiftPublicationStatus.Published;
+    }
 
     public void Reschedule(DateTimeOffset startUtc, DateTimeOffset endUtc, int requiredLifeguards)
     {

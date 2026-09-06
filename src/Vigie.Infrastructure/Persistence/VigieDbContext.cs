@@ -145,6 +145,7 @@ public sealed class VigieDbContext(DbContextOptions<VigieDbContext> options) : D
         {
             entity.HasKey(x => x.Id);
             entity.Property(x => x.Status).HasConversion<string>();
+            entity.Property(x => x.PublicationStatus).HasConversion<string>().HasMaxLength(24).IsRequired();
             entity.HasIndex(x => new { x.SiteId, x.StartUtc });
             entity.HasOne<Site>().WithMany().HasForeignKey(x => x.SiteId).OnDelete(DeleteBehavior.Restrict);
         });

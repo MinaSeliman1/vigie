@@ -26,6 +26,7 @@ export type ShiftResponse = {
   requiredLifeguards: number
   assignments: AssignmentResponse[]
   status?: 'Open' | 'Filled' | 'Cancelled' | string
+  publicationStatus?: 'Draft' | 'Published' | string
 }
 
 export type SwapRequestResponse = {

@@ -5,6 +5,32 @@ namespace Vigie.Domain.Tests;
 public sealed class ShiftLifecycleTests
 {
     [Fact]
+    public void A_new_shift_is_a_draft_until_a_responsible_publishes_it()
+    {
+        var shift = Shift.Create(Guid.NewGuid(), Guid.NewGuid(),
+            new DateTimeOffset(2026, 9, 10, 9, 0, 0, TimeSpan.Zero),
+            new DateTimeOffset(2026, 9, 10, 17, 0, 0, TimeSpan.Zero), 2);
+
+        Assert.Equal(ShiftPublicationStatus.Draft, shift.PublicationStatus);
+
+        shift.Publish();
+        shift.Publish();
+
+        Assert.Equal(ShiftPublicationStatus.Published, shift.PublicationStatus);
+    }
+
+    [Fact]
+    public void A_cancelled_shift_cannot_be_published()
+    {
+        var shift = Shift.Create(Guid.NewGuid(), Guid.NewGuid(),
+            new DateTimeOffset(2026, 9, 10, 9, 0, 0, TimeSpan.Zero),
+            new DateTimeOffset(2026, 9, 10, 17, 0, 0, TimeSpan.Zero), 2);
+        shift.Cancel();
+
+        Assert.Throws<DomainException>(() => shift.Publish());
+    }
+
+    [Fact]
     public void Reschedule_updates_the_schedule_and_keeps_the_shift_open()
     {
         var shift = Shift.Create(Guid.NewGuid(), Guid.NewGuid(),
