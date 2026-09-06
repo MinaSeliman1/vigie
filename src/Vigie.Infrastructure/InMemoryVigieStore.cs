@@ -156,6 +156,12 @@ public sealed class InMemoryVigieStore :
         assignments[Guid.Parse("50000000-0000-0000-0000-000000000002")] = Assignment.Create(Guid.Parse("50000000-0000-0000-0000-000000000002"), shiftsToAdd[1].Id, noah.Id);
         var demoSwap = SwapRequest.Create(Guid.Parse("60000000-0000-0000-0000-000000000001"), Guid.Parse("50000000-0000-0000-0000-000000000001"), noah.Id);
         swapRequests[demoSwap.Id] = demoSwap;
+
+        var auditNow = DateTimeOffset.UtcNow;
+        AddAuditEntry(AuditEntry.Create(Guid.Parse("70000000-0000-0000-0000-000000000001"), organization.Id, coord.Id, "organization.created", "Organization", organization.Id, null, auditNow.AddDays(-30)));
+        AddAuditEntry(AuditEntry.Create(Guid.Parse("70000000-0000-0000-0000-000000000002"), organization.Id, coord.Id, "shift.created", "Shift", shiftsToAdd[0].Id, null, auditNow.AddDays(-4)));
+        AddAuditEntry(AuditEntry.Create(Guid.Parse("70000000-0000-0000-0000-000000000003"), organization.Id, coord.Id, "assignment.created", "Assignment", Guid.Parse("50000000-0000-0000-0000-000000000001"), $"employee={amelie.Id}", auditNow.AddDays(-3)));
+        AddAuditEntry(AuditEntry.Create(Guid.Parse("70000000-0000-0000-0000-000000000004"), organization.Id, amelie.Id, "swap.created", "SwapRequest", demoSwap.Id, $"receiver={noah.Id}", auditNow.AddHours(-8)));
     }
 }
 

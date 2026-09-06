@@ -33,8 +33,10 @@ public sealed class ApiSmokeTests : IClassFixture<WebApplicationFactory<Program>
 
         client.DefaultRequestHeaders.Authorization = new System.Net.Http.Headers.AuthenticationHeaderValue("Bearer", payload!.Token);
         var shifts = await client.GetFromJsonAsync<ShiftPayload[]>("/api/v1/shifts");
+        var audit = await client.GetFromJsonAsync<AuditPayload[]>("/api/v1/audit");
 
         Assert.NotEmpty(shifts!);
+        Assert.Contains(audit!, entry => entry.Action == "organization.created");
     }
 
     [Fact]
