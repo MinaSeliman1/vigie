@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState, type FormEvent, type ReactNode } from 'react'
+import { useEffect, useMemo, useRef, useState, type FormEvent, type ReactNode } from 'react'
 import { apiConfigured, vigieApi } from './api/client'
 import type { AuditEntryResponse, AvailabilityResponse, MembershipResponse, Role as ApiRole, SectorResponse, CertificationResponse, SiteResponse, ShiftResponse, SwapRequestResponse, UserSummary } from './api/types'
 import { createShiftRequest, type CreateShiftDraft, validateCreateShiftDraft } from './features/shifts/createShift'
@@ -221,6 +221,7 @@ function App() {
   const [availabilitySavingDate, setAvailabilitySavingDate] = useState<string | null>(null)
   const [siteQuery, setSiteQuery] = useState('')
   const [siteTypeFilter, setSiteTypeFilter] = useState<SiteTypeFilter>('all')
+  const syncGeneration = useRef(0)
   const isManagement = currentUser.role !== 'Lifeguard'
   const pendingSwaps = swaps.filter((swap) => swap.status === 'En attente')
   const assigned = shifts.filter((shift) => shift.status === 'assigné')
@@ -265,6 +266,8 @@ function App() {
   useEffect(() => {
     if (!apiConfigured || !authBootstrapped) return
     let active = true
+    const generation = ++syncGeneration.current
+    const isCurrent = () => active && generation === syncGeneration.current
     async function syncApi() {
       try {
         const login = currentUserIsDemo
@@ -272,7 +275,7 @@ function App() {
           : null
         if (login) localStorage.setItem('vigie.token', login.token)
         const [apiShifts, apiSwaps, employees, apiCertifications, apiSites, apiAvailabilities, apiSectors, apiMembers, apiAudit] = await Promise.all([vigieApi.shifts(), vigieApi.swaps(), vigieApi.employees(), vigieApi.certifications(), vigieApi.sites(), vigieApi.availability(), vigieApi.sectors(), vigieApi.members(), isManagement ? vigieApi.audit() : Promise.resolve([])])
-        if (!active) return
+        if (!isCurrent()) return
         setApiEmployeeIds(Object.fromEntries(employees.map((employee) => [employee.email, employee.id])))
         setEmployees(employees)
         setMemberships(apiMembers)
@@ -287,8 +290,17 @@ function App() {
         setAuditEntries(apiAudit)
         setApiState('ready')
       } catch (error) {
-        if (!active) return
+        if (!isCurrent()) return
         setApiState('error')
+        setShifts(initialShifts)
+        setSwaps(initialSwaps)
+        setSites([])
+        setSectors([])
+        setEmployees(null)
+        setMemberships(null)
+        setCertifications(null)
+        setAvailabilities(null)
+        setAuditEntries([])
         setToast(error instanceof Error ? `API indisponible : ${error.message}` : 'API indisponible : mode démo local')
         window.setTimeout(() => setToast(''), 3600)
       }
@@ -316,7 +328,7 @@ function App() {
       setAuditExporting(false)
     }
   }
-  function selectUser(id: string) { const user = demoUsers.find((candidate) => candidate.id === id); if (user) { localStorage.removeItem('vigie.token'); if (apiConfigured) setApiState('loading'); setCurrentUser(user); setView('calendar'); flash(`Profil de démonstration : ${user.name}`) } }
+  function selectUser(id: string) { const user = demoUsers.find((candidate) => candidate.id === id); if (user) { syncGeneration.current += 1; localStorage.removeItem('vigie.token'); if (apiConfigured) setApiState('loading'); setSites([]); setSectors([]); setEmployees(null); setMemberships(null); setCertifications(null); setAvailabilities(null); setAuditEntries([]); setCurrentUser(user); setView('calendar'); flash(`Profil de démonstration : ${user.name}`) } }
   function openAuth(mode: 'login' | 'register') { setAuthError(''); setAuthForm({ organizationName: '', name: '', email: '', password: '' }); setAuthModal(mode) }
   function closeAuth() { if (!authSubmitting) { setAuthModal(null); setAuthError('') } }
   async function submitAuth(event: FormEvent<HTMLFormElement>) {
