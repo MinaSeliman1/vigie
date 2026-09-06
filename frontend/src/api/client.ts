@@ -1,4 +1,4 @@
-import type { ApiProblem, AssignmentResponse, AvailabilityResponse, CertificationResponse, CreateShiftInput, InvitationResponse, LoginResponse, RegistrationResponse, ShiftResponse, SiteResponse, SwapRequestResponse, UserSummary } from './types'
+import type { ApiProblem, AssignmentResponse, AuditEntryResponse, AvailabilityResponse, CertificationResponse, CreateShiftInput, InvitationResponse, LoginResponse, RegistrationResponse, ShiftResponse, SiteResponse, SwapRequestResponse, UserSummary } from './types'
 
 export const apiConfigured = Boolean(import.meta.env.VITE_API_URL)
 const baseUrl = (import.meta.env.VITE_API_URL as string | undefined)?.replace(/\/$/, '') ?? 'http://localhost:5187'
@@ -24,6 +24,7 @@ export const vigieApi = {
   login: (email: string, password: string) => request<LoginResponse>('/api/v1/auth/login', { method: 'POST', body: JSON.stringify({ email, password }) }),
   me: () => request<UserSummary>('/api/v1/auth/me'),
   changePassword: (currentPassword: string, newPassword: string) => request<LoginResponse>('/api/v1/auth/change-password', { method: 'POST', body: JSON.stringify({ currentPassword, newPassword }) }),
+  audit: (limit = 50) => request<AuditEntryResponse[]>(`/api/v1/audit?limit=${limit}`),
   register: (organizationName: string, name: string, email: string, password: string) => request<RegistrationResponse>('/api/v1/auth/register', { method: 'POST', body: JSON.stringify({ organizationName, name, email, password }) }),
   acceptInvitation: (token: string, name: string, password: string) => request<LoginResponse>('/api/v1/invitations/accept', { method: 'POST', body: JSON.stringify({ token, name, password }) }),
   inviteMember: (email: string, name: string, role: string) => request<InvitationResponse>('/api/v1/invitations', { method: 'POST', body: JSON.stringify({ email, name, role }) }),

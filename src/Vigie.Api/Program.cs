@@ -162,6 +162,7 @@ app.MapPost("/api/v1/auth/change-password", async (ClaimsPrincipal user, ChangeP
 
     employee.SetPasswordHash(PasswordHasher.Hash(request.NewPassword));
     employee.RevokeSessions();
+    store.AddAuditEntry(Audit(OrganizationId(user), employee.Id, "account.password_changed", "Employee", employee.Id));
     await unitOfWork.SaveChangesAsync(ct);
     var (token, expires) = tokens.Create(employee);
     return Results.Ok(new LoginResponse(token, expires, User(employee)));
@@ -189,6 +190,7 @@ app.MapPost("/api/v1/auth/register", async (RegisterOrganizationRequest request,
         employee.SetPasswordHash(PasswordHasher.Hash(request.Password));
         store.AddOrganization(organization);
         store.AddEmployee(employee);
+        store.AddAuditEntry(Audit(organization.Id, employee.Id, "organization.created", "Organization", organization.Id));
         await unitOfWork.SaveChangesAsync(ct);
         var (token, expires) = tokens.Create(employee);
         return Results.Created($"/api/v1/organizations/{organization.Id}", new RegistrationResponse(new LoginResponse(token, expires, User(employee)), ToOrganization(organization)));
@@ -201,6 +203,19 @@ app.MapGet("/api/v1/organization", (ClaimsPrincipal user, IVigieStore store) =>
     var organization = store.Organizations.SingleOrDefault(item => item.Id == OrganizationId(user));
     return organization is null ? Problem("NOT_FOUND", "L'organisation est introuvable.", StatusCodes.Status404NotFound) : Results.Ok(ToOrganization(organization));
 }).RequireAuthorization().WithTags("Organisation");
+
+app.MapGet("/api/v1/audit", (ClaimsPrincipal user, int? limit, IVigieStore store) =>
+{
+    var take = Math.Clamp(limit ?? 50, 1, 100);
+    var organizationId = OrganizationId(user);
+    var result = store.AuditEntries
+        .Where(entry => entry.OrganizationId == organizationId)
+        .OrderByDescending(entry => entry.CreatedAtUtc)
+        .Take(take)
+        .Select(entry => new AuditEntryResponse(entry.Id, entry.Action, entry.EntityType, entry.EntityId, entry.Details, entry.ActorId.HasValue ? store.Employees.FirstOrDefault(employee => employee.Id == entry.ActorId.Value)?.Name : null, entry.CreatedAtUtc))
+        .ToArray();
+    return Results.Ok(result);
+}).RequireAuthorization(new AuthorizeAttribute { Roles = nameof(EmployeeRole.Coordinator) }).WithTags("Audit");
 
 app.MapGet("/api/v1/invitations", (ClaimsPrincipal user, IVigieStore store) =>
 {
@@ -223,6 +238,7 @@ app.MapPost("/api/v1/invitations", async (ClaimsPrincipal user, InviteMemberRequ
         var (token, tokenHash) = InvitationToken.Create();
         var invitation = Invitation.Create(Guid.NewGuid(), organizationId, email, request.Name, role, tokenHash, DateTimeOffset.UtcNow, TimeSpan.FromDays(7));
         store.AddInvitation(invitation);
+        store.AddAuditEntry(Audit(organizationId, UserId(user), "invitation.created", "Invitation", invitation.Id, $"role={role}"));
         await unitOfWork.SaveChangesAsync(ct);
         var publicAppUrl = configuration["PublicAppUrl"]?.TrimEnd('/');
         var link = string.IsNullOrWhiteSpace(publicAppUrl) ? null : $"{publicAppUrl}/?invitation={Uri.EscapeDataString(token)}";
@@ -246,6 +262,7 @@ app.MapPost("/api/v1/invitations/accept", async (AcceptInvitationRequest request
         invitation.Accept(DateTimeOffset.UtcNow);
         store.AddEmployee(employee);
         store.UpdateInvitation(invitation);
+        store.AddAuditEntry(Audit(invitation.OrganizationId, employee.Id, "member.joined", "Employee", employee.Id, $"role={employee.Role}"));
         await unitOfWork.SaveChangesAsync(ct);
         var (token, expires) = tokens.Create(employee);
         return Results.Ok(new LoginResponse(token, expires, User(employee)));
@@ -274,6 +291,7 @@ app.MapPost("/api/v1/sites", async (ClaimsPrincipal user, CreateSiteRequest requ
     {
         var site = Site.Create(Guid.NewGuid(), request.Name, request.TimeZoneId, new OpeningSeason(request.StartMonth, request.StartDay, request.EndMonth, request.EndDay), type, OrganizationId(user));
         store.AddSite(site);
+        store.AddAuditEntry(Audit(OrganizationId(user), UserId(user), "site.created", "Site", site.Id));
         await unitOfWork.SaveChangesAsync(ct);
         return Results.Created($"/api/v1/sites/{site.Id}", ToSite(site));
     }
@@ -298,6 +316,7 @@ app.MapPost("/api/v1/shifts", async (ClaimsPrincipal user, CreateShiftRequest re
         if (!site.IsOpen(request.StartUtc, request.EndUtc)) return Problem("SITE_CLOSED", "Le quart se trouve en dehors de la saison d’ouverture du site.");
         var shift = Shift.Create(Guid.NewGuid(), request.SiteId, request.StartUtc, request.EndUtc, request.RequiredLifeguards);
         store.AddShift(shift);
+        store.AddAuditEntry(Audit(OrganizationId(user), UserId(user), "shift.created", "Shift", shift.Id));
         await unitOfWork.SaveChangesAsync(ct);
         return Results.Created($"/api/v1/shifts/{shift.Id}", ToShift(shift, store));
     }
@@ -311,7 +330,11 @@ app.MapPost("/api/v1/shifts/{shiftId:guid}/assignments", async (ClaimsPrincipal 
     var employee = store.Employees.SingleOrDefault(item => item.Id == request.EmployeeId);
     if (shift is null || employee is null || store.Sites.SingleOrDefault(site => site.Id == shift.SiteId)?.OrganizationId != organizationId || employee.OrganizationId != organizationId)
         return Problem("NOT_FOUND", "Le quart ou l'employé est introuvable.", StatusCodes.Status404NotFound);
-    return (await service.ExecuteAsync(request.EmployeeId, shiftId, ct)).ToHttpResult(assignment => Results.Ok(assignment));
+    var result = await service.ExecuteAsync(request.EmployeeId, shiftId, ct);
+    if (!result.IsSuccess) return result.ToHttpResult(assignment => Results.Ok(assignment));
+    store.AddAuditEntry(Audit(organizationId, UserId(user), "assignment.created", "Assignment", result.Value!.Id, $"employee={request.EmployeeId}"));
+    await ((IUnitOfWork)store).SaveChangesAsync(ct);
+    return Results.Ok(result.Value);
 }).RequireAuthorization(new AuthorizeAttribute { Roles = nameof(EmployeeRole.Coordinator) }).WithTags("Assignations");
 
 app.MapDelete("/api/v1/assignments/{assignmentId:guid}", async (ClaimsPrincipal user, Guid assignmentId, IVigieStore store, IAssignmentRepository assignments, IUnitOfWork unitOfWork, CancellationToken ct) =>
@@ -345,7 +368,11 @@ app.MapPost("/api/v1/swap-requests", async (ClaimsPrincipal user, CreateSwapRequ
     var receiver = store.Employees.SingleOrDefault(item => item.Id == request.ReceiverId);
     if (shift is null || receiver is null || store.Sites.SingleOrDefault(site => site.Id == shift.SiteId)?.OrganizationId != organizationId || receiver.OrganizationId != organizationId)
         return Problem("NOT_FOUND", "L'assignation ou le receveur est introuvable.", StatusCodes.Status404NotFound);
-    return (await service.ExecuteAsync(UserId(user), request.AssignmentId, request.ReceiverId, ct)).ToHttpResult(result => Results.Ok(ToSwap(result, store)));
+    var result = await service.ExecuteAsync(UserId(user), request.AssignmentId, request.ReceiverId, ct);
+    if (!result.IsSuccess) return result.ToHttpResult(swap => Results.Ok(ToSwap(swap, store)));
+    store.AddAuditEntry(Audit(organizationId, UserId(user), "swap.created", "SwapRequest", result.Value!.Id, $"receiver={request.ReceiverId}"));
+    await ((IUnitOfWork)store).SaveChangesAsync(ct);
+    return Results.Ok(ToSwap(result.Value!, store));
 }).RequireAuthorization().WithTags("Échanges");
 
 app.MapGet("/api/v1/swap-requests", (ClaimsPrincipal user, IVigieStore store) =>
@@ -360,12 +387,20 @@ app.MapGet("/api/v1/swap-requests", (ClaimsPrincipal user, IVigieStore store) =>
 app.MapPost("/api/v1/swap-requests/{requestId:guid}/approve", async (ClaimsPrincipal user, Guid requestId, ApproveSwapService service, IVigieStore store, CancellationToken ct) =>
 {
     if (!SwapBelongsToOrganization(requestId, OrganizationId(user), store)) return Problem("NOT_FOUND", "La demande d'échange est introuvable.", StatusCodes.Status404NotFound);
-    return (await service.ExecuteAsync(UserId(user), requestId, ct)).ToHttpResult(result => Results.Ok(ToSwap(result, store)));
+    var result = await service.ExecuteAsync(UserId(user), requestId, ct);
+    if (!result.IsSuccess) return result.ToHttpResult(swap => Results.Ok(ToSwap(swap, store)));
+    store.AddAuditEntry(Audit(OrganizationId(user), UserId(user), "swap.approved", "SwapRequest", requestId));
+    await ((IUnitOfWork)store).SaveChangesAsync(ct);
+    return Results.Ok(ToSwap(result.Value!, store));
 }).RequireAuthorization(new AuthorizeAttribute { Roles = nameof(EmployeeRole.Coordinator) }).WithTags("Échanges");
 app.MapPost("/api/v1/swap-requests/{requestId:guid}/reject", async (ClaimsPrincipal user, Guid requestId, RejectSwapService service, IVigieStore store, CancellationToken ct) =>
 {
     if (!SwapBelongsToOrganization(requestId, OrganizationId(user), store)) return Problem("NOT_FOUND", "La demande d'échange est introuvable.", StatusCodes.Status404NotFound);
-    return (await service.ExecuteAsync(UserId(user), requestId, ct)).ToHttpResult(result => Results.Ok(ToSwap(result, store)));
+    var result = await service.ExecuteAsync(UserId(user), requestId, ct);
+    if (!result.IsSuccess) return result.ToHttpResult(swap => Results.Ok(ToSwap(swap, store)));
+    store.AddAuditEntry(Audit(OrganizationId(user), UserId(user), "swap.rejected", "SwapRequest", requestId));
+    await ((IUnitOfWork)store).SaveChangesAsync(ct);
+    return Results.Ok(ToSwap(result.Value!, store));
 }).RequireAuthorization(new AuthorizeAttribute { Roles = nameof(EmployeeRole.Coordinator) }).WithTags("Échanges");
 
 app.MapGet("/api/v1/availability", (ClaimsPrincipal user, IVigieStore store) => Results.Ok(store.Availabilities.Where(a => a.EmployeeId == UserId(user)).OrderBy(a => a.Date).Select(a => new AvailabilityResponse(a.Id, a.EmployeeId, a.Date, a.IsAvailable, a.Note)).ToArray())).RequireAuthorization().WithTags("Disponibilités");
@@ -381,6 +416,8 @@ app.Run();
 static Guid UserId(ClaimsPrincipal principal) => Guid.Parse(principal.FindFirstValue(JwtRegisteredClaimNames.Sub) ?? principal.FindFirstValue(ClaimTypes.NameIdentifier) ?? throw new InvalidOperationException("Identité absente."));
 static Guid OrganizationId(ClaimsPrincipal principal) => Guid.Parse(principal.FindFirstValue("organization_id") ?? throw new InvalidOperationException("Organisation absente."));
 static UserSummary User(Employee employee) => new(employee.Id, employee.Name, employee.Email, employee.Role.ToString(), employee.OrganizationId, employee.IsDemoAccount);
+static AuditEntry Audit(Guid organizationId, Guid? actorId, string action, string entityType, Guid? entityId = null, string? details = null)
+    => AuditEntry.Create(Guid.NewGuid(), organizationId, actorId, action, entityType, entityId, details, DateTimeOffset.UtcNow);
 static OrganizationResponse ToOrganization(Organization organization) => new(organization.Id, organization.Name, organization.Slug, organization.CreatedAtUtc);
 static InvitationResponse ToInvitation(Invitation invitation, string? token = null, string? link = null)
     => new(invitation.Id, invitation.Email, invitation.Name, invitation.Role.ToString(), invitation.Status.ToString(), invitation.ExpiresAtUtc, token, link);

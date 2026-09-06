@@ -14,6 +14,7 @@ public sealed class InMemoryVigieStore :
 {
     private readonly object sync = new();
     private readonly Dictionary<Guid, Organization> organizations = [];
+    private readonly Dictionary<Guid, AuditEntry> auditEntries = [];
     private readonly Dictionary<Guid, Invitation> invitations = [];
     private readonly Dictionary<Guid, Employee> employees = [];
     private readonly Dictionary<Guid, Site> sites = [];
@@ -31,6 +32,7 @@ public sealed class InMemoryVigieStore :
     }
 
     public IReadOnlyCollection<Organization> Organizations => organizations.Values.ToArray();
+    public IReadOnlyCollection<AuditEntry> AuditEntries => auditEntries.Values.ToArray();
     public IReadOnlyCollection<Invitation> Invitations => invitations.Values.ToArray();
     public IReadOnlyCollection<Employee> Employees => employees.Values.ToArray();
     public IReadOnlyCollection<Site> Sites => sites.Values.ToArray();
@@ -94,6 +96,7 @@ public sealed class InMemoryVigieStore :
     Task IUnitOfWork.SaveChangesAsync(CancellationToken cancellationToken) => Task.CompletedTask;
 
     public void AddOrganization(Organization organization) => organizations[organization.Id] = organization;
+    public void AddAuditEntry(AuditEntry entry) => auditEntries[entry.Id] = entry;
     public void AddEmployee(Employee employee) => employees[employee.Id] = employee;
     public void AddInvitation(Invitation invitation) => invitations[invitation.Id] = invitation;
     public void UpdateInvitation(Invitation invitation) => invitations[invitation.Id] = invitation;

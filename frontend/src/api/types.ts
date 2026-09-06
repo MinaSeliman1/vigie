@@ -1,6 +1,7 @@
 export type Role = 'Lifeguard' | 'Coordinator'
 
 export type UserSummary = { id: string; name: string; email: string; role: Role; organizationId: string; isDemoAccount: boolean }
+export type AuditEntryResponse = { id: string; action: string; entityType: string; entityId?: string | null; details?: string | null; actorName?: string | null; createdAtUtc: string }
 export type LoginResponse = { token: string; expiresAtUtc: string; user: UserSummary }
 export type OrganizationResponse = { id: string; name: string; slug: string; createdAtUtc: string }
 export type RegistrationResponse = { login: LoginResponse; organization: OrganizationResponse }

@@ -4,6 +4,7 @@ namespace Vigie.Api.Contracts;
 
 public sealed record LoginRequest(string Email, string Password);
 public sealed record ChangePasswordRequest(string CurrentPassword, string NewPassword);
+public sealed record AuditEntryResponse(Guid Id, string Action, string EntityType, Guid? EntityId, string? Details, string? ActorName, DateTimeOffset CreatedAtUtc);
 public sealed record LoginResponse(string Token, DateTimeOffset ExpiresAtUtc, UserSummary User);
 public sealed record RegisterOrganizationRequest(string OrganizationName, string Name, string Email, string Password);
 public sealed record OrganizationResponse(Guid Id, string Name, string Slug, DateTimeOffset CreatedAtUtc);

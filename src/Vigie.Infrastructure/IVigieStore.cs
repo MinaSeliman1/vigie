@@ -19,6 +19,7 @@ public interface IVigieStore :
     IUnitOfWork
 {
     IReadOnlyCollection<Organization> Organizations { get; }
+    IReadOnlyCollection<AuditEntry> AuditEntries { get; }
     IReadOnlyCollection<Invitation> Invitations { get; }
     IReadOnlyCollection<Employee> Employees { get; }
     IReadOnlyCollection<Site> Sites { get; }
@@ -30,6 +31,7 @@ public interface IVigieStore :
     IReadOnlyCollection<Availability> Availabilities { get; }
 
     void AddOrganization(Organization organization);
+    void AddAuditEntry(AuditEntry entry);
     void AddEmployee(Employee employee);
     void AddInvitation(Invitation invitation);
     void UpdateInvitation(Invitation invitation);

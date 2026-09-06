@@ -6,6 +6,7 @@ namespace Vigie.Infrastructure.Persistence;
 public sealed class VigieDbContext(DbContextOptions<VigieDbContext> options) : DbContext(options)
 {
     public DbSet<Organization> Organizations => Set<Organization>();
+    public DbSet<AuditEntry> AuditEntries => Set<AuditEntry>();
     public DbSet<Invitation> Invitations => Set<Invitation>();
     public DbSet<Employee> Employees => Set<Employee>();
     public DbSet<Site> Sites => Set<Site>();
@@ -26,6 +27,16 @@ public sealed class VigieDbContext(DbContextOptions<VigieDbContext> options) : D
             entity.Property(x => x.Slug).HasMaxLength(80).IsRequired();
             entity.HasIndex(x => x.Slug).IsUnique();
             entity.Property(x => x.CreatedAtUtc).IsRequired();
+        });
+        modelBuilder.Entity<AuditEntry>(entity =>
+        {
+            entity.HasKey(x => x.Id);
+            entity.Property(x => x.Action).HasMaxLength(80).IsRequired();
+            entity.Property(x => x.EntityType).HasMaxLength(80).IsRequired();
+            entity.Property(x => x.Details).HasMaxLength(2000);
+            entity.HasIndex(x => new { x.OrganizationId, x.CreatedAtUtc });
+            entity.HasOne<Organization>().WithMany().HasForeignKey(x => x.OrganizationId).OnDelete(DeleteBehavior.Restrict);
+            entity.HasOne<Employee>().WithMany().HasForeignKey(x => x.ActorId).OnDelete(DeleteBehavior.SetNull);
         });
         modelBuilder.Entity<Invitation>(entity =>
         {

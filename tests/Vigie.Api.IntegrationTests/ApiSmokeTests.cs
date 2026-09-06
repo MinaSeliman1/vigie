@@ -221,6 +221,25 @@ public sealed class ApiSmokeTests : IClassFixture<WebApplicationFactory<Program>
     }
 
     [Fact]
+    public async Task Coordinator_can_read_audit_entries_for_their_organization()
+    {
+        var organizationName = $"Centre audit {Guid.NewGuid():N}";
+        var registration = await client.PostAsJsonAsync("/api/v1/auth/register", new
+        {
+            organizationName,
+            name = "Coordonnateur audit",
+            email = $"audit-{Guid.NewGuid():N}@exemple.test",
+            password = "Mot-de-passe1"
+        });
+        var created = await registration.Content.ReadFromJsonAsync<RegistrationPayload>();
+        client.DefaultRequestHeaders.Authorization = new System.Net.Http.Headers.AuthenticationHeaderValue("Bearer", created!.Login.Token);
+
+        var response = await client.GetFromJsonAsync<AuditPayload[]>("/api/v1/audit");
+
+        Assert.Contains(response!, entry => entry.Action == "organization.created" && entry.EntityType == "Organization");
+    }
+
+    [Fact]
     public async Task Coordinator_can_invite_and_activate_a_lifeguard_once()
     {
         var coordinatorLogin = await client.PostAsJsonAsync("/api/v1/auth/login", new { email = "coordonnateur@vigie.demo", password = "vigie-demo" });
@@ -265,6 +284,7 @@ public sealed class ApiSmokeTests : IClassFixture<WebApplicationFactory<Program>
     private sealed record RegistrationPayload(LoginPayload Login, OrganizationPayload Organization);
     private sealed record OrganizationPayload(Guid Id, string Name, string Slug, DateTimeOffset CreatedAtUtc);
     private sealed record InvitationPayload(Guid Id, string Email, string Name, string Role, string Status, DateTimeOffset ExpiresAtUtc, string? InviteToken, string? InviteLink);
+    private sealed record AuditPayload(Guid Id, string Action, string EntityType, Guid? EntityId, string? Details, string? ActorName, DateTimeOffset CreatedAtUtc);
     private sealed record SitePayload(Guid Id);
     private sealed record ShiftPayload(Guid Id);
     private sealed record AssignmentPayload(Guid Id, Guid ShiftId, Guid EmployeeId, string EmployeeName);
