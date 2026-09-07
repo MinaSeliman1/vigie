@@ -26,6 +26,7 @@ export const vigieApi = {
   confirmPasswordReset: (token: string, newPassword: string) => request<{ message: string }>('/api/v1/auth/password-reset/confirm', { method: 'POST', body: JSON.stringify({ token, newPassword }) }),
   me: () => request<UserSummary>('/api/v1/auth/me'),
   changePassword: (currentPassword: string, newPassword: string) => request<LoginResponse>('/api/v1/auth/change-password', { method: 'POST', body: JSON.stringify({ currentPassword, newPassword }) }),
+  deleteAccount: (currentPassword: string, confirmation: string) => request<void>('/api/v1/auth/account', { method: 'DELETE', body: JSON.stringify({ currentPassword, confirmation }) }),
   exportAccount: async () => {
     const token = localStorage.getItem('vigie.token')
     const response = await fetch(`${baseUrl}/api/v1/auth/export`, { headers: token ? { Authorization: `Bearer ${token}` } : {} })

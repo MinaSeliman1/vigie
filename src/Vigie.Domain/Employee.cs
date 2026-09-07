@@ -55,4 +55,14 @@ public sealed class Employee
         if (SessionVersion == int.MaxValue) SessionVersion = 1;
         else SessionVersion++;
     }
+
+    public void Anonymize(string replacementPasswordHash)
+    {
+        if (string.IsNullOrWhiteSpace(replacementPasswordHash)) throw new DomainException("Le mot de passe de remplacement est obligatoire.");
+        Name = "Compte supprimé";
+        Email = $"deleted+{Id:N}@invalid.vigie";
+        PasswordHash = replacementPasswordHash.Trim();
+        IsDemoAccount = false;
+        RevokeSessions();
+    }
 }

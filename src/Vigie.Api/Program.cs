@@ -303,6 +303,33 @@ app.MapPost("/api/v1/auth/change-password", async (ClaimsPrincipal user, ChangeP
     return Results.Ok(new LoginResponse(token, expires, User(employee, store)));
 }).RequireAuthorization().RequireRateLimiting("auth").WithTags("Authentification");
 
+app.MapDelete("/api/v1/auth/account", async (ClaimsPrincipal user, [Microsoft.AspNetCore.Mvc.FromBody] DeleteAccountRequest request, IVigieStore store, IUnitOfWork unitOfWork, CancellationToken ct) =>
+{
+    var scope = OrganizationScopeResolver.Resolve(user, store);
+    var employee = scope is null ? null : store.Employees.SingleOrDefault(item => item.Id == scope.EmployeeId && item.OrganizationId == scope.OrganizationId);
+    if (scope is null || employee is null) return Problem("SESSION_INVALID", "La session n'est plus valide.", StatusCodes.Status401Unauthorized);
+    if (employee.IsDemoAccount) return Problem("DEMO_ACCOUNT", "Un compte de démonstration ne peut pas être supprimé.", StatusCodes.Status403Forbidden);
+    if (request is null || !PasswordHasher.Verify(request.CurrentPassword, employee.PasswordHash))
+        return Problem("CURRENT_PASSWORD_INVALID", "Le mot de passe actuel est invalide.");
+    if (!string.Equals(request.Confirmation?.Trim(), "SUPPRIMER", StringComparison.Ordinal))
+        return Problem("CONFIRMATION_REQUIRED", "Saisissez SUPPRIMER pour confirmer la suppression du compte.");
+
+    var isSoleDirector = scope.Role == EmployeeRole.AquaticDirector && !store.Memberships.Any(item =>
+        item.OrganizationId == scope.OrganizationId && item.IsActive && item.EmployeeId != employee.Id && item.Role == EmployeeRole.AquaticDirector);
+    if (isSoleDirector)
+        return Problem("TRANSFER_OWNERSHIP_REQUIRED", "Transférez d'abord la responsabilité de l'organisation à un autre directeur.", StatusCodes.Status409Conflict);
+
+    employee.Anonymize(PasswordHasher.Hash(Convert.ToBase64String(RandomNumberGenerator.GetBytes(32))));
+    foreach (var membership in store.Memberships.Where(item => item.EmployeeId == employee.Id && item.OrganizationId == scope.OrganizationId && item.IsActive).ToArray())
+    {
+        membership.Deactivate();
+        store.UpdateMembership(membership);
+    }
+    store.AddAuditEntry(Audit(scope.OrganizationId, employee.Id, "account.deleted", "Employee", employee.Id));
+    await unitOfWork.SaveChangesAsync(ct);
+    return Results.NoContent();
+}).RequireAuthorization().RequireRateLimiting("auth").WithTags("Authentification");
+
 app.MapPost("/api/v1/auth/register", async (RegisterOrganizationRequest request, IVigieStore store, IUnitOfWork unitOfWork, JwtTokenService tokens, CancellationToken ct) =>
 {
     if (string.IsNullOrWhiteSpace(request.OrganizationName) || string.IsNullOrWhiteSpace(request.Name) || string.IsNullOrWhiteSpace(request.Email))

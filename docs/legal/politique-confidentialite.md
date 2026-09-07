@@ -20,4 +20,6 @@ L’organisation conserve ses données pendant la durée de son utilisation et d
 
 Vigie n’utilise pas de publicité comportementale. Le jeton de session est conservé dans le stockage local du navigateur afin de maintenir la connexion; il est supprimé lors de la déconnexion.
 
+Un utilisateur réel peut demander la suppression de son compte depuis **Compte → Supprimer mon compte**. L’action exige le mot de passe actuel et la saisie explicite `SUPPRIMER`, invalide les sessions, désactive les rattachements et anonymise l’identité tout en conservant les références d’audit nécessaires. Le compte propriétaire d’une organisation doit d’abord transférer cette responsabilité; les comptes de démonstration ne sont pas supprimables.
+
 Cette politique est un modèle produit et doit être adaptée aux lois applicables, aux contrats des fournisseurs et aux conseils juridiques avant une utilisation commerciale avec des données réelles.

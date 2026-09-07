@@ -57,7 +57,7 @@ Transformer la démonstration Vigie en un logiciel que plusieurs centres aquatiq
 - ✅ Analyse des dépendances ajoutée à la CI pour les Pull Requests.
 - ✅ Export JSON des données personnelles depuis l’espace Compte, sans secret et avec traçabilité.
 - Tests navigateur des parcours critiques.
-- ✅ Conditions d’utilisation, politique de confidentialité et procédure de support documentées; suppression automatisée de compte à compléter.
+- ✅ Conditions d’utilisation, politique de confidentialité, procédure de support et suppression automatisée de compte documentées et implémentées; la validation juridique du modèle reste requise avant une commercialisation.
 
 ## Décision actuelle
 

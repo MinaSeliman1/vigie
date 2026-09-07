@@ -61,6 +61,7 @@ public sealed class ApiSmokeTests : IClassFixture<WebApplicationFactory<Program>
             "/api/v1/auth/login",
             "/api/v1/auth/register",
             "/api/v1/auth/export",
+            "/api/v1/auth/account",
             "/api/v1/shifts",
             "/api/v1/coverage",
             "/api/v1/audit/query",
@@ -87,6 +88,93 @@ public sealed class ApiSmokeTests : IClassFixture<WebApplicationFactory<Program>
         Assert.Contains("assignments", body);
         Assert.DoesNotContain("PasswordHash", body, StringComparison.OrdinalIgnoreCase);
         Assert.DoesNotContain("vigie-demo", body, StringComparison.Ordinal);
+    }
+
+    [Fact]
+    public async Task A_real_user_can_delete_their_account_and_revoke_access()
+    {
+        var ownerEmail = $"owner-delete-{Guid.NewGuid():N}@exemple.test";
+        var registration = await client.PostAsJsonAsync("/api/v1/auth/register", new
+        {
+            organizationName = $"Centre suppression {Guid.NewGuid():N}",
+            name = "Direction suppression",
+            email = ownerEmail,
+            password = "Mot-de-passe1"
+        });
+        var owner = await registration.Content.ReadFromJsonAsync<RegistrationPayload>();
+        client.DefaultRequestHeaders.Authorization = new System.Net.Http.Headers.AuthenticationHeaderValue("Bearer", owner!.Login.Token);
+        var siteResponse = await client.PostAsJsonAsync("/api/v1/sites", new
+        {
+            name = "Piscine suppression",
+            type = "Indoor",
+            timeZoneId = "Eastern Standard Time",
+            startMonth = 1,
+            startDay = 1,
+            endMonth = 12,
+            endDay = 31
+        });
+        var site = await siteResponse.Content.ReadFromJsonAsync<SitePayload>();
+        var memberEmail = $"member-delete-{Guid.NewGuid():N}@exemple.test";
+        var invitationResponse = await client.PostAsJsonAsync("/api/v1/invitations", new
+        {
+            email = memberEmail,
+            name = "Membre suppression",
+            role = "Lifeguard",
+            siteId = site!.Id
+        });
+        var invitation = await invitationResponse.Content.ReadFromJsonAsync<InvitationPayload>();
+
+        client.DefaultRequestHeaders.Authorization = null;
+        var accept = await client.PostAsJsonAsync("/api/v1/invitations/accept", new { token = invitation!.InviteToken, name = "Membre suppression", password = "Mot-de-passe1" });
+        var member = await accept.Content.ReadFromJsonAsync<LoginPayload>();
+        client.DefaultRequestHeaders.Authorization = new System.Net.Http.Headers.AuthenticationHeaderValue("Bearer", member!.Token);
+        var deletion = await client.SendAsync(new HttpRequestMessage(HttpMethod.Delete, "/api/v1/auth/account")
+        {
+            Content = JsonContent.Create(new { currentPassword = "Mot-de-passe1", confirmation = "SUPPRIMER" })
+        });
+        var session = await client.GetAsync("/api/v1/auth/me");
+        client.DefaultRequestHeaders.Authorization = null;
+        var relogin = await client.PostAsJsonAsync("/api/v1/auth/login", new { email = memberEmail, password = "Mot-de-passe1" });
+
+        Assert.Equal(HttpStatusCode.NoContent, deletion.StatusCode);
+        Assert.Equal(HttpStatusCode.Unauthorized, session.StatusCode);
+        Assert.Equal(HttpStatusCode.Unauthorized, relogin.StatusCode);
+    }
+
+    [Fact]
+    public async Task The_last_organization_director_must_transfer_ownership_before_deleting()
+    {
+        var registration = await client.PostAsJsonAsync("/api/v1/auth/register", new
+        {
+            organizationName = $"Centre transfert {Guid.NewGuid():N}",
+            name = "Direction transfert",
+            email = $"owner-transfer-{Guid.NewGuid():N}@exemple.test",
+            password = "Mot-de-passe1"
+        });
+        var owner = await registration.Content.ReadFromJsonAsync<RegistrationPayload>();
+        client.DefaultRequestHeaders.Authorization = new System.Net.Http.Headers.AuthenticationHeaderValue("Bearer", owner!.Login.Token);
+
+        var deletion = await client.SendAsync(new HttpRequestMessage(HttpMethod.Delete, "/api/v1/auth/account")
+        {
+            Content = JsonContent.Create(new { currentPassword = "Mot-de-passe1", confirmation = "SUPPRIMER" })
+        });
+
+        Assert.Equal(HttpStatusCode.Conflict, deletion.StatusCode);
+    }
+
+    [Fact]
+    public async Task A_demo_account_cannot_be_deleted()
+    {
+        var login = await client.PostAsJsonAsync("/api/v1/auth/login", new { email = "amelie@vigie.demo", password = "vigie-demo" });
+        var payload = await login.Content.ReadFromJsonAsync<LoginPayload>();
+        client.DefaultRequestHeaders.Authorization = new System.Net.Http.Headers.AuthenticationHeaderValue("Bearer", payload!.Token);
+
+        var deletion = await client.SendAsync(new HttpRequestMessage(HttpMethod.Delete, "/api/v1/auth/account")
+        {
+            Content = JsonContent.Create(new { currentPassword = "vigie-demo", confirmation = "SUPPRIMER" })
+        });
+
+        Assert.Equal(HttpStatusCode.Forbidden, deletion.StatusCode);
     }
 
     [Fact]

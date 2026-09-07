@@ -4,6 +4,7 @@ namespace Vigie.Api.Contracts;
 
 public sealed record LoginRequest(string Email, string Password);
 public sealed record ChangePasswordRequest(string CurrentPassword, string NewPassword);
+public sealed record DeleteAccountRequest(string CurrentPassword, string Confirmation);
 public sealed record PasswordResetRequest(string Email);
 public sealed record PasswordResetConfirmRequest(string Token, string NewPassword);
 public sealed record PasswordResetRequestResponse(string Message, string? ResetToken = null);

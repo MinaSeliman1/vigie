@@ -10,7 +10,7 @@ Le support se fait par le canal indiqué par l’organisation cliente. Pour perm
 - l’identifiant `X-Request-Id` affiché dans la réponse ou dans les journaux, si disponible;
 - une description reproductible et le résultat attendu.
 
-Ne joignez pas de certification, de liste d’employés ou d’autre donnée personnelle si elle n’est pas nécessaire. Le responsable de l’organisation peut demander la correction ou la suppression d’un compte après vérification de son autorité; la suppression peut devoir conserver les éléments d’audit exigés par la politique interne.
+Ne joignez pas de certification, de liste d’employés ou d’autre donnée personnelle si elle n’est pas nécessaire. Un utilisateur réel peut supprimer son compte depuis **Compte → Supprimer mon compte**; le mot de passe actuel et la confirmation `SUPPRIMER` sont exigés. Le responsable de l’organisation peut demander la correction ou la suppression d’un compte après vérification de son autorité; la suppression conserve les éléments d’audit exigés par la politique interne.
 
 ## Niveaux de priorité
 
