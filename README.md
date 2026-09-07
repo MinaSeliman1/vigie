@@ -139,6 +139,7 @@ L’interface est en français et permet de basculer entre six profils de démon
 - `GET /api/v1/audit`, `GET /api/v1/audit/query` et `GET /api/v1/audit/export` sont réservés aux responsables autorisés et restent bornés à leur organisation et à leur périmètre opérationnel; la recherche accepte texte, action, objet, dates et pagination.
 - Les migrations `AddLavalOperationsFoundation`, `AddSiteCatalogMetadata` et `FixMembershipScopeIndexes` ainsi qu’un seed idempotent s’exécutent automatiquement lorsqu’une chaîne `ConnectionStrings__Vigie` est configurée.
 - Le [runbook de sauvegarde et restauration](docs/operations/backup-restore.md) décrit le dump PostgreSQL gratuit, le test sur une base temporaire et les vérifications de reprise.
+- La [checklist de lancement en production](docs/operations/production-launch-checklist.md) couvre le passage à un centre réel, les courriels, la surveillance, l’acceptation fonctionnelle et la facturation future.
 
 ## Examiner le projet
 
