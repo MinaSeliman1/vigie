@@ -10,6 +10,13 @@ permissions:
   contents: read
 
 jobs:
+  dependency-review:
+    name: Dépendances · analyse des changements
+    if: github.event_name == 'pull_request'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/dependency-review-action@v4
+
   backend:
     name: Backend · build and tests
     runs-on: ubuntu-latest

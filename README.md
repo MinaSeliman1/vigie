@@ -121,6 +121,7 @@ L’interface est en français et permet de basculer entre six profils de démon
 - L’API JWT expose les routes de calendrier, d’assignation, d’échange, de certification, de secteurs et de memberships; les tests d’intégration couvrent l’authentification, l’inscription d’organisation, l’isolation entre organisations, les quatre rôles, les règles de saison, les décisions répétées, le catalogue Laval, le contrat OpenAPI et le modèle EF.
 - La démo UI publique est construite automatiquement par GitHub Actions et publiée sur GitHub Pages à chaque mise à jour de `main`.
 - Le conteneur de l’API est construit dans la CI pour détecter les erreurs de packaging avant un déploiement.
+- Les Pull Requests passent par l’action GitHub Dependency Review afin de repérer les dépendances introduites avec une vulnérabilité connue.
 - Chaque réponse API expose un `X-Request-Id` corrélable avec les logs structurés, sans journaliser de secret ni de contenu sensible.
 - `/health/ready` vérifie la disponibilité de PostgreSQL quand la persistance est activée, et `/metrics` expose des compteurs Prometheus sans donnée personnelle.
 - `render.yaml` décrit le déploiement gratuit de l’API, son health check et les secrets attendus sans jamais les stocker dans Git.
@@ -136,6 +137,7 @@ L’interface est en français et permet de basculer entre six profils de démon
 - Les jetons d’accès expirent après 60 minutes et les routes d’authentification sont limitées à 10 tentatives par minute et par adresse en production.
 - `GET /api/v1/audit`, `GET /api/v1/audit/query` et `GET /api/v1/audit/export` sont réservés aux responsables autorisés et restent bornés à leur organisation et à leur périmètre opérationnel; la recherche accepte texte, action, objet, dates et pagination.
 - Les migrations `AddLavalOperationsFoundation`, `AddSiteCatalogMetadata` et `FixMembershipScopeIndexes` ainsi qu’un seed idempotent s’exécutent automatiquement lorsqu’une chaîne `ConnectionStrings__Vigie` est configurée.
+- Le [runbook de sauvegarde et restauration](docs/operations/backup-restore.md) décrit le dump PostgreSQL gratuit, le test sur une base temporaire et les vérifications de reprise.
 
 ## Examiner le projet
 

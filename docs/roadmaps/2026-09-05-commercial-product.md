@@ -54,8 +54,9 @@ Transformer la démonstration Vigie en un logiciel que plusieurs centres aquatiq
 - Environnements séparés, migrations contrôlées, sauvegardes et vérification de restauration.
 - ✅ Logs structurés, corrélation par requête, endpoint de readiness PostgreSQL et métriques Prometheus sans donnée personnelle; les alertes de disponibilité restent à brancher au fournisseur d’observabilité choisi.
 - ✅ Test d’intégrité du contrat OpenAPI sur les routes opérationnelles critiques.
+- ✅ Analyse des dépendances ajoutée à la CI pour les Pull Requests.
 - ✅ Export JSON des données personnelles depuis l’espace Compte, sans secret et avec traçabilité.
-- Tests navigateur des parcours critiques et analyse de dépendances.
+- Tests navigateur des parcours critiques.
 - ✅ Conditions d’utilisation, politique de confidentialité et procédure de support documentées; suppression automatisée de compte à compléter.
 
 ## Décision actuelle
