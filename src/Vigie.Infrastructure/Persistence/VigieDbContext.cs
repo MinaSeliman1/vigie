@@ -31,6 +31,10 @@ public sealed class VigieDbContext(DbContextOptions<VigieDbContext> options) : D
             entity.Property(x => x.Slug).HasMaxLength(80).IsRequired();
             entity.HasIndex(x => x.Slug).IsUnique();
             entity.Property(x => x.CreatedAtUtc).IsRequired();
+            entity.Property(x => x.OrganizationType).HasMaxLength(32);
+            entity.Property(x => x.PoolCount).HasMaxLength(32);
+            entity.Property(x => x.TeamSize).HasMaxLength(48);
+            entity.Property(x => x.PrimaryGoal).HasMaxLength(32);
         });
         modelBuilder.Entity<AuditEntry>(entity =>
         {

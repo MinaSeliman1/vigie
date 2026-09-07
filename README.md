@@ -36,6 +36,7 @@ Les limites calendaires (jour d’expiration, début de semaine, quarts de nuit 
 - Demandes de remplacement, approbation et refus.
 - Suivi des certifications et alertes à 90 et 30 jours de l’échéance.
 - Création d’un espace d’organisation avec coordonnateur et isolation des sites et des équipes.
+- Parcours d’inscription guidé en français : type de centre, nombre de piscines, taille d’équipe et priorité opérationnelle sont enregistrés dans le profil de l’organisation pour préparer son espace.
 - Invitations d’équipe à usage unique, expiration après sept jours et activation avec un mot de passe personnel.
 - Administration de l’équipe pour le coordonnateur : changement de rôle et de périmètre (piscine ou secteur), désactivation logique et protection contre les modifications concurrentes.
 - Journal d’audit organisationnel pour les créations, assignations, invitations et décisions d’échange, avec export CSV coordonnateur.

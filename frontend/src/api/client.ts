@@ -48,7 +48,7 @@ export const vigieApi = {
     if (!response.ok) throw new Error('L’export du journal ne peut pas être généré.')
     return response.blob()
   },
-  register: (organizationName: string, name: string, email: string, password: string) => request<RegistrationResponse>('/api/v1/auth/register', { method: 'POST', body: JSON.stringify({ organizationName, name, email, password }) }),
+  register: (organizationName: string, name: string, email: string, password: string, onboarding: { organizationType: string; poolCount: string; teamSize: string; primaryGoal: string }) => request<RegistrationResponse>('/api/v1/auth/register', { method: 'POST', body: JSON.stringify({ organizationName, name, email, password, ...onboarding }) }),
   acceptInvitation: (token: string, name: string, password: string) => request<LoginResponse>('/api/v1/invitations/accept', { method: 'POST', body: JSON.stringify({ token, name, password }) }),
   inviteMember: (email: string, name: string, role: string, siteId?: string, sectorId?: string) => request<InvitationResponse>('/api/v1/invitations', { method: 'POST', body: JSON.stringify({ email, name, role, siteId, sectorId }) }),
   updateMembership: (membershipId: string, input: { role?: string; siteId?: string | null; sectorId?: string | null; isActive?: boolean; expectedVersion?: number }) => request<MembershipResponse>(`/api/v1/memberships/${membershipId}`, { method: 'PATCH', body: JSON.stringify(input) }),

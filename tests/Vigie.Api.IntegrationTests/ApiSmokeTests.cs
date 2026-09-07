@@ -510,7 +510,11 @@ public sealed class ApiSmokeTests : IClassFixture<WebApplicationFactory<Program>
             organizationName,
             name = "Coordonnateur du centre",
             email,
-            password = "Mot-de-passe1"
+            password = "Mot-de-passe1",
+            organizationType = "municipal",
+            poolCount = "two-to-five",
+            teamSize = "eleven-to-thirty",
+            primaryGoal = "all"
         });
         var payload = await response.Content.ReadFromJsonAsync<RegistrationPayload>();
 
@@ -531,8 +535,31 @@ public sealed class ApiSmokeTests : IClassFixture<WebApplicationFactory<Program>
         });
 
         Assert.Equal(payload.Organization.Id, organization?.Id);
+        Assert.Equal("municipal", organization?.OrganizationType);
+        Assert.Equal("two-to-five", organization?.PoolCount);
+        Assert.Equal("eleven-to-thirty", organization?.TeamSize);
+        Assert.Equal("all", organization?.PrimaryGoal);
         Assert.Empty(sites!);
         Assert.Equal(HttpStatusCode.NotFound, crossOrganizationShift.StatusCode);
+    }
+
+    [Fact]
+    public async Task Registration_rejects_an_invalid_onboarding_choice()
+    {
+        var response = await client.PostAsJsonAsync("/api/v1/auth/register", new
+        {
+            organizationName = $"Centre invalide {Guid.NewGuid():N}",
+            name = "Coordonnateur",
+            email = $"invalid-profile-{Guid.NewGuid():N}@exemple.test",
+            password = "Mot-de-passe1",
+            organizationType = "municipal-unknown",
+            poolCount = "one",
+            teamSize = "one-to-ten",
+            primaryGoal = "planning"
+        });
+
+        Assert.Equal(HttpStatusCode.BadRequest, response.StatusCode);
+        Assert.Contains("INVALID_REGISTRATION", await response.Content.ReadAsStringAsync(), StringComparison.Ordinal);
     }
 
     [Fact]
@@ -930,7 +957,7 @@ public sealed class ApiSmokeTests : IClassFixture<WebApplicationFactory<Program>
     private sealed record LoginPayload(string Token, UserPayload User);
     private sealed record UserPayload(Guid Id, string Name, string Email, string Role, Guid OrganizationId, bool IsDemoAccount, Guid? SiteId = null, Guid? SectorId = null);
     private sealed record RegistrationPayload(LoginPayload Login, OrganizationPayload Organization);
-    private sealed record OrganizationPayload(Guid Id, string Name, string Slug, DateTimeOffset CreatedAtUtc);
+    private sealed record OrganizationPayload(Guid Id, string Name, string Slug, DateTimeOffset CreatedAtUtc, string? OrganizationType = null, string? PoolCount = null, string? TeamSize = null, string? PrimaryGoal = null);
     private sealed record InvitationPayload(Guid Id, string Email, string Name, string Role, string Status, DateTimeOffset ExpiresAtUtc, string? InviteToken, string? InviteLink);
     private sealed record AuditPayload(Guid Id, string Action, string EntityType, Guid? EntityId, string? Details, string? ActorName, DateTimeOffset CreatedAtUtc);
     private sealed record AuditPagePayload(AuditPayload[] Items, int Total, int Page, int PageSize);

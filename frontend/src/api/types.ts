@@ -15,7 +15,16 @@ export type AuditEntryResponse = { id: string; action: string; entityType: strin
 export type AuditPageResponse = { items: AuditEntryResponse[]; total: number; page: number; pageSize: number }
 export type LoginResponse = { token: string; expiresAtUtc: string; user: UserSummary }
 export type NotificationResponse = { id: string; type: string; title: string; body: string; actionUrl?: string | null; createdAtUtc: string; isRead: boolean; readAtUtc?: string | null }
-export type OrganizationResponse = { id: string; name: string; slug: string; createdAtUtc: string }
+export type OrganizationResponse = {
+  id: string
+  name: string
+  slug: string
+  createdAtUtc: string
+  organizationType?: string | null
+  poolCount?: string | null
+  teamSize?: string | null
+  primaryGoal?: string | null
+}
 export type RegistrationResponse = { login: LoginResponse; organization: OrganizationResponse }
 export type InvitationResponse = { id: string; email: string; name: string; role: Role; status: string; expiresAtUtc: string; inviteToken?: string | null; inviteLink?: string | null; siteId?: string | null; sectorId?: string | null }
 export type ApiProblem = { code?: string; message?: string; detail?: string; errors?: Array<{ code: string; message: string }> }

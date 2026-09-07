@@ -348,6 +348,7 @@ app.MapPost("/api/v1/auth/register", async (RegisterOrganizationRequest request,
     try
     {
         var organization = Organization.Create(Guid.NewGuid(), request.OrganizationName, slug);
+        organization.SetOnboardingProfile(request.OrganizationType, request.PoolCount, request.TeamSize, request.PrimaryGoal);
         var employee = Employee.Create(Guid.NewGuid(), request.Name, email, EmployeeRole.Coordinator, 40, organization.Id);
         employee.SetPasswordHash(PasswordHasher.Hash(request.Password));
         var membership = OrganizationMembership.Create(Guid.NewGuid(), employee.Id, organization.Id, EmployeeRole.AquaticDirector, null, null);
@@ -1061,7 +1062,15 @@ static UserSummary User(Employee employee, IVigieStore store)
 static string Csv(string? value) => $"\"{(value ?? string.Empty).Replace("\"", "\"\"")}\"";
 static AuditEntry Audit(Guid organizationId, Guid? actorId, string action, string entityType, Guid? entityId = null, string? details = null)
     => AuditEntry.Create(Guid.NewGuid(), organizationId, actorId, action, entityType, entityId, details, DateTimeOffset.UtcNow);
-static OrganizationResponse ToOrganization(Organization organization) => new(organization.Id, organization.Name, organization.Slug, organization.CreatedAtUtc);
+static OrganizationResponse ToOrganization(Organization organization) => new(
+    organization.Id,
+    organization.Name,
+    organization.Slug,
+    organization.CreatedAtUtc,
+    organization.OrganizationType,
+    organization.PoolCount,
+    organization.TeamSize,
+    organization.PrimaryGoal);
 static SectorResponse ToSector(Sector sector) => new(sector.Id, sector.OrganizationId, sector.Name, sector.Code, sector.IsActive, sector.CreatedAtUtc, sector.UpdatedAtUtc);
 static MembershipResponse ToMembership(OrganizationMembership membership, IVigieStore store)
 {
