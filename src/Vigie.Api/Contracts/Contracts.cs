@@ -15,6 +15,13 @@ public sealed record RegisterOrganizationRequest(string OrganizationName, string
 public sealed record OrganizationResponse(Guid Id, string Name, string Slug, DateTimeOffset CreatedAtUtc);
 public sealed record RegistrationResponse(LoginResponse Login, OrganizationResponse Organization);
 public sealed record UserSummary(Guid Id, string Name, string Email, string Role, Guid OrganizationId, bool IsDemoAccount, Guid? SiteId = null, Guid? SectorId = null);
+public sealed record AccountExportResponse(DateTimeOffset ExportedAtUtc, UserSummary Profile, IReadOnlyCollection<AccountMembershipExport> Memberships, IReadOnlyCollection<AccountCertificationExport> Certifications, IReadOnlyCollection<AccountAvailabilityExport> Availabilities, IReadOnlyCollection<AccountAssignmentExport> Assignments, IReadOnlyCollection<AccountSwapExport> Swaps, IReadOnlyCollection<AccountAuditExport> Audit);
+public sealed record AccountMembershipExport(Guid Id, string Role, Guid? SiteId, Guid? SectorId, bool IsActive, int Version, DateTimeOffset CreatedAtUtc, DateTimeOffset UpdatedAtUtc);
+public sealed record AccountCertificationExport(Guid Id, string Type, DateOnly ExpiresOn);
+public sealed record AccountAvailabilityExport(Guid Id, DateOnly Date, bool IsAvailable, string? Note);
+public sealed record AccountAssignmentExport(Guid Id, Guid ShiftId, string SiteName, DateTimeOffset StartUtc, DateTimeOffset EndUtc, string Status, string PublicationStatus);
+public sealed record AccountSwapExport(Guid Id, Guid AssignmentId, string? Role, string Status, DateTimeOffset RequestedAtUtc);
+public sealed record AccountAuditExport(Guid Id, string Action, string EntityType, Guid? EntityId, string? Details, DateTimeOffset CreatedAtUtc);
 public sealed record InviteMemberRequest(string Email, string Name, string Role, Guid? SiteId = null, Guid? SectorId = null);
 public sealed record InvitationResponse(Guid Id, string Email, string Name, string Role, string Status, DateTimeOffset ExpiresAtUtc, string? InviteToken, string? InviteLink, Guid? SiteId = null, Guid? SectorId = null);
 public sealed record AcceptInvitationRequest(string Token, string Password, string? Name);

@@ -1,6 +1,16 @@
 export type Role = 'Lifeguard' | 'PoolChief' | 'SectorManager' | 'AquaticDirector' | 'Coordinator'
 
 export type UserSummary = { id: string; name: string; email: string; role: Role; organizationId: string; isDemoAccount: boolean; siteId?: string | null; sectorId?: string | null }
+export type AccountExportResponse = {
+  exportedAtUtc: string
+  profile: UserSummary
+  memberships: Array<{ id: string; role: Role; siteId?: string | null; sectorId?: string | null; isActive: boolean; version: number; createdAtUtc: string; updatedAtUtc: string }>
+  certifications: Array<{ id: string; type: string; expiresOn: string }>
+  availabilities: Array<{ id: string; date: string; isAvailable: boolean; note?: string | null }>
+  assignments: Array<{ id: string; shiftId: string; siteName: string; startUtc: string; endUtc: string; status: string; publicationStatus: string }>
+  swaps: Array<{ id: string; assignmentId: string; role?: string | null; status: string; requestedAtUtc: string }>
+  audit: Array<{ id: string; action: string; entityType: string; entityId?: string | null; details?: string | null; createdAtUtc: string }>
+}
 export type AuditEntryResponse = { id: string; action: string; entityType: string; entityId?: string | null; details?: string | null; actorName?: string | null; createdAtUtc: string }
 export type AuditPageResponse = { items: AuditEntryResponse[]; total: number; page: number; pageSize: number }
 export type LoginResponse = { token: string; expiresAtUtc: string; user: UserSummary }

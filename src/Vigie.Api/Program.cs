@@ -239,6 +239,48 @@ app.MapGet("/api/v1/auth/me", (ClaimsPrincipal user, IVigieStore store) =>
         : Results.Ok(User(employee, store));
 }).RequireAuthorization().WithTags("Authentification");
 
+app.MapGet("/api/v1/auth/export", async (ClaimsPrincipal user, IVigieStore store, IUnitOfWork unitOfWork, HttpContext context, CancellationToken ct) =>
+{
+    var scope = OrganizationScopeResolver.Resolve(user, store);
+    var employee = scope is null ? null : store.Employees.SingleOrDefault(item => item.Id == scope.EmployeeId && item.OrganizationId == scope.OrganizationId);
+    if (scope is null || employee is null) return Problem("SESSION_INVALID", "La session n'est plus valide.", StatusCodes.Status401Unauthorized);
+
+    var assignments = store.Assignments
+        .Where(item => item.EmployeeId == employee.Id)
+        .Select(item =>
+        {
+            var shift = store.Shifts.SingleOrDefault(candidate => candidate.Id == item.ShiftId);
+            var site = shift is null ? null : store.Sites.SingleOrDefault(candidate => candidate.Id == shift.SiteId && candidate.OrganizationId == scope.OrganizationId);
+            return shift is null || site is null
+                ? null
+                : new AccountAssignmentExport(item.Id, shift.Id, site.Name, shift.StartUtc, shift.EndUtc, shift.Status.ToString(), shift.PublicationStatus.ToString());
+        })
+        .Where(item => item is not null)
+        .Select(item => item!)
+        .OrderBy(item => item.StartUtc)
+        .ToArray();
+    var assignmentIds = assignments.Select(item => item.Id).ToHashSet();
+    var swaps = store.SwapRequests
+        .Where(item => assignmentIds.Contains(item.AssignmentId) || item.ReceiverId == employee.Id)
+        .Select(item => new AccountSwapExport(item.Id, item.AssignmentId, item.ReceiverId == employee.Id ? "receiver" : "requester", item.Status.ToString(), item.RequestedAtUtc))
+        .OrderByDescending(item => item.RequestedAtUtc)
+        .ToArray();
+    var export = new AccountExportResponse(
+        DateTimeOffset.UtcNow,
+        User(employee, store),
+        store.Memberships.Where(item => item.EmployeeId == employee.Id && item.OrganizationId == scope.OrganizationId).OrderBy(item => item.CreatedAtUtc).Select(item => new AccountMembershipExport(item.Id, item.Role.ToString(), item.SiteId, item.SectorId, item.IsActive, item.Version, item.CreatedAtUtc, item.UpdatedAtUtc)).ToArray(),
+        store.Certifications.Where(item => item.EmployeeId == employee.Id).Select(item => new AccountCertificationExport(item.Id, store.CertificationTypes.SingleOrDefault(type => type.Id == item.CertificationTypeId)?.Name ?? "Certification", item.ExpiresOn)).ToArray(),
+        store.Availabilities.Where(item => item.EmployeeId == employee.Id).OrderBy(item => item.Date).Select(item => new AccountAvailabilityExport(item.Id, item.Date, item.IsAvailable, item.Note)).ToArray(),
+        assignments,
+        swaps,
+        store.AuditEntries.Where(item => item.OrganizationId == scope.OrganizationId && item.ActorId == employee.Id).OrderBy(item => item.CreatedAtUtc).Select(item => new AccountAuditExport(item.Id, item.Action, item.EntityType, item.EntityId, item.Details, item.CreatedAtUtc)).ToArray());
+
+    context.Response.Headers.CacheControl = "no-store";
+    store.AddAuditEntry(Audit(scope.OrganizationId, employee.Id, "account.data_exported", "Employee", employee.Id));
+    await unitOfWork.SaveChangesAsync(ct);
+    return Results.Ok(export);
+}).RequireAuthorization().WithTags("Authentification");
+
 app.MapPost("/api/v1/auth/change-password", async (ClaimsPrincipal user, ChangePasswordRequest request, IVigieStore store, JwtTokenService tokens, IUnitOfWork unitOfWork, CancellationToken ct) =>
 {
     if (request is null || string.IsNullOrWhiteSpace(request.CurrentPassword) || string.IsNullOrWhiteSpace(request.NewPassword))

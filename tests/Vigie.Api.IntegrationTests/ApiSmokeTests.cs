@@ -60,6 +60,7 @@ public sealed class ApiSmokeTests : IClassFixture<WebApplicationFactory<Program>
         {
             "/api/v1/auth/login",
             "/api/v1/auth/register",
+            "/api/v1/auth/export",
             "/api/v1/shifts",
             "/api/v1/coverage",
             "/api/v1/audit/query",
@@ -68,6 +69,24 @@ public sealed class ApiSmokeTests : IClassFixture<WebApplicationFactory<Program>
         {
             Assert.True(paths.TryGetProperty(route, out _), $"La route {route} doit rester documentée dans le contrat OpenAPI.");
         }
+    }
+
+    [Fact]
+    public async Task Account_export_contains_personal_data_without_credentials()
+    {
+        var login = await client.PostAsJsonAsync("/api/v1/auth/login", new { email = "amelie@vigie.demo", password = "vigie-demo" });
+        var payload = await login.Content.ReadFromJsonAsync<LoginPayload>();
+        client.DefaultRequestHeaders.Authorization = new System.Net.Http.Headers.AuthenticationHeaderValue("Bearer", payload!.Token);
+
+        var response = await client.GetAsync("/api/v1/auth/export");
+        var body = await response.Content.ReadAsStringAsync();
+
+        Assert.Equal(HttpStatusCode.OK, response.StatusCode);
+        Assert.Equal("no-store", response.Headers.CacheControl?.ToString());
+        Assert.Contains("amelie@vigie.demo", body);
+        Assert.Contains("assignments", body);
+        Assert.DoesNotContain("PasswordHash", body, StringComparison.OrdinalIgnoreCase);
+        Assert.DoesNotContain("vigie-demo", body, StringComparison.Ordinal);
     }
 
     [Fact]

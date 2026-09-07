@@ -129,6 +129,7 @@ L’interface est en français et permet de basculer entre six profils de démon
 - Les responsables disposent de `GET /api/v1/availability/team` et d’une vue d’équipe qui regroupe les déclarations de leur périmètre, avec contrôle d’accès côté serveur.
 - EF Core et PostgreSQL sont branchés derrière `IVigieStore`; le mode mémoire reste le défaut local pour garder le démarrage reproductible.
 - Les routes publiques `/api/v1/auth/register` et `/api/v1/auth/login` créent ou ouvrent un espace d’organisation ; les invitations `/api/v1/invitations` ne stockent que le hachage d’un jeton et les mots de passe sont stockés sous forme de hachages PBKDF2.
+- Chaque utilisateur connecté peut récupérer une copie JSON de ses données via `GET /api/v1/auth/export`; la réponse exclut les secrets, est marquée `no-store` et l’opération est inscrite dans l’audit.
 - Les quarts suivent un workflow brouillon → publié : un responsable prépare et vérifie un quart, puis sa publication le rend visible aux sauveteurs. Les quarts existants sont migrés comme publiés pour préserver la continuité de service.
 - `GET /api/v1/coverage` expose aux responsables l’effectif requis, l’effectif assigné et les quarts à compléter dans leur périmètre; les sauveteurs ne peuvent pas consulter cette vue de pilotage.
 - `GET /api/v1/auth/me` restaure une session, et `POST /api/v1/auth/change-password` renouvelle le jeton tout en invalidant les sessions précédentes.
