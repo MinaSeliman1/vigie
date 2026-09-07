@@ -40,7 +40,7 @@ Les limites calendaires (jour d’expiration, début de semaine, quarts de nuit 
 - Administration de l’équipe pour le coordonnateur : changement de rôle et de périmètre (piscine ou secteur), désactivation logique et protection contre les modifications concurrentes.
 - Journal d’audit organisationnel pour les créations, assignations, invitations et décisions d’échange, avec export CSV coordonnateur.
 
-La génération automatique d’horaires, les SMS et l’application mobile restent hors du périmètre initial. Les courriels transactionnels et l’export CSV sont disponibles lorsque leur configuration est activée.
+La génération automatique d’horaires, les SMS et l’application mobile restent hors du périmètre initial. Les courriels transactionnels (invitations, récupération de compte, nouveaux quarts et décisions d’échange) et l’export CSV sont disponibles lorsque leur configuration est activée.
 
 ## Architecture livrée
 
@@ -130,6 +130,7 @@ L’interface est en français et permet de basculer entre six profils de démon
 - Les responsables disposent de `GET /api/v1/availability/team` et d’une vue d’équipe qui regroupe les déclarations de leur périmètre, avec contrôle d’accès côté serveur.
 - EF Core et PostgreSQL sont branchés derrière `IVigieStore`; le mode mémoire reste le défaut local pour garder le démarrage reproductible.
 - Les routes publiques `/api/v1/auth/register` et `/api/v1/auth/login` créent ou ouvrent un espace d’organisation ; les invitations `/api/v1/invitations` ne stockent que le hachage d’un jeton et les mots de passe sont stockés sous forme de hachages PBKDF2.
+- Les courriels de nouveau quart et de décision d’échange sont envoyés aux utilisateurs réels via Resend lorsque les variables sécurisées sont présentes; les comptes de démonstration ne déclenchent aucun envoi externe.
 - Chaque utilisateur connecté peut récupérer une copie JSON de ses données via `GET /api/v1/auth/export` ou supprimer son compte via `DELETE /api/v1/auth/account`; les secrets sont exclus, l’export est marqué `no-store`, la suppression révoque les sessions et l’opération est inscrite dans l’audit.
 - Les quarts suivent un workflow brouillon → publié : un responsable prépare et vérifie un quart, puis sa publication le rend visible aux sauveteurs. Les quarts existants sont migrés comme publiés pour préserver la continuité de service.
 - `GET /api/v1/coverage` expose aux responsables l’effectif requis, l’effectif assigné et les quarts à compléter dans leur périmètre; les sauveteurs ne peuvent pas consulter cette vue de pilotage.

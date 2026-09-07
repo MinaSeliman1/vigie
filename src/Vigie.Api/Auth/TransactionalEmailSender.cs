@@ -1,3 +1,4 @@
+using System.Globalization;
 using System.Net.Http.Headers;
 using System.Net.Http.Json;
 using Vigie.Domain;
@@ -8,6 +9,8 @@ public interface ITransactionalEmailSender
 {
     Task<bool> SendPasswordResetAsync(Employee employee, string resetLink, CancellationToken cancellationToken);
     Task<bool> SendInvitationAsync(string email, string name, string role, string invitationLink, CancellationToken cancellationToken);
+    Task<bool> SendAssignmentAsync(Employee employee, Site site, Shift shift, CancellationToken cancellationToken);
+    Task<bool> SendSwapDecisionAsync(Employee employee, Site site, Shift shift, string title, string body, CancellationToken cancellationToken);
 }
 
 public sealed class ResendTransactionalEmailSender(HttpClient httpClient, IConfiguration configuration) : ITransactionalEmailSender
@@ -22,6 +25,15 @@ public sealed class ResendTransactionalEmailSender(HttpClient httpClient, IConfi
 
     public Task<bool> SendInvitationAsync(string email, string name, string role, string invitationLink, CancellationToken cancellationToken)
         => SendAsync(email, "Vous êtes invité à rejoindre Vigie", $"<p>Bonjour {System.Net.WebUtility.HtmlEncode(name)},</p><p>Vous avez été invité à rejoindre une équipe Vigie comme <strong>{System.Net.WebUtility.HtmlEncode(role)}</strong>.</p><p><a href=\"{System.Net.WebUtility.HtmlEncode(invitationLink)}\">Activer mon accès Vigie</a></p><p>Le lien expire dans 7 jours et ne peut servir qu'une seule fois.</p>", cancellationToken);
+
+    public Task<bool> SendAssignmentAsync(Employee employee, Site site, Shift shift, CancellationToken cancellationToken)
+        => SendAsync(employee.Email, "Un nouveau quart vous est assigné dans Vigie", $"<p>Bonjour {System.Net.WebUtility.HtmlEncode(employee.Name)},</p><p>Un quart vous a été assigné à <strong>{System.Net.WebUtility.HtmlEncode(site.Name)}</strong> le <strong>{FormatShiftDate(shift)}</strong>.</p><p>Consultez votre calendrier Vigie pour les détails et les demandes de remplacement.</p>", cancellationToken);
+
+    public Task<bool> SendSwapDecisionAsync(Employee employee, Site site, Shift shift, string title, string body, CancellationToken cancellationToken)
+        => SendAsync(employee.Email, $"{title} — Vigie", $"<p>Bonjour {System.Net.WebUtility.HtmlEncode(employee.Name)},</p><p>{System.Net.WebUtility.HtmlEncode(body)}</p><p>Quart concerné : <strong>{System.Net.WebUtility.HtmlEncode(site.Name)}</strong>, le <strong>{FormatShiftDate(shift)}</strong>.</p><p>Consultez votre calendrier Vigie pour les détails.</p>", cancellationToken);
+
+    private static string FormatShiftDate(Shift shift)
+        => shift.StartUtc.ToString("dddd d MMMM 'à' HH:mm", CultureInfo.GetCultureInfo("fr-CA"));
 
     private async Task<bool> SendAsync(string recipient, string subject, string html, CancellationToken cancellationToken)
     {

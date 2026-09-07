@@ -795,7 +795,7 @@ app.MapPost("/api/v1/shifts", async (ClaimsPrincipal user, CreateShiftRequest re
     catch (DomainException ex) { return Problem("INVALID_SHIFT", ex.Message); }
 }).RequireAuthorization().WithTags("Quarts");
 
-app.MapPost("/api/v1/shifts/{shiftId:guid}/publish", async (ClaimsPrincipal user, Guid shiftId, IVigieStore store, IUnitOfWork unitOfWork, CancellationToken ct) =>
+app.MapPost("/api/v1/shifts/{shiftId:guid}/publish", async (ClaimsPrincipal user, Guid shiftId, IVigieStore store, IUnitOfWork unitOfWork, ITransactionalEmailSender emailSender, CancellationToken ct) =>
 {
     var scope = OrganizationScopeResolver.Resolve(user, store);
     var shift = store.Shifts.SingleOrDefault(item => item.Id == shiftId);
@@ -815,6 +815,7 @@ app.MapPost("/api/v1/shifts/{shiftId:guid}/publish", async (ClaimsPrincipal user
                 AddNotification(store, scope.OrganizationId, assignment.EmployeeId, "assignment", "Quart publié", $"Le quart du {shift.StartUtc:ddd d MMM à HH:mm} à {site.Name} est maintenant publié.", "calendar");
         }
         await unitOfWork.SaveChangesAsync(ct);
+        if (!wasAlreadyPublished) await NotifyAssignmentEmailsAsync(store, shift, site, emailSender, ct);
         return Results.Ok(ToShift(shift, store));
     }
     catch (DomainException ex) { return Problem("INVALID_SHIFT", ex.Message); }
@@ -859,7 +860,7 @@ app.MapPost("/api/v1/shifts/{shiftId:guid}/cancel", async (ClaimsPrincipal user,
     catch (DomainException ex) { return Problem("INVALID_SHIFT", ex.Message); }
 }).RequireAuthorization().WithTags("Quarts");
 
-app.MapPost("/api/v1/shifts/{shiftId:guid}/assignments", async (ClaimsPrincipal user, Guid shiftId, AssignShiftRequest request, IVigieStore store, AssignShiftService service, CancellationToken ct) =>
+app.MapPost("/api/v1/shifts/{shiftId:guid}/assignments", async (ClaimsPrincipal user, Guid shiftId, AssignShiftRequest request, IVigieStore store, AssignShiftService service, ITransactionalEmailSender emailSender, CancellationToken ct) =>
 {
     var organizationId = OrganizationId(user);
     var shift = store.Shifts.SingleOrDefault(item => item.Id == shiftId);
@@ -873,6 +874,7 @@ app.MapPost("/api/v1/shifts/{shiftId:guid}/assignments", async (ClaimsPrincipal 
     store.AddAuditEntry(Audit(organizationId, UserId(user), "assignment.created", "Assignment", result.Value!.Id, $"employé={employee.Name}"));
     AddNotification(store, organizationId, employee.Id, "assignment", "Nouveau quart assigné", $"Un quart vous a été assigné à {site.Name} le {shift.StartUtc:ddd d MMM à HH:mm}.", "calendar");
     await ((IUnitOfWork)store).SaveChangesAsync(ct);
+    await NotifyAssignmentEmailAsync(employee, site, shift, emailSender, ct);
     return Results.Ok(result.Value);
 }).RequireAuthorization().WithTags("Assignations");
 
@@ -939,7 +941,7 @@ app.MapGet("/api/v1/swap-requests", (ClaimsPrincipal user, IVigieStore store) =>
     return Results.Ok(requests);
 }).RequireAuthorization().WithTags("Échanges");
 
-app.MapPost("/api/v1/swap-requests/{requestId:guid}/approve", async (ClaimsPrincipal user, Guid requestId, ApproveSwapService service, IVigieStore store, CancellationToken ct) =>
+app.MapPost("/api/v1/swap-requests/{requestId:guid}/approve", async (ClaimsPrincipal user, Guid requestId, ApproveSwapService service, IVigieStore store, ITransactionalEmailSender emailSender, CancellationToken ct) =>
 {
     if (!SwapBelongsToOrganization(requestId, OrganizationId(user), store)) return Problem("NOT_FOUND", "La demande d'échange est introuvable.", StatusCodes.Status404NotFound);
     var swapSite = SwapSite(requestId, store);
@@ -949,9 +951,10 @@ app.MapPost("/api/v1/swap-requests/{requestId:guid}/approve", async (ClaimsPrinc
     store.AddAuditEntry(Audit(OrganizationId(user), UserId(user), "swap.approved", "SwapRequest", requestId));
     NotifySwapParticipants(store, result.Value!, "Échange approuvé", "Votre demande d'échange a été approuvée.");
     await ((IUnitOfWork)store).SaveChangesAsync(ct);
+    await NotifySwapEmailsAsync(store, result.Value!, "Échange approuvé", "Votre demande d’échange a été approuvée.", emailSender, ct);
     return Results.Ok(ToSwap(result.Value!, store));
 }).RequireAuthorization().WithTags("Échanges");
-app.MapPost("/api/v1/swap-requests/{requestId:guid}/reject", async (ClaimsPrincipal user, Guid requestId, RejectSwapService service, IVigieStore store, CancellationToken ct) =>
+app.MapPost("/api/v1/swap-requests/{requestId:guid}/reject", async (ClaimsPrincipal user, Guid requestId, RejectSwapService service, IVigieStore store, ITransactionalEmailSender emailSender, CancellationToken ct) =>
 {
     if (!SwapBelongsToOrganization(requestId, OrganizationId(user), store)) return Problem("NOT_FOUND", "La demande d'échange est introuvable.", StatusCodes.Status404NotFound);
     var swapSite = SwapSite(requestId, store);
@@ -959,8 +962,9 @@ app.MapPost("/api/v1/swap-requests/{requestId:guid}/reject", async (ClaimsPrinci
     var result = await service.ExecuteAsync(UserId(user), requestId, ct);
     if (!result.IsSuccess) return result.ToHttpResult(swap => Results.Ok(ToSwap(swap, store)));
     store.AddAuditEntry(Audit(OrganizationId(user), UserId(user), "swap.rejected", "SwapRequest", requestId));
-    NotifySwapParticipants(store, result.Value!, "Échange refusé", "Votre demande d'échange a été refusée.");
+    NotifySwapParticipants(store, result.Value!, "Échange refusé", "Votre demande d’échange a été refusée.");
     await ((IUnitOfWork)store).SaveChangesAsync(ct);
+    await NotifySwapEmailsAsync(store, result.Value!, "Échange refusé", "Votre demande d’échange a été refusée.", emailSender, ct);
     return Results.Ok(ToSwap(result.Value!, store));
 }).RequireAuthorization().WithTags("Échanges");
 
@@ -1126,6 +1130,36 @@ static void NotifySwapParticipants(IVigieStore store, SwapRequest swap, string t
     if (assignment is null || site is null) return;
     foreach (var recipient in new[] { assignment.EmployeeId, swap.ReceiverId }.Distinct())
         AddNotification(store, site.OrganizationId, recipient, "swap", title, body, "swaps");
+}
+static async Task NotifyAssignmentEmailsAsync(IVigieStore store, Shift shift, Site site, ITransactionalEmailSender emailSender, CancellationToken cancellationToken)
+{
+    foreach (var assignment in store.Assignments.Where(item => item.ShiftId == shift.Id))
+    {
+        var employee = store.Employees.SingleOrDefault(item => item.Id == assignment.EmployeeId);
+        if (employee is null || employee.IsDemoAccount) continue;
+        await NotifyAssignmentEmailAsync(employee, site, shift, emailSender, cancellationToken);
+    }
+}
+static async Task NotifyAssignmentEmailAsync(Employee employee, Site site, Shift shift, ITransactionalEmailSender emailSender, CancellationToken cancellationToken)
+{
+    try { await emailSender.SendAssignmentAsync(employee, site, shift, cancellationToken); }
+    catch (HttpRequestException) { /* La notification dans l'application reste disponible si Resend est indisponible. */ }
+    catch (OperationCanceledException) when (!cancellationToken.IsCancellationRequested) { /* Le délai du fournisseur ne bloque pas l'opération métier. */ }
+}
+static async Task NotifySwapEmailsAsync(IVigieStore store, SwapRequest swap, string title, string body, ITransactionalEmailSender emailSender, CancellationToken cancellationToken)
+{
+    var assignment = store.Assignments.SingleOrDefault(item => item.Id == swap.AssignmentId);
+    var shift = assignment is null ? null : store.Shifts.SingleOrDefault(item => item.Id == assignment.ShiftId);
+    var site = shift is null ? null : store.Sites.SingleOrDefault(item => item.Id == shift.SiteId);
+    if (assignment is null || shift is null || site is null) return;
+    foreach (var employeeId in new[] { assignment.EmployeeId, swap.ReceiverId }.Distinct())
+    {
+        var employee = store.Employees.SingleOrDefault(item => item.Id == employeeId);
+        if (employee is null || employee.IsDemoAccount) continue;
+        try { await emailSender.SendSwapDecisionAsync(employee, site, shift, title, body, cancellationToken); }
+        catch (HttpRequestException) { /* Les notifications dans l'application restent disponibles si Resend est indisponible. */ }
+        catch (OperationCanceledException) when (!cancellationToken.IsCancellationRequested) { /* Le délai du fournisseur ne bloque pas l'opération métier. */ }
+    }
 }
 static IResult Problem(string code, string message, int status = StatusCodes.Status400BadRequest) => Results.Problem(statusCode: status, title: "La demande ne peut pas être traitée", detail: message, extensions: new Dictionary<string, object?> { ["code"] = code, ["message"] = message });
 
