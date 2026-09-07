@@ -1,5 +1,6 @@
 using System.Net;
 using System.Net.Http.Json;
+using System.Text.Json;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.AspNetCore.Mvc.Testing;
 using Vigie.Domain;
@@ -46,6 +47,27 @@ public sealed class ApiSmokeTests : IClassFixture<WebApplicationFactory<Program>
         Assert.Contains("vigie_http_responses_total", metricsBody);
         Assert.Contains("vigie_http_request_duration_ms", metricsBody);
         Assert.StartsWith("text/plain", metrics.Content.Headers.ContentType?.MediaType);
+    }
+
+    [Fact]
+    public async Task OpenApi_contract_lists_the_critical_operational_routes()
+    {
+        var contract = await client.GetStringAsync("/openapi/v1.json");
+        using var document = JsonDocument.Parse(contract);
+        var paths = document.RootElement.GetProperty("paths");
+
+        foreach (var route in new[]
+        {
+            "/api/v1/auth/login",
+            "/api/v1/auth/register",
+            "/api/v1/shifts",
+            "/api/v1/coverage",
+            "/api/v1/audit/query",
+            "/api/v1/notifications"
+        })
+        {
+            Assert.True(paths.TryGetProperty(route, out _), $"La route {route} doit rester documentée dans le contrat OpenAPI.");
+        }
     }
 
     [Fact]

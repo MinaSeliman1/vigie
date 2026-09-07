@@ -118,7 +118,7 @@ L’interface est en français et permet de basculer entre six profils de démon
 ## Ce qui est déjà vérifiable
 
 - Les cinq règles métier sont testées dans `tests/Vigie.Domain.Tests` sans serveur ni base de données.
-- L’API JWT expose les routes de calendrier, d’assignation, d’échange, de certification, de secteurs et de memberships; les tests d’intégration couvrent l’authentification, l’inscription d’organisation, l’isolation entre organisations, les quatre rôles, les règles de saison, les décisions répétées, le catalogue Laval et le modèle EF.
+- L’API JWT expose les routes de calendrier, d’assignation, d’échange, de certification, de secteurs et de memberships; les tests d’intégration couvrent l’authentification, l’inscription d’organisation, l’isolation entre organisations, les quatre rôles, les règles de saison, les décisions répétées, le catalogue Laval, le contrat OpenAPI et le modèle EF.
 - La démo UI publique est construite automatiquement par GitHub Actions et publiée sur GitHub Pages à chaque mise à jour de `main`.
 - Le conteneur de l’API est construit dans la CI pour détecter les erreurs de packaging avant un déploiement.
 - Chaque réponse API expose un `X-Request-Id` corrélable avec les logs structurés, sans journaliser de secret ni de contenu sensible.
