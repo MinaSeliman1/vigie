@@ -56,7 +56,7 @@ Transformer la démonstration Vigie en un logiciel que plusieurs centres aquatiq
 - ✅ Test d’intégrité du contrat OpenAPI sur les routes opérationnelles critiques.
 - ✅ Export JSON des données personnelles depuis l’espace Compte, sans secret et avec traçabilité.
 - Tests navigateur des parcours critiques et analyse de dépendances.
-- Conditions d’utilisation, politique de confidentialité, suppression de compte et procédure de support.
+- ✅ Conditions d’utilisation, politique de confidentialité et procédure de support documentées; suppression automatisée de compte à compléter.
 
 ## Décision actuelle
 

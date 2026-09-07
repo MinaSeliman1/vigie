@@ -90,7 +90,7 @@ Le backend cible .NET 9 et le frontend utilise Node.js 22 dans la CI. L’authen
 
 Le périmètre restant est isolé derrière les mêmes ports d’application afin de ne pas fragiliser la démo.
 
-Les prochaines étapes sont détaillées dans la [feuille de route commerciale](docs/roadmaps/2026-09-05-commercial-product.md) et les [Issues du dépôt](https://github.com/MinaSeliman1/vigie/issues) : facturation et exploitation de production. L’envoi transactionnel est déjà branché sur Resend et s’active avec ses variables sécurisées. La procédure reproductible de déploiement reste disponible dans [`docs/deployment.md`](docs/deployment.md).
+Les prochaines étapes sont détaillées dans la [feuille de route commerciale](docs/roadmaps/2026-09-05-commercial-product.md) et les [Issues du dépôt](https://github.com/MinaSeliman1/vigie/issues) : facturation, suppression automatisée de compte et exploitation de production. Les [conditions d’utilisation](docs/legal/conditions-utilisation.md), la [politique de confidentialité](docs/legal/politique-confidentialite.md) et la [procédure de support](docs/support.md) cadrent déjà le parcours commercial. L’envoi transactionnel est déjà branché sur Resend et s’active avec ses variables sécurisées. La procédure reproductible de déploiement reste disponible dans [`docs/deployment.md`](docs/deployment.md).
 
 ## Démarrer en local
 
