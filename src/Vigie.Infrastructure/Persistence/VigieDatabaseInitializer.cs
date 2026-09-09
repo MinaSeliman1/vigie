@@ -66,7 +66,9 @@ public static class VigieDatabaseInitializer
             var isDemoOrganization = employees.Any(employee => employee.Email.EndsWith("@vigie.demo", StringComparison.OrdinalIgnoreCase));
             var sites = await context.Sites.Where(site => site.OrganizationId == organization.Id).AsTracking().ToArrayAsync(cancellationToken);
             var sectors = await context.Sectors.Where(sector => sector.OrganizationId == organization.Id).AsTracking().ToListAsync(cancellationToken);
-            var pools = LavalPoolCatalog.ForOrganization(organization.Id);
+            var pools = isDemoOrganization || string.Equals(organization.OrganizationType, "municipal", StringComparison.OrdinalIgnoreCase)
+                ? LavalPoolCatalog.ForOrganization(organization.Id)
+                : [];
 
             // Le catalogue Laval est idempotent : une base existante reçoit les sites
             // manquants sans modifier les quarts ni les affectations déjà en place.

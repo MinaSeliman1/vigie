@@ -24,6 +24,7 @@ Transformer la démonstration Vigie en un logiciel que plusieurs centres aquatiq
 - ✅ Révoquer explicitement les sessions après un changement de mot de passe, avec un compteur persistant vérifié par l’API.
 - ✅ Ajouter inscription d’organisation et invitation d’équipe à usage unique avec expiration.
 - ✅ Guider la création d’un espace avec le profil du centre (type, piscines, taille d’équipe et priorité).
+- ✅ Provisionner immédiatement le catalogue municipal de Laval et les exigences de certification lors de la création d’un espace municipal.
 - ✅ Restaurer une session réelle côté interface après un rechargement et permettre le changement de mot de passe.
 - ✅ Ajouter récupération de mot de passe à jeton unique, expiration courte et révocation des sessions; le fournisseur courriel reste configurable.
 - ✅ Couvrir les erreurs d’authentification sans révéler si une adresse existe.

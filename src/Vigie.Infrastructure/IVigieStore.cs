@@ -33,6 +33,7 @@ public interface IVigieStore :
     IReadOnlyCollection<Availability> Availabilities { get; }
     IReadOnlyCollection<Notification> Notifications { get; }
     IReadOnlyCollection<PasswordResetToken> PasswordResetTokens { get; }
+    IReadOnlyCollection<(Guid SiteId, Guid CertificationTypeId)> SiteCertificationLinks { get; }
 
     void AddOrganization(Organization organization);
     void AddAuditEntry(AuditEntry entry);
@@ -47,6 +48,8 @@ public interface IVigieStore :
     void AddShift(Shift shift);
     void AddNotification(Notification notification);
     void UpdateNotification(Notification notification);
+    void AddCertificationType(CertificationType certificationType);
+    void AddCertificationTypeForSite(Guid siteId, Guid certificationTypeId);
     void AddPasswordResetToken(PasswordResetToken token);
     void UpdatePasswordResetToken(PasswordResetToken token);
     Availability UpsertAvailability(Guid employeeId, DateOnly onDate, bool isAvailable, string? note);

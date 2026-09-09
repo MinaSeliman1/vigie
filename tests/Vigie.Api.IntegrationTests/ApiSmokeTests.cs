@@ -526,6 +526,7 @@ public sealed class ApiSmokeTests : IClassFixture<WebApplicationFactory<Program>
         client.DefaultRequestHeaders.Authorization = new System.Net.Http.Headers.AuthenticationHeaderValue("Bearer", payload!.Login.Token);
         var organization = await client.GetFromJsonAsync<OrganizationPayload>("/api/v1/organization");
         var sites = await client.GetFromJsonAsync<SitePayload[]>("/api/v1/sites");
+        var sectors = await client.GetFromJsonAsync<SectorPayload[]>("/api/v1/sectors");
         var crossOrganizationShift = await client.PostAsJsonAsync("/api/v1/shifts", new
         {
             siteId = Guid.Parse("20000000-0000-0000-0000-000000000001"),
@@ -539,7 +540,8 @@ public sealed class ApiSmokeTests : IClassFixture<WebApplicationFactory<Program>
         Assert.Equal("two-to-five", organization?.PoolCount);
         Assert.Equal("eleven-to-thirty", organization?.TeamSize);
         Assert.Equal("all", organization?.PrimaryGoal);
-        Assert.Empty(sites!);
+        Assert.Equal(LavalPoolCatalog.All.Count, sites!.Length);
+        Assert.Equal(4, sectors!.Length);
         Assert.Equal(HttpStatusCode.NotFound, crossOrganizationShift.StatusCode);
     }
 

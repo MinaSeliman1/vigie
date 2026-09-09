@@ -356,6 +356,7 @@ app.MapPost("/api/v1/auth/register", async (RegisterOrganizationRequest request,
         store.AddEmployee(employee);
         store.AddMembership(membership);
         store.AddAuditEntry(Audit(organization.Id, employee.Id, "organization.created", "Organization", organization.Id));
+        LavalOrganizationProvisioner.ProvisionMunicipalCatalog(store, organization);
         await unitOfWork.SaveChangesAsync(ct);
         var (token, expires) = tokens.Create(employee, membership);
         return Results.Created($"/api/v1/organizations/{organization.Id}", new RegistrationResponse(new LoginResponse(token, expires, User(employee, store)), ToOrganization(organization)));

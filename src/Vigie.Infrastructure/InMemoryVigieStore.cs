@@ -116,6 +116,7 @@ public sealed class InMemoryVigieStore :
     public void AddShift(Shift shift) => shifts[shift.Id] = shift;
     public void AddNotification(Notification notification) => notifications[notification.Id] = notification;
     public void UpdateNotification(Notification notification) => notifications[notification.Id] = notification;
+    public void AddCertificationType(CertificationType certificationType) => certificationTypes[certificationType.Id] = certificationType;
     public void AddPasswordResetToken(PasswordResetToken token) => passwordResetTokens[token.Id] = token;
     public void UpdatePasswordResetToken(PasswordResetToken token) => passwordResetTokens[token.Id] = token;
     public void AddCertification(Certification certification) => certifications[certification.Id] = certification;

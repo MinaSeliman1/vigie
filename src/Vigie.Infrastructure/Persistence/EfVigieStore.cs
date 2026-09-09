@@ -25,6 +25,8 @@ public sealed class EfVigieStore(VigieDbContext db) : IVigieStore
     public IReadOnlyCollection<Availability> Availabilities => db.Availabilities.AsNoTracking().ToArray();
     public IReadOnlyCollection<Notification> Notifications => db.Notifications.AsNoTracking().ToArray();
     public IReadOnlyCollection<PasswordResetToken> PasswordResetTokens => db.PasswordResetTokens.AsNoTracking().ToArray();
+    public IReadOnlyCollection<(Guid SiteId, Guid CertificationTypeId)> SiteCertificationLinks
+        => db.SiteCertificationRequirements.AsNoTracking().Select(link => new { link.SiteId, link.CertificationTypeId }).ToArray().Select(link => (link.SiteId, link.CertificationTypeId)).ToArray();
 
     public Task<Employee?> GetAsync(Guid id, CancellationToken cancellationToken)
         => db.Employees.SingleOrDefaultAsync(employee => employee.Id == id, cancellationToken);
@@ -104,6 +106,9 @@ public sealed class EfVigieStore(VigieDbContext db) : IVigieStore
     public void AddShift(Shift shift) => db.Shifts.Add(shift);
     public void AddNotification(Notification notification) => db.Notifications.Add(notification);
     public void UpdateNotification(Notification notification) => db.Notifications.Update(notification);
+    public void AddCertificationType(CertificationType certificationType) => db.CertificationTypes.Add(certificationType);
+    public void AddCertificationTypeForSite(Guid siteId, Guid certificationTypeId)
+        => db.SiteCertificationRequirements.Add(new SiteCertificationRequirement { SiteId = siteId, CertificationTypeId = certificationTypeId });
     public void AddPasswordResetToken(PasswordResetToken token) => db.PasswordResetTokens.Add(token);
     public void UpdatePasswordResetToken(PasswordResetToken token) => db.PasswordResetTokens.Update(token);
 
