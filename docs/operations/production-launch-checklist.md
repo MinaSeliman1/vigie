@@ -6,7 +6,7 @@ Cette checklist décrit le passage de la démonstration gratuite à un premier c
 
 - [ ] Créer un projet PostgreSQL de production séparé du projet de démonstration.
 - [ ] Conserver la chaîne `ConnectionStrings__Vigie` et `Jwt__Key` dans le gestionnaire de secrets de Render; ne jamais les ajouter à GitHub.
-- [ ] Vérifier Render avec `/health/ready` et confirmer `persistence=postgresql`.
+- [x] Vérifier Render avec `/health/ready` et confirmer `persistence=postgresql`.
 - [ ] Exécuter le [runbook de sauvegarde et restauration](backup-restore.md) sur une base temporaire avant la première importation.
 - [ ] Définir la durée de conservation des données métier et de l’audit avec le responsable du centre.
 - [ ] Faire relire les [conditions d’utilisation](../legal/conditions-utilisation.md) et la [politique de confidentialité](../legal/politique-confidentialite.md) par la personne responsable du centre.
@@ -15,7 +15,8 @@ Cette checklist décrit le passage de la démonstration gratuite à un premier c
 
 - [ ] Vérifier un domaine d’envoi dans Resend et configurer `Resend__ApiKey` et `Resend__From` dans Render.
 - [ ] Envoyer un courriel d’invitation et un courriel de récupération avec un compte de test réel.
-- [ ] Ajouter une sonde gratuite vers `/health/ready` (UptimeRobot, Better Uptime ou équivalent) et une alerte en cas de réponse autre que 200.
+- [x] Ajouter une sonde gratuite vers `/health/ready` avec le workflow GitHub Actions `Vérifier les services en production` (toutes les 15 minutes, avec vérification de la persistance PostgreSQL).
+- [ ] Ajouter une alerte externe facultative (UptimeRobot, Better Uptime ou équivalent) avant l’ouverture à un premier centre, puis vérifier les notifications.
 - [ ] Conserver le lien public de la procédure de [support](../support.md) dans les communications de l’organisation.
 
 ## Acceptation fonctionnelle

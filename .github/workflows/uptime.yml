@@ -1,0 +1,42 @@
+name: Vérifier les services en production
+
+on:
+  schedule:
+    - cron: '*/15 * * * *'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: production-uptime
+  cancel-in-progress: true
+
+jobs:
+  smoke:
+    name: API et démo accessibles
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+
+    steps:
+      - name: Vérifier l’API et sa persistance
+        shell: bash
+        run: |
+          set -euo pipefail
+
+          health="$(curl --fail --silent --show-error --max-time 30 https://vigie-api.onrender.com/health)"
+          echo "Réponse /health : $health"
+          grep -q '"status":"ok"' <<< "$health"
+
+          ready="$(curl --fail --silent --show-error --max-time 60 https://vigie-api.onrender.com/health/ready)"
+          echo "Réponse /health/ready : $ready"
+          grep -q '"status":"ready"' <<< "$ready"
+          grep -q '"persistence":"postgresql"' <<< "$ready"
+
+      - name: Vérifier la démo publique
+        shell: bash
+        run: |
+          set -euo pipefail
+
+          page="$(curl --fail --silent --show-error --max-time 30 https://minaseliman1.github.io/vigie/)"
+          grep -q 'Vigie' <<< "$page"
