@@ -36,6 +36,7 @@ export type AssignmentResponse = { id: string; shiftId: string; employeeId: stri
 export type AvailabilityResponse = { id: string; employeeId: string; date: string; isAvailable: boolean; note?: string | null }
 export type TeamAvailabilityResponse = { id: string; employeeId: string; employeeName: string; email: string; date: string; isAvailable: boolean; note?: string | null }
 export type SectorResponse = { id: string; organizationId: string; name: string; code: string; isActive: boolean; createdAtUtc: string; updatedAtUtc: string }
+export type CreateSectorInput = { name: string; code: string }
 export type MembershipResponse = { id: string; employeeId: string; employeeName: string; email: string; role: Role; organizationId: string; siteId?: string | null; siteName?: string | null; sectorId?: string | null; sectorName?: string | null; isActive: boolean; version: number; createdAtUtc: string; updatedAtUtc: string }
 
 export type ShiftResponse = {
