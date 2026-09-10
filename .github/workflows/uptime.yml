@@ -24,11 +24,11 @@ jobs:
         run: |
           set -euo pipefail
 
-          health="$(curl --fail --silent --show-error --max-time 30 https://vigie-api.onrender.com/health)"
+          health="$(curl --fail --silent --show-error --retry 2 --retry-delay 10 --retry-all-errors --max-time 120 https://vigie-api.onrender.com/health)"
           echo "Réponse /health : $health"
           grep -q '"status":"ok"' <<< "$health"
 
-          ready="$(curl --fail --silent --show-error --max-time 60 https://vigie-api.onrender.com/health/ready)"
+          ready="$(curl --fail --silent --show-error --retry 2 --retry-delay 10 --retry-all-errors --max-time 120 https://vigie-api.onrender.com/health/ready)"
           echo "Réponse /health/ready : $ready"
           grep -q '"status":"ready"' <<< "$ready"
           grep -q '"persistence":"postgresql"' <<< "$ready"
@@ -38,5 +38,5 @@ jobs:
         run: |
           set -euo pipefail
 
-          page="$(curl --fail --silent --show-error --max-time 30 https://minaseliman1.github.io/vigie/)"
+          page="$(curl --fail --silent --show-error --retry 2 --retry-delay 10 --retry-all-errors --max-time 60 https://minaseliman1.github.io/vigie/)"
           grep -q 'Vigie' <<< "$page"
