@@ -42,7 +42,19 @@ Après ce choix, ajouter les variables secrètes du fournisseur dans Render, con
 - [x] Depuis le dossier `frontend`, `npm run lint`, `npm run test` et `npm run build` passent localement et dans la CI.
 - [x] Le workflow CI GitHub est vert sur le commit livré.
 - [x] Render répond à `/health/ready` avec `persistence=postgresql` et GitHub Pages affiche **API connectée**.
-- [ ] Noter la date, le commit, la version des migrations et la personne qui a réalisé l’acceptation.
+- [x] Noter la date, le commit, la version des migrations et la personne qui a réalisé l’acceptation.
+
+## Acceptation de la version publique v0.1.0
+
+Contrôle réalisé le **10 septembre 2026** sur le commit `a75c34f` (`Vigie v0.1.0`) :
+
+- CI GitHub verte : tests domaine et intégration .NET, lint, tests et build frontend, construction du conteneur;
+- GitHub Pages publié et parcours Certifications vérifié dans la démo avec le profil Régie aquatique;
+- Render répond à `/health/ready` en `200` avec `status=ready` et `persistence=postgresql`;
+- OpenAPI public expose les routes de lecture et de mise à jour des certifications;
+- le workflow d’uptime public a réussi après le déploiement.
+
+La vérification a été réalisée par le propriétaire du dépôt avec l’assistance de Codex. La validation juridique, le test d’envoi courriel avec un domaine réel et la répétition sauvegarde/restauration restent à effectuer par le responsable avant d’importer des données réelles.
 
 ## Décision de capacité
 
