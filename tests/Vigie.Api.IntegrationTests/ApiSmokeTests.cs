@@ -62,6 +62,8 @@ public sealed class ApiSmokeTests : IClassFixture<WebApplicationFactory<Program>
             "/api/v1/auth/register",
             "/api/v1/auth/export",
             "/api/v1/auth/account",
+            "/api/v1/sites",
+            "/api/v1/sites/{siteId}",
             "/api/v1/shifts",
             "/api/v1/coverage",
             "/api/v1/audit/query",
