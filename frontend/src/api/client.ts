@@ -1,4 +1,4 @@
-import type { ApiProblem, AssignmentResponse, AuditEntryResponse, AuditPageResponse, AvailabilityResponse, CertificationResponse, CoverageResponse, CreateShiftInput, InvitationResponse, LoginResponse, MembershipResponse, NotificationResponse, RegistrationResponse, SectorResponse, ShiftResponse, SiteResponse, SwapRequestResponse, TeamAvailabilityResponse, UpdateShiftInput, UserSummary } from './types'
+import type { ApiProblem, AssignmentResponse, AuditEntryResponse, AuditPageResponse, AvailabilityResponse, CertificationResponse, CoverageResponse, CreateShiftInput, CreateSiteInput, InvitationResponse, LoginResponse, MembershipResponse, NotificationResponse, RegistrationResponse, SectorResponse, ShiftResponse, SiteResponse, SwapRequestResponse, TeamAvailabilityResponse, UpdateShiftInput, UserSummary } from './types'
 
 export const apiConfigured = Boolean(import.meta.env.VITE_API_URL)
 const baseUrl = (import.meta.env.VITE_API_URL as string | undefined)?.replace(/\/$/, '') ?? 'http://localhost:5187'
@@ -66,6 +66,7 @@ export const vigieApi = {
     return request<CoverageResponse[]>(`/api/v1/coverage${query.size ? `?${query.toString()}` : ''}`)
   },
   sites: () => request<SiteResponse[]>('/api/v1/sites'),
+  createSite: (input: CreateSiteInput) => request<SiteResponse>('/api/v1/sites', { method: 'POST', body: JSON.stringify(input) }),
   createShift: (input: CreateShiftInput) => request<ShiftResponse>('/api/v1/shifts', { method: 'POST', body: JSON.stringify(input) }),
   updateShift: (shiftId: string, input: UpdateShiftInput) => request<ShiftResponse>(`/api/v1/shifts/${shiftId}`, { method: 'PATCH', body: JSON.stringify(input) }),
   publishShift: (shiftId: string) => request<ShiftResponse>(`/api/v1/shifts/${shiftId}/publish`, { method: 'POST' }),
