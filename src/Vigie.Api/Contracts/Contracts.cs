@@ -51,7 +51,8 @@ public sealed record UpdateShiftRequest(DateTimeOffset StartUtc, DateTimeOffset 
 public sealed record CreateSiteRequest(string Name, string Type, string TimeZoneId, int StartMonth, int StartDay, int EndMonth, int EndDay, string? Address = null, string? Neighborhood = null, bool IsMunicipal = false, Guid? SectorId = null);
 public sealed record UpdateSiteRequest(string Name, string Type, string TimeZoneId, int StartMonth, int StartDay, int EndMonth, int EndDay, string? Address = null, string? Neighborhood = null, bool IsMunicipal = false, Guid? SectorId = null);
 public sealed record AssignShiftRequest(Guid EmployeeId);
-public sealed record CertificationResponse(Guid Id, Guid EmployeeId, string EmployeeName, string Type, DateOnly ExpiresOn, int DaysRemaining);
+public sealed record CertificationResponse(Guid Id, Guid EmployeeId, Guid CertificationTypeId, string EmployeeName, string Type, DateOnly ExpiresOn, int DaysRemaining);
+public sealed record CertificationTypeResponse(Guid Id, string Name, bool IsRequired);
 public sealed record CreateCertificationRequest(Guid EmployeeId, Guid CertificationTypeId, DateOnly ExpiresOn);
 public sealed record SwapRequestResponse(Guid Id, Guid AssignmentId, Guid RequesterId, string RequesterName, Guid ReceiverId, string ReceiverName, string ShiftLabel, string Status, DateTimeOffset RequestedAtUtc);
 public sealed record CreateSwapRequest(Guid AssignmentId, Guid ReceiverId);

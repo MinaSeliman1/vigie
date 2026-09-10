@@ -6,7 +6,7 @@ Cette checklist décrit le passage de la démonstration gratuite à un premier c
 
 - [ ] Créer un projet PostgreSQL de production séparé du projet de démonstration.
 - [ ] Conserver la chaîne `ConnectionStrings__Vigie` et `Jwt__Key` dans le gestionnaire de secrets de Render; ne jamais les ajouter à GitHub.
-- [x] Vérifier Render avec `/health/ready` et confirmer `persistence=postgresql`.
+- [x] Vérifier Render avec `/health/ready` et confirmer `persistence=postgresql`; Render utilise cette route comme health check du service.
 - [ ] Exécuter le [runbook de sauvegarde et restauration](backup-restore.md) sur une base temporaire avant la première importation.
 - [ ] Définir la durée de conservation des données métier et de l’audit avec le responsable du centre.
 - [ ] Faire relire les [conditions d’utilisation](../legal/conditions-utilisation.md) et la [politique de confidentialité](../legal/politique-confidentialite.md) par la personne responsable du centre.
@@ -32,7 +32,7 @@ Cette checklist décrit le passage de la démonstration gratuite à un premier c
 
 ## Facturation et ouverture commerciale
 
-La V1 peut rester gratuite pour un pilote. Pour vendre des abonnements, choisir manuellement un fournisseur de paiement, ouvrir son compte marchand, vérifier son identité et définir les taxes, les prix, les remboursements et les conditions de résiliation. Cette étape ne doit pas être simulée dans Vigie : elle dépend du contrat commercial et du fournisseur choisi.
+La V1 peut rester gratuite pour un pilote. Pour vendre des abonnements, suivre le [plan de facturation](billing-launch-plan.md), choisir manuellement un fournisseur de paiement, ouvrir son compte marchand, vérifier son identité et définir les taxes, les prix, les remboursements et les conditions de résiliation. Cette étape ne doit pas être simulée dans Vigie : elle dépend du contrat commercial et du fournisseur choisi.
 
 Après ce choix, ajouter les variables secrètes du fournisseur dans Render, configurer ses webhooks signés et couvrir les changements de plan par des tests d’intégration avant d’activer la facturation pour une organisation.
 
@@ -43,3 +43,7 @@ Après ce choix, ajouter les variables secrètes du fournisseur dans Render, con
 - [x] Le workflow CI GitHub est vert sur le commit livré.
 - [x] Render répond à `/health/ready` avec `persistence=postgresql` et GitHub Pages affiche **API connectée**.
 - [ ] Noter la date, le commit, la version des migrations et la personne qui a réalisé l’acceptation.
+
+## Décision de capacité
+
+Le déploiement gratuit reste recommandé pour la démo publique et un pilote contrôlé. Render Free met un service en veille après une période d’inactivité et son disque est éphémère; Supabase Free demande des exports manuels réguliers. Avant de confier des opérations critiques à Vigie, choisir des offres avec sauvegardes et disponibilité adaptées, puis répéter l’acceptation dans un environnement de production séparé. Références : [limites Render Free](https://render.com/docs/free) et [sauvegardes Supabase](https://supabase.com/docs/guides/platform/backups).

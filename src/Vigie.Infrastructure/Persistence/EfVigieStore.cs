@@ -108,6 +108,8 @@ public sealed class EfVigieStore(VigieDbContext db) : IVigieStore
     public void AddNotification(Notification notification) => db.Notifications.Add(notification);
     public void UpdateNotification(Notification notification) => db.Notifications.Update(notification);
     public void AddCertificationType(CertificationType certificationType) => db.CertificationTypes.Add(certificationType);
+    public void AddCertification(Certification certification) => db.Certifications.Add(certification);
+    public void UpdateCertification(Certification certification) => db.Certifications.Update(certification);
     public void AddCertificationTypeForSite(Guid siteId, Guid certificationTypeId)
         => db.SiteCertificationRequirements.Add(new SiteCertificationRequirement { SiteId = siteId, CertificationTypeId = certificationTypeId });
     public void AddPasswordResetToken(PasswordResetToken token) => db.PasswordResetTokens.Add(token);

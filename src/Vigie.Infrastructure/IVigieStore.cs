@@ -50,6 +50,8 @@ public interface IVigieStore :
     void AddNotification(Notification notification);
     void UpdateNotification(Notification notification);
     void AddCertificationType(CertificationType certificationType);
+    void AddCertification(Certification certification);
+    void UpdateCertification(Certification certification);
     void AddCertificationTypeForSite(Guid siteId, Guid certificationTypeId);
     void AddPasswordResetToken(PasswordResetToken token);
     void UpdatePasswordResetToken(PasswordResetToken token);

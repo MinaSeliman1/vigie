@@ -1,4 +1,4 @@
-import type { ApiProblem, AssignmentResponse, AuditEntryResponse, AuditPageResponse, AvailabilityResponse, CertificationResponse, CoverageResponse, CreateSectorInput, CreateShiftInput, CreateSiteInput, InvitationResponse, LoginResponse, MembershipResponse, NotificationResponse, RegistrationResponse, SectorResponse, ShiftResponse, SiteResponse, SwapRequestResponse, TeamAvailabilityResponse, UpdateShiftInput, UserSummary } from './types'
+import type { ApiProblem, AssignmentResponse, AuditEntryResponse, AuditPageResponse, AvailabilityResponse, CertificationResponse, CertificationTypeResponse, CoverageResponse, CreateSectorInput, CreateShiftInput, CreateSiteInput, InvitationResponse, LoginResponse, MembershipResponse, NotificationResponse, RegistrationResponse, SectorResponse, ShiftResponse, SiteResponse, SwapRequestResponse, TeamAvailabilityResponse, UpdateShiftInput, UserSummary } from './types'
 
 export const apiConfigured = Boolean(import.meta.env.VITE_API_URL)
 const baseUrl = (import.meta.env.VITE_API_URL as string | undefined)?.replace(/\/$/, '') ?? 'http://localhost:5187'
@@ -84,6 +84,8 @@ export const vigieApi = {
   },
   setAvailability: (date: string, isAvailable: boolean, note?: string) => request<AvailabilityResponse>('/api/v1/availability', { method: 'PUT', body: JSON.stringify({ date, isAvailable, note }) }),
   certifications: () => request<CertificationResponse[]>('/api/v1/certifications'),
+  certificationTypes: () => request<CertificationTypeResponse[]>('/api/v1/certification-types'),
+  saveCertification: (employeeId: string, certificationTypeId: string, expiresOn: string) => request<CertificationResponse>('/api/v1/certifications', { method: 'PUT', body: JSON.stringify({ employeeId, certificationTypeId, expiresOn }) }),
   sectors: () => request<SectorResponse[]>('/api/v1/sectors'),
   createSector: (input: CreateSectorInput) => request<SectorResponse>('/api/v1/sectors', { method: 'POST', body: JSON.stringify(input) }),
   members: () => request<MembershipResponse[]>('/api/v1/members'),

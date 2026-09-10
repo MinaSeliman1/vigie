@@ -5,7 +5,8 @@ services:
     plan: free
     dockerfilePath: ./src/Vigie.Api/Dockerfile
     dockerContext: .
-    healthCheckPath: /health
+    # Render doit valider la base PostgreSQL avant de considérer l'API prête.
+    healthCheckPath: /health/ready
     envVars:
       - key: ASPNETCORE_ENVIRONMENT
         value: Production

@@ -35,6 +35,7 @@ Les limites calendaires (jour d’expiration, début de semaine, quarts de nuit 
 - Calendrier hebdomadaire personnel et d’équipe.
 - Demandes de remplacement, approbation et refus.
 - Suivi des certifications et alertes à 90 et 30 jours de l’échéance.
+- Mise à jour de la date d’expiration d’une certification par la personne concernée ou un responsable autorisé, avec audit de la modification.
 - Création d’un espace d’organisation avec coordonnateur et isolation des sites et des équipes.
 - Parcours d’inscription guidé en français : type de centre, nombre de piscines, taille d’équipe et priorité opérationnelle sont enregistrés dans le profil de l’organisation pour préparer son espace.
 - Pour un centre municipal, les 27 piscines de référence de Laval et leurs quatre secteurs sont provisionnés immédiatement, avec les certifications requises pour chaque site.
@@ -134,6 +135,7 @@ L’interface est en français et permet de basculer entre six profils de démon
 - EF Core et PostgreSQL sont branchés derrière `IVigieStore`; le mode mémoire reste le défaut local pour garder le démarrage reproductible.
 - Les routes publiques `/api/v1/auth/register` et `/api/v1/auth/login` créent ou ouvrent un espace d’organisation ; les invitations `/api/v1/invitations` ne stockent que le hachage d’un jeton et les mots de passe sont stockés sous forme de hachages PBKDF2.
 - Les courriels de nouveau quart et de décision d’échange sont envoyés aux utilisateurs réels via Resend lorsque les variables sécurisées sont présentes; les comptes de démonstration ne déclenchent aucun envoi externe.
+- Les responsables peuvent corriger une date de certification depuis la vue Certifications; l’API vérifie le périmètre, conserve l’identité du certificat et journalise la modification.
 - Chaque utilisateur connecté peut récupérer une copie JSON de ses données via `GET /api/v1/auth/export` ou supprimer son compte via `DELETE /api/v1/auth/account`; les secrets sont exclus, l’export est marqué `no-store`, la suppression révoque les sessions et l’opération est inscrite dans l’audit.
 - Les quarts suivent un workflow brouillon → publié : un responsable prépare et vérifie un quart, puis sa publication le rend visible aux sauveteurs. Les quarts existants sont migrés comme publiés pour préserver la continuité de service.
 - `GET /api/v1/coverage` expose aux responsables l’effectif requis, l’effectif assigné et les quarts à compléter dans leur périmètre; les sauveteurs ne peuvent pas consulter cette vue de pilotage.
@@ -143,6 +145,8 @@ L’interface est en français et permet de basculer entre six profils de démon
 - Les migrations `AddLavalOperationsFoundation`, `AddSiteCatalogMetadata` et `FixMembershipScopeIndexes` ainsi qu’un seed idempotent s’exécutent automatiquement lorsqu’une chaîne `ConnectionStrings__Vigie` est configurée.
 - Le [runbook de sauvegarde et restauration](docs/operations/backup-restore.md) décrit le dump PostgreSQL gratuit, le test sur une base temporaire et les vérifications de reprise.
 - La [checklist de lancement en production](docs/operations/production-launch-checklist.md) couvre le passage à un centre réel, les courriels, la surveillance, l’acceptation fonctionnelle et la facturation future.
+- Les procédures d’exploitation incluent la [conservation des données](docs/operations/data-retention.md), la [réponse aux incidents](docs/operations/incident-response.md) et le [signalement de sécurité](SECURITY.md).
+- Le [plan de facturation](docs/operations/billing-launch-plan.md) décrit l’activation future d’un abonnement sans simuler de paiement dans la démo.
 
 ## Examiner le projet
 

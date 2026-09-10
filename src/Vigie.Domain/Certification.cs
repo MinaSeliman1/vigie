@@ -26,4 +26,7 @@ public sealed class Certification
             throw new DomainException("Les identifiants de certification sont obligatoires.");
         return new Certification(id, employeeId, certificationTypeId, expiresOn);
     }
+
+    public void UpdateExpiration(DateOnly expiresOn)
+        => ExpiresOn = expiresOn;
 }

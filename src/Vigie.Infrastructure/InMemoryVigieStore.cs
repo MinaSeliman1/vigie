@@ -118,9 +118,10 @@ public sealed class InMemoryVigieStore :
     public void AddNotification(Notification notification) => notifications[notification.Id] = notification;
     public void UpdateNotification(Notification notification) => notifications[notification.Id] = notification;
     public void AddCertificationType(CertificationType certificationType) => certificationTypes[certificationType.Id] = certificationType;
+    public void AddCertification(Certification certification) => certifications[certification.Id] = certification;
+    public void UpdateCertification(Certification certification) => certifications[certification.Id] = certification;
     public void AddPasswordResetToken(PasswordResetToken token) => passwordResetTokens[token.Id] = token;
     public void UpdatePasswordResetToken(PasswordResetToken token) => passwordResetTokens[token.Id] = token;
-    public void AddCertification(Certification certification) => certifications[certification.Id] = certification;
     public void AddCertificationTypeForSite(Guid siteId, Guid certificationTypeId) => siteCertificationTypes.GetOrAdd(siteId).Add(certificationTypeId);
 
     public Availability UpsertAvailability(Guid employeeId, DateOnly onDate, bool isAvailable, string? note)

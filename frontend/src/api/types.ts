@@ -77,9 +77,11 @@ export type SwapRequestResponse = {
   requestedAtUtc: string
 }
 
+export type CertificationTypeResponse = { id: string; name: string; isRequired: boolean }
 export type CertificationResponse = {
   id: string
   employeeId: string
+  certificationTypeId: string
   employeeName: string
   type: string
   expiresOn: string

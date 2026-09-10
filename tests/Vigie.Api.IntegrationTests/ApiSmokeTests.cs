@@ -64,6 +64,8 @@ public sealed class ApiSmokeTests : IClassFixture<WebApplicationFactory<Program>
             "/api/v1/auth/account",
             "/api/v1/sites",
             "/api/v1/sites/{siteId}",
+            "/api/v1/certifications",
+            "/api/v1/certification-types",
             "/api/v1/shifts",
             "/api/v1/coverage",
             "/api/v1/audit/query",
@@ -938,6 +940,53 @@ public sealed class ApiSmokeTests : IClassFixture<WebApplicationFactory<Program>
     }
 
     [Fact]
+    public async Task A_manager_can_update_a_team_certification_and_the_employee_can_read_it()
+    {
+        var login = await client.PostAsJsonAsync("/api/v1/auth/login", new { email = "regie@vigie.demo", password = "vigie-demo" });
+        var payload = await login.Content.ReadFromJsonAsync<LoginPayload>();
+        client.DefaultRequestHeaders.Authorization = new System.Net.Http.Headers.AuthenticationHeaderValue("Bearer", payload!.Token);
+
+        var certifications = await client.GetFromJsonAsync<CertificationPayload[]>("/api/v1/certifications");
+        var certification = certifications!.First(item => item.EmployeeName == "Amélie Roy" && item.Type == "Premiers soins");
+        var update = await client.PutAsJsonAsync("/api/v1/certifications", new
+        {
+            employeeId = certification.EmployeeId,
+            certificationTypeId = certification.CertificationTypeId,
+            expiresOn = "2027-12-31"
+        });
+        var updated = await update.Content.ReadFromJsonAsync<CertificationPayload>();
+
+        Assert.Equal(HttpStatusCode.OK, update.StatusCode);
+        Assert.Equal(certification.Id, updated?.Id);
+        Assert.Equal(new DateOnly(2027, 12, 31), updated?.ExpiresOn);
+
+        var types = await client.GetFromJsonAsync<CertificationTypePayload[]>("/api/v1/certification-types");
+        Assert.Contains(types!, item => item.Name == "Premiers soins" && item.IsRequired);
+    }
+
+    [Fact]
+    public async Task A_lifeguard_cannot_update_another_employee_certification()
+    {
+        var managerLogin = await client.PostAsJsonAsync("/api/v1/auth/login", new { email = "regie@vigie.demo", password = "vigie-demo" });
+        var managerPayload = await managerLogin.Content.ReadFromJsonAsync<LoginPayload>();
+        client.DefaultRequestHeaders.Authorization = new System.Net.Http.Headers.AuthenticationHeaderValue("Bearer", managerPayload!.Token);
+        var certifications = await client.GetFromJsonAsync<CertificationPayload[]>("/api/v1/certifications");
+        var other = certifications!.First(item => item.EmployeeName == "Noah Tremblay");
+
+        var login = await client.PostAsJsonAsync("/api/v1/auth/login", new { email = "amelie@vigie.demo", password = "vigie-demo" });
+        var payload = await login.Content.ReadFromJsonAsync<LoginPayload>();
+        client.DefaultRequestHeaders.Authorization = new System.Net.Http.Headers.AuthenticationHeaderValue("Bearer", payload!.Token);
+        var update = await client.PutAsJsonAsync("/api/v1/certifications", new
+        {
+            employeeId = other.EmployeeId,
+            certificationTypeId = other.CertificationTypeId,
+            expiresOn = "2027-12-31"
+        });
+
+        Assert.Equal(HttpStatusCode.Forbidden, update.StatusCode);
+    }
+
+    [Fact]
     public async Task Aquatic_director_can_reschedule_and_cancel_a_shift()
     {
         var login = await client.PostAsJsonAsync("/api/v1/auth/login", new { email = "regie@vigie.demo", password = "vigie-demo" });
@@ -1026,6 +1075,8 @@ public sealed class ApiSmokeTests : IClassFixture<WebApplicationFactory<Program>
     private sealed record AssignmentPayload(Guid Id, Guid ShiftId, Guid EmployeeId, string EmployeeName);
     private sealed record SwapPayload(Guid Id, string? Status = null);
     private sealed record NotificationPayload(Guid Id, string Type, string Title, string Body, string? ActionUrl, DateTimeOffset CreatedAtUtc, bool IsRead, DateTimeOffset? ReadAtUtc);
+    private sealed record CertificationPayload(Guid Id, Guid EmployeeId, Guid CertificationTypeId, string EmployeeName, string Type, DateOnly ExpiresOn, int DaysRemaining);
+    private sealed record CertificationTypePayload(Guid Id, string Name, bool IsRequired);
     private sealed record PasswordResetRequestPayload(string Message, string? ResetToken);
     private sealed record SectorPayload(Guid Id, Guid OrganizationId, string Name, string Code, bool IsActive, DateTimeOffset CreatedAtUtc, DateTimeOffset UpdatedAtUtc);
     private sealed record MemberPayload(Guid Id, Guid EmployeeId, string EmployeeName, string Email, string Role, Guid OrganizationId, Guid? SiteId, string? SiteName, Guid? SectorId, string? SectorName, bool IsActive, int Version);

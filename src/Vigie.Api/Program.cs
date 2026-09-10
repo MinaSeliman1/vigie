@@ -139,13 +139,22 @@ app.MapGet("/health/ready", async (IServiceProvider services, CancellationToken 
 
     try
     {
-        if (!await database.Database.CanConnectAsync(ct))
+        // Render attend une réponse de health check en moins de cinq secondes.
+        // La limite locale évite qu'une connexion PostgreSQL bloquée fasse croire
+        // que le conteneur est vivant alors qu'il n'est pas prêt à servir le trafic.
+        using var readinessTimeout = CancellationTokenSource.CreateLinkedTokenSource(ct);
+        readinessTimeout.CancelAfter(TimeSpan.FromSeconds(4));
+        if (!await database.Database.CanConnectAsync(readinessTimeout.Token))
             return Problem("DATABASE_UNAVAILABLE", "La base de données n'est pas disponible.", StatusCodes.Status503ServiceUnavailable);
         return Results.Ok(new { status = "ready", service = "vigie-api", persistence = "postgresql" });
     }
     catch (OperationCanceledException) when (ct.IsCancellationRequested)
     {
         throw;
+    }
+    catch (OperationCanceledException)
+    {
+        return Problem("DATABASE_TIMEOUT", "La base de données n'a pas répondu à temps.", StatusCodes.Status503ServiceUnavailable);
     }
     catch (Exception)
     {
@@ -706,7 +715,7 @@ app.MapGet("/api/v1/dashboard", (ClaimsPrincipal user, IVigieStore store) =>
     var now = DateTimeOffset.UtcNow;
     var warnings = store.Certifications.Where(c => c.EmployeeId == employeeId)
         .Select(c => (Certification: c, Type: store.CertificationTypes.Single(t => t.Id == c.CertificationTypeId)))
-        .Select(x => new CertificationResponse(x.Certification.Id, employeeId, store.Employees.Single(e => e.Id == employeeId).Name, x.Type.Name, x.Certification.ExpiresOn, x.Certification.ExpiresOn.DayNumber - DateOnly.FromDateTime(now.UtcDateTime).DayNumber))
+        .Select(x => new CertificationResponse(x.Certification.Id, employeeId, x.Certification.CertificationTypeId, store.Employees.Single(e => e.Id == employeeId).Name, x.Type.Name, x.Certification.ExpiresOn, x.Certification.ExpiresOn.DayNumber - DateOnly.FromDateTime(now.UtcDateTime).DayNumber))
         .Where(x => x.DaysRemaining is >= 0 and <= 90).OrderBy(x => x.ExpiresOn).ToArray();
     var upcoming = store.Assignments.Count(a => a.EmployeeId == employeeId && store.Shifts.Single(s => s.Id == a.ShiftId).StartUtc >= now);
     var pending = store.SwapRequests.Count(r => r.Status == SwapStatus.Pending && (store.Assignments.Single(a => a.Id == r.AssignmentId).EmployeeId == employeeId || r.ReceiverId == employeeId));
@@ -920,9 +929,52 @@ app.MapGet("/api/v1/certifications", (ClaimsPrincipal user, IVigieStore store) =
     var result = store.Certifications.Where(c => store.Employees.Any(employee => employee.Id == c.EmployeeId && employee.OrganizationId == scope.OrganizationId && IsEmployeeVisible(employee, scope, store))).Select(c =>
     {
         var employee = store.Employees.Single(e => e.Id == c.EmployeeId); var type = store.CertificationTypes.Single(t => t.Id == c.CertificationTypeId);
-        return new CertificationResponse(c.Id, c.EmployeeId, employee.Name, type.Name, c.ExpiresOn, c.ExpiresOn.DayNumber - DateOnly.FromDateTime(DateTime.UtcNow).DayNumber);
+        return new CertificationResponse(c.Id, c.EmployeeId, c.CertificationTypeId, employee.Name, type.Name, c.ExpiresOn, c.ExpiresOn.DayNumber - DateOnly.FromDateTime(DateTime.UtcNow).DayNumber);
     }).OrderBy(c => c.ExpiresOn).ToArray();
     return Results.Ok(result);
+}).RequireAuthorization().WithTags("Certifications");
+
+app.MapGet("/api/v1/certification-types", (ClaimsPrincipal user, IVigieStore store) =>
+{
+    var scope = OrganizationScopeResolver.Resolve(user, store);
+    if (scope is null) return Problem("SESSION_INVALID", "La session n'est plus valide.", StatusCodes.Status401Unauthorized);
+    return Results.Ok(store.CertificationTypes
+        .OrderBy(type => type.Name)
+        .Select(type => new CertificationTypeResponse(type.Id, type.Name, type.IsRequired))
+        .ToArray());
+}).RequireAuthorization().WithTags("Certifications");
+
+app.MapPut("/api/v1/certifications", async (ClaimsPrincipal user, CreateCertificationRequest request, IVigieStore store, IUnitOfWork unitOfWork, CancellationToken ct) =>
+{
+    var scope = OrganizationScopeResolver.Resolve(user, store);
+    if (scope is null) return Problem("SESSION_INVALID", "La session n'est plus valide.", StatusCodes.Status401Unauthorized);
+    var employee = store.Employees.SingleOrDefault(item => item.Id == request.EmployeeId && item.OrganizationId == scope.OrganizationId);
+    var certificationType = store.CertificationTypes.SingleOrDefault(item => item.Id == request.CertificationTypeId);
+    if (employee is null || certificationType is null)
+        return Problem("NOT_FOUND", "Le membre ou le type de certification est introuvable.", StatusCodes.Status404NotFound);
+    if (employee.Id != scope.EmployeeId && !IsEmployeeVisible(employee, scope, store))
+        return Results.StatusCode(StatusCodes.Status403Forbidden);
+
+    try
+    {
+        var certification = store.Certifications.SingleOrDefault(item => item.EmployeeId == employee.Id && item.CertificationTypeId == certificationType.Id);
+        var auditAction = certification is null ? "certification.created" : "certification.updated";
+        if (certification is null)
+        {
+            certification = Certification.Create(Guid.NewGuid(), employee.Id, certificationType.Id, request.ExpiresOn);
+            store.AddCertification(certification);
+        }
+        else
+        {
+            certification.UpdateExpiration(request.ExpiresOn);
+            store.UpdateCertification(certification);
+        }
+
+        store.AddAuditEntry(Audit(scope.OrganizationId, scope.EmployeeId, auditAction, "Certification", certification.Id, $"employé={employee.Name};type={certificationType.Name}"));
+        await unitOfWork.SaveChangesAsync(ct);
+        return Results.Ok(new CertificationResponse(certification.Id, employee.Id, certificationType.Id, employee.Name, certificationType.Name, certification.ExpiresOn, certification.ExpiresOn.DayNumber - DateOnly.FromDateTime(DateTime.UtcNow).DayNumber));
+    }
+    catch (DomainException ex) { return Problem("INVALID_CERTIFICATION", ex.Message); }
 }).RequireAuthorization().WithTags("Certifications");
 
 app.MapGet("/api/v1/employees", (ClaimsPrincipal user, IVigieStore store) =>

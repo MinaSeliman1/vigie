@@ -42,6 +42,7 @@ Transformer la démonstration Vigie en un logiciel que plusieurs centres aquatiq
 - ✅ Gérer le catalogue des piscines depuis la Régie : création, modification des métadonnées, saison d’ouverture et rattachement à un secteur.
 - ✅ Permettre une assignation et un retrait avec validation atomique des cinq règles.
 - ✅ Exposer certifications, capacité de couverture et disponibilités déclarées de l’équipe dans les vues responsables; les disponibilités personnelles restent visibles par leur propriétaire.
+- ✅ Permettre à la personne concernée ou à un responsable autorisé de corriger une date de certification, avec contrôle de périmètre et journal d’audit.
 - ✅ Prévenir les doublons et verrouiller les décisions concurrentes.
 
 ### 4. Historique, notifications et expérience
@@ -55,6 +56,8 @@ Transformer la démonstration Vigie en un logiciel que plusieurs centres aquatiq
 ### 5. Mise en production
 
 - Environnements séparés, migrations contrôlées, sauvegardes et vérification de restauration.
+- ✅ Documenter la conservation des données, la réponse aux incidents et le canal de signalement de sécurité.
+- ✅ Documenter la décision et les prérequis de facturation avant toute intégration d’un fournisseur de paiement.
 - ✅ Logs structurés, corrélation par requête, endpoint de readiness PostgreSQL et métriques Prometheus sans donnée personnelle; les alertes de disponibilité restent à brancher au fournisseur d’observabilité choisi.
 - ✅ Test d’intégrité du contrat OpenAPI sur les routes opérationnelles critiques.
 - ✅ Analyse des dépendances ajoutée à la CI pour les Pull Requests.
