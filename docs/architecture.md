@@ -20,7 +20,7 @@ Le mode mémoire est activé par défaut pour rendre la démo locale immédiate.
 
 `OrganizationMembership` porte le rôle et le périmètre actifs d’une personne. Un `Lifeguard` et un `PoolChief` sont rattachés à une piscine, un `SectorManager` à un secteur et un `AquaticDirector` à l’organisation entière. `Employee.Role` reste présent pour lire les anciennes données, mais les routes sensibles résolvent toujours le membership actif et revalident l’organisation, le secteur et la piscine de la ressource.
 
-Le catalogue de référence est défini dans `src/Vigie.Infrastructure/LavalPoolCatalog.cs`. Chaque installation dispose d’un identifiant stable, d’un secteur, d’un type intérieur/extérieur, d’une adresse, d’un quartier et d’une saison d’ouverture. Les informations de programmation saisonnière doivent être confirmées à partir des pages officielles de la Ville avant une utilisation réelle.
+Le catalogue de référence est défini dans `src/Vigie.Infrastructure/LavalPoolCatalog.cs`. Chaque installation dispose d’un identifiant stable, d’un secteur, d’un type intérieur/extérieur, d’une adresse, d’un quartier et d’une saison d’ouverture. La Régie peut créer ou modifier ces métadonnées via l’API, avec une vérification que le secteur appartient à la même organisation. Les informations de programmation saisonnière doivent être confirmées à partir des pages officielles de la Ville avant une utilisation réelle.
 
 Les règles d’assignation sont exécutées dans `AssignmentPolicy`. Une demande d’échange est toujours créée en `Pending` et l’approbation rejoue les règles avec les données courantes avant de réassigner le quart.
 

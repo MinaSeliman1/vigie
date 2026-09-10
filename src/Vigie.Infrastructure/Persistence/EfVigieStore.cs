@@ -99,6 +99,7 @@ public sealed class EfVigieStore(VigieDbContext db) : IVigieStore
     public void AddInvitation(Invitation invitation) => db.Invitations.Add(invitation);
     public void UpdateInvitation(Invitation invitation) => db.Invitations.Update(invitation);
     public void AddSite(Site site) => db.Sites.Add(site);
+    public void UpdateSite(Site site) => db.Sites.Update(site);
     public void AddSector(Sector sector) => db.Sectors.Add(sector);
     public void UpdateSector(Sector sector) => db.Sectors.Update(sector);
     public void AddMembership(OrganizationMembership membership) => db.OrganizationMemberships.Add(membership);

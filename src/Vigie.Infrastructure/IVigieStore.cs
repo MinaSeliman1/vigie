@@ -41,6 +41,7 @@ public interface IVigieStore :
     void AddInvitation(Invitation invitation);
     void UpdateInvitation(Invitation invitation);
     void AddSite(Site site);
+    void UpdateSite(Site site);
     void AddSector(Sector sector);
     void UpdateSector(Sector sector);
     void AddMembership(OrganizationMembership membership);

@@ -39,6 +39,7 @@ Transformer la démonstration Vigie en un logiciel que plusieurs centres aquatiq
 ### 3. Opérations métier complètes
 
 - ✅ Gérer création, modification, publication et annulation de quarts; les brouillons restent réservés aux responsables jusqu’à leur publication.
+- ✅ Gérer le catalogue des piscines depuis la Régie : création, modification des métadonnées, saison d’ouverture et rattachement à un secteur.
 - ✅ Permettre une assignation et un retrait avec validation atomique des cinq règles.
 - ✅ Exposer certifications, capacité de couverture et disponibilités déclarées de l’équipe dans les vues responsables; les disponibilités personnelles restent visibles par leur propriétaire.
 - ✅ Prévenir les doublons et verrouiller les décisions concurrentes.

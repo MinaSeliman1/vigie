@@ -730,13 +730,36 @@ app.MapPost("/api/v1/sites", async (ClaimsPrincipal user, CreateSiteRequest requ
     var scope = OrganizationScopeResolver.Resolve(user, store);
     if (!OrganizationScopeResolver.CanManageOrganization(scope)) return Results.StatusCode(StatusCodes.Status403Forbidden);
     if (!Enum.TryParse<SiteType>(request.Type, true, out var type)) return Problem("INVALID_SITE_TYPE", "Le type de site est invalide.");
+    var sector = request.SectorId.HasValue ? store.Sectors.SingleOrDefault(item => item.Id == request.SectorId && item.OrganizationId == scope!.OrganizationId && item.IsActive) : null;
+    if (request.SectorId.HasValue && sector is null) return Problem("INVALID_SECTOR", "Le secteur sélectionné est introuvable ou inactif.");
     try
     {
         var site = Site.Create(Guid.NewGuid(), request.Name, request.TimeZoneId, new OpeningSeason(request.StartMonth, request.StartDay, request.EndMonth, request.EndDay), type, OrganizationId(user), request.Address, request.Neighborhood, request.IsMunicipal);
+        site.SetSector(request.SectorId);
         store.AddSite(site);
-        store.AddAuditEntry(Audit(OrganizationId(user), UserId(user), "site.created", "Site", site.Id));
+        store.AddAuditEntry(Audit(OrganizationId(user), UserId(user), "site.created", "Site", site.Id, sector is null ? null : $"sector={sector.Code}"));
         await unitOfWork.SaveChangesAsync(ct);
         return Results.Created($"/api/v1/sites/{site.Id}", ToSite(site, store));
+    }
+    catch (DomainException ex) { return Problem("INVALID_SITE", ex.Message); }
+}).RequireAuthorization().WithTags("Sites");
+app.MapPatch("/api/v1/sites/{siteId:guid}", async (ClaimsPrincipal user, Guid siteId, UpdateSiteRequest request, IVigieStore store, IUnitOfWork unitOfWork, CancellationToken ct) =>
+{
+    var scope = OrganizationScopeResolver.Resolve(user, store);
+    if (!OrganizationScopeResolver.CanManageOrganization(scope)) return Results.StatusCode(StatusCodes.Status403Forbidden);
+    var site = store.Sites.SingleOrDefault(item => item.Id == siteId && item.OrganizationId == scope!.OrganizationId);
+    if (site is null) return Problem("NOT_FOUND", "La piscine est introuvable.", StatusCodes.Status404NotFound);
+    if (!Enum.TryParse<SiteType>(request.Type, true, out var type)) return Problem("INVALID_SITE_TYPE", "Le type de site est invalide.");
+    var sector = request.SectorId.HasValue ? store.Sectors.SingleOrDefault(item => item.Id == request.SectorId && item.OrganizationId == scope!.OrganizationId && item.IsActive) : null;
+    if (request.SectorId.HasValue && sector is null) return Problem("INVALID_SECTOR", "Le secteur sélectionné est introuvable ou inactif.");
+    try
+    {
+        site.UpdateDetails(request.Name, request.TimeZoneId, new OpeningSeason(request.StartMonth, request.StartDay, request.EndMonth, request.EndDay), type, request.Address, request.Neighborhood, request.IsMunicipal);
+        site.SetSector(request.SectorId);
+        store.UpdateSite(site);
+        store.AddAuditEntry(Audit(scope!.OrganizationId, scope.EmployeeId, "site.updated", "Site", site.Id, sector is null ? "sector=none" : $"sector={sector.Code}"));
+        await unitOfWork.SaveChangesAsync(ct);
+        return Results.Ok(ToSite(site, store));
     }
     catch (DomainException ex) { return Problem("INVALID_SITE", ex.Message); }
 }).RequireAuthorization().WithTags("Sites");

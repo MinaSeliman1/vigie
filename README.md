@@ -31,7 +31,7 @@ Les limites calendaires (jour d’expiration, début de semaine, quarts de nuit 
 - Connexion avec les rôles `Sauveteur`, `Chef de piscine`, `Chargé de secteur` et `Régie aquatique`.
 - Portée d’accès contrôlée par organisation, secteur et piscine, avec memberships actifs, désactivation logique et version optimiste.
 - Catalogue de référence Laval : 7 piscines intérieures et 20 piscines extérieures, avec adresse, quartier, type et saison d’ouverture.
-- Gestion des sites, secteurs, quarts (création, modification, publication et annulation), assignations, disponibilités personnelles et disponibilité de l’équipe, avec suivi de couverture.
+- Gestion des sites et secteurs depuis la Régie (création, modification, rattachement et saison d’ouverture), puis des quarts (création, modification, publication et annulation), assignations, disponibilités personnelles et disponibilité de l’équipe, avec suivi de couverture.
 - Calendrier hebdomadaire personnel et d’équipe.
 - Demandes de remplacement, approbation et refus.
 - Suivi des certifications et alertes à 90 et 30 jours de l’échéance.
@@ -128,7 +128,7 @@ L’interface est en français et permet de basculer entre six profils de démon
 - `/health/ready` vérifie la disponibilité de PostgreSQL quand la persistance est activée, et `/metrics` expose des compteurs Prometheus sans donnée personnelle.
 - `render.yaml` décrit le déploiement gratuit de l’API, son health check et les secrets attendus sans jamais les stocker dans Git.
 - Le frontend React affiche un calendrier responsive et exécute les parcours création → assignation de quart et demande d’échange → approbation avec les profils de démonstration.
-- La Régie aquatique peut créer une piscine depuis l’interface en renseignant son type, son adresse, son quartier, son fuseau et sa saison d’ouverture; le site est immédiatement disponible pour les quarts et les rattachements.
+- La Régie aquatique peut créer ou modifier une piscine depuis l’interface en renseignant son type, son adresse, son quartier, son fuseau, sa saison d’ouverture et son secteur; le site est immédiatement disponible pour les quarts et les rattachements.
 - La vue `Disponibilités` permet à un sauveteur de déclarer ses jours ouverts ou indisponibles et persiste ce choix via l’API.
 - Les responsables disposent de `GET /api/v1/availability/team` et d’une vue d’équipe qui regroupe les déclarations de leur périmètre, avec contrôle d’accès côté serveur.
 - EF Core et PostgreSQL sont branchés derrière `IVigieStore`; le mode mémoire reste le défaut local pour garder le démarrage reproductible.

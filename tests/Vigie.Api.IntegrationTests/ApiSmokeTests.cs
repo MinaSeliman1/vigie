@@ -883,6 +883,59 @@ public sealed class ApiSmokeTests : IClassFixture<WebApplicationFactory<Program>
     }
 
     [Fact]
+    public async Task Aquatic_director_can_update_a_site_and_assign_its_sector()
+    {
+        var registration = await client.PostAsJsonAsync("/api/v1/auth/register", new
+        {
+            organizationName = $"Centre catalogue {Guid.NewGuid():N}",
+            name = "Directrice catalogue",
+            email = $"catalogue-{Guid.NewGuid():N}@exemple.test",
+            password = "Mot-de-passe1"
+        });
+        var account = await registration.Content.ReadFromJsonAsync<RegistrationPayload>();
+        client.DefaultRequestHeaders.Authorization = new System.Net.Http.Headers.AuthenticationHeaderValue("Bearer", account!.Login.Token);
+        var sectorResponse = await client.PostAsJsonAsync("/api/v1/sectors", new { name = "Secteur rénové", code = "RENOVE" });
+        var sector = await sectorResponse.Content.ReadFromJsonAsync<SectorPayload>();
+        var siteResponse = await client.PostAsJsonAsync("/api/v1/sites", new
+        {
+            name = "Piscine à corriger",
+            type = "Indoor",
+            timeZoneId = "Eastern Standard Time",
+            startMonth = 1,
+            startDay = 1,
+            endMonth = 12,
+            endDay = 31
+        });
+        var site = await siteResponse.Content.ReadFromJsonAsync<SitePayload>();
+
+        var update = await client.PatchAsJsonAsync($"/api/v1/sites/{site!.Id}", new
+        {
+            name = "Piscine rénovée",
+            type = "Outdoor",
+            timeZoneId = "America/Toronto",
+            startMonth = 6,
+            startDay = 1,
+            endMonth = 9,
+            endDay = 15,
+            address = "1, rue du Parc",
+            neighborhood = "Chomedey",
+            isMunicipal = true,
+            sectorId = sector!.Id
+        });
+        var updated = await update.Content.ReadFromJsonAsync<SitePayload>();
+
+        Assert.Equal(HttpStatusCode.Created, sectorResponse.StatusCode);
+        Assert.Equal(HttpStatusCode.Created, siteResponse.StatusCode);
+        Assert.Equal(HttpStatusCode.OK, update.StatusCode);
+        Assert.Equal(site.Id, updated?.Id);
+        Assert.Equal("Piscine rénovée", updated?.Name);
+        Assert.Equal("Outdoor", updated?.Type);
+        Assert.Equal("Chomedey", updated?.Neighborhood);
+        Assert.Equal(sector.Id, updated?.SectorId);
+        Assert.Equal("Secteur rénové", updated?.SectorName);
+    }
+
+    [Fact]
     public async Task Aquatic_director_can_reschedule_and_cancel_a_shift()
     {
         var login = await client.PostAsJsonAsync("/api/v1/auth/login", new { email = "regie@vigie.demo", password = "vigie-demo" });

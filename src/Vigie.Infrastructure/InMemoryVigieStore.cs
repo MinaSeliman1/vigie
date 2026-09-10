@@ -109,6 +109,7 @@ public sealed class InMemoryVigieStore :
     public void AddInvitation(Invitation invitation) => invitations[invitation.Id] = invitation;
     public void UpdateInvitation(Invitation invitation) => invitations[invitation.Id] = invitation;
     public void AddSite(Site site) => sites[site.Id] = site;
+    public void UpdateSite(Site site) => sites[site.Id] = site;
     public void AddSector(Sector sector) => sectors[sector.Id] = sector;
     public void UpdateSector(Sector sector) => sectors[sector.Id] = sector;
     public void AddMembership(OrganizationMembership membership) => memberships[membership.Id] = membership;

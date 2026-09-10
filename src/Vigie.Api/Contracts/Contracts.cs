@@ -48,7 +48,8 @@ public sealed record CoverageResponse(Guid ShiftId, Guid SiteId, string SiteName
 public sealed record AssignmentResponse(Guid Id, Guid ShiftId, Guid EmployeeId, string EmployeeName);
 public sealed record CreateShiftRequest(Guid SiteId, DateTimeOffset StartUtc, DateTimeOffset EndUtc, int RequiredLifeguards);
 public sealed record UpdateShiftRequest(DateTimeOffset StartUtc, DateTimeOffset EndUtc, int RequiredLifeguards);
-public sealed record CreateSiteRequest(string Name, string Type, string TimeZoneId, int StartMonth, int StartDay, int EndMonth, int EndDay, string? Address = null, string? Neighborhood = null, bool IsMunicipal = false);
+public sealed record CreateSiteRequest(string Name, string Type, string TimeZoneId, int StartMonth, int StartDay, int EndMonth, int EndDay, string? Address = null, string? Neighborhood = null, bool IsMunicipal = false, Guid? SectorId = null);
+public sealed record UpdateSiteRequest(string Name, string Type, string TimeZoneId, int StartMonth, int StartDay, int EndMonth, int EndDay, string? Address = null, string? Neighborhood = null, bool IsMunicipal = false, Guid? SectorId = null);
 public sealed record AssignShiftRequest(Guid EmployeeId);
 public sealed record CertificationResponse(Guid Id, Guid EmployeeId, string EmployeeName, string Type, DateOnly ExpiresOn, int DaysRemaining);
 public sealed record CreateCertificationRequest(Guid EmployeeId, Guid CertificationTypeId, DateOnly ExpiresOn);

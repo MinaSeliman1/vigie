@@ -57,6 +57,18 @@ public sealed class Site
         IsMunicipal = isMunicipal;
     }
 
+    public void UpdateDetails(string name, string timeZoneId, OpeningSeason openingSeason, SiteType type, string? address, string? neighborhood, bool isMunicipal)
+    {
+        if (string.IsNullOrWhiteSpace(name)) throw new DomainException("Le nom du site est obligatoire.");
+        if (string.IsNullOrWhiteSpace(timeZoneId)) throw new DomainException("Le fuseau horaire du site est obligatoire.");
+
+        Name = name.Trim();
+        TimeZoneId = timeZoneId.Trim();
+        OpeningSeason = openingSeason;
+        Type = type;
+        SetCatalogMetadata(address, neighborhood, isMunicipal);
+    }
+
     public void SetOrganization(Guid organizationId)
     {
         if (organizationId == Guid.Empty) throw new DomainException("L'organisation du site est obligatoire.");
