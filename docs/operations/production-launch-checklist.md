@@ -38,8 +38,8 @@ Après ce choix, ajouter les variables secrètes du fournisseur dans Render, con
 
 ## Contrôle final
 
-- [ ] `dotnet test Vigie.sln --configuration Release` passe localement.
-- [ ] Depuis le dossier `frontend`, `npm run lint`, `npm run test` et `npm run build` passent localement.
-- [ ] Le workflow CI GitHub est vert sur le commit livré.
-- [ ] Render affiche le commit livré en état **Live** et GitHub Pages affiche **API connectée**.
+- [x] `dotnet test Vigie.sln --configuration Release` passe localement et dans la CI.
+- [x] Depuis le dossier `frontend`, `npm run lint`, `npm run test` et `npm run build` passent localement et dans la CI.
+- [x] Le workflow CI GitHub est vert sur le commit livré.
+- [x] Render répond à `/health/ready` avec `persistence=postgresql` et GitHub Pages affiche **API connectée**.
 - [ ] Noter la date, le commit, la version des migrations et la personne qui a réalisé l’acceptation.
