@@ -31,17 +31,17 @@ Transformer la démonstration Vigie en un logiciel que plusieurs centres aquatiq
 
 ### 2. Multi-tenant et autorisations
 
-- Ajouter `Organization`, membership et rôle par organisation.
+- ✅ Ajouter `Organization`, membership et rôle par organisation.
 - ✅ Scoper chaque requête métier à l’organisation du jeton.
-- Ajouter les règles de propriété pour sites, équipes, certifications et disponibilités.
-- Tester l’impossibilité de lire ou modifier les données d’une autre organisation.
+- ✅ Ajouter les règles de propriété pour sites, équipes, certifications et disponibilités.
+- ✅ Tester l’impossibilité de lire ou modifier les données d’une autre organisation.
 
 ### 3. Opérations métier complètes
 
 - ✅ Gérer création, modification, publication et annulation de quarts; les brouillons restent réservés aux responsables jusqu’à leur publication.
-- Permettre une assignation et un retrait avec validation atomique des cinq règles.
+- ✅ Permettre une assignation et un retrait avec validation atomique des cinq règles.
 - ✅ Exposer certifications, capacité de couverture et disponibilités déclarées de l’équipe dans les vues responsables; les disponibilités personnelles restent visibles par leur propriétaire.
-- Prévenir les doublons et verrouiller les décisions concurrentes.
+- ✅ Prévenir les doublons et verrouiller les décisions concurrentes.
 
 ### 4. Historique, notifications et expérience
 
